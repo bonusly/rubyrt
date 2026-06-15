@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+{{ self_id }}
+
+Summarize the code review in one sentence.
+
+--Reviewed Changes--
+{{ diff }}
+
+--Issues Detected--
+{{ issues_json }}
+
+Your response will be parsed programmatically, so do not include any
+additional text. Use Markdown formatting. Do not repeat the issue list.
+{{ summary_requirements }}

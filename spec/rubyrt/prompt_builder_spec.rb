@@ -1,0 +1,58 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+require 'tmpdir'
+require 'fileutils'
+
+RSpec.describe Rubyrt::PromptBuilder do
+  subject(:builder) { described_class.new(config) }
+
+  let(:tmp_dir) { Dir.mktmpdir }
+  let(:config) { Rubyrt::Configuration.new(root: tmp_dir) }
+
+  after do
+    FileUtils.remove_entry(tmp_dir)
+  end
+
+  describe '#review' do
+    it 'includes the diff input' do
+      prompt = builder.review(diff: "class Foo\nend")
+      expect(prompt).to include('class Foo')
+    end
+
+    it 'includes prompt_vars requirements' do
+      prompt = builder.review(diff: '')
+      expect(prompt).to include('Treat unclear or incorrect English')
+    end
+
+    it 'includes the JSON response requirement' do
+      prompt = builder.review(diff: '')
+      expect(prompt).to include('RESPOND ONLY WITH VALID JSON')
+    end
+
+    context 'with skill fragments' do
+      before do
+        FileUtils.mkdir_p(File.join(tmp_dir, '.cursor'))
+        File.write(File.join(tmp_dir, '.cursor', 'rails.md'), 'Always use strong params.')
+      end
+
+      it 'injects discovered skills as requirements', :aggregate_failures do
+        prompt = builder.review(diff: '')
+        expect(prompt).to match(/RULES FROM .*\.CURSOR SKILL: rails/i)
+        expect(prompt).to include('Always use strong params.')
+      end
+    end
+  end
+
+  describe '#summary' do
+    let(:issues) do
+      [{ 'title' => 'Unused variable', 'severity' => 2 }]
+    end
+
+    it 'renders the summary prompt with issues JSON', :aggregate_failures do
+      prompt = builder.summary(diff: 'diff text', issues: issues)
+      expect(prompt).to include('Summarize the code review in one sentence')
+      expect(prompt).to include('Unused variable')
+    end
+  end
+end

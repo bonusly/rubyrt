@@ -1,0 +1,78 @@
+{{ self_id }}
+
+----TASK----
+Review the provided code diff carefully and identify *only* highly confident
+issues which are relevant to any code context.
+
+----CODEBASE CHANGES TO REVIEW----
+{{ input }}
+--------
+
+{{# file_lines }}
+----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
+{{ file_lines }}
+--------
+{{/ file_lines }}
+
+----TASK GUIDELINES----
+- Only report issues you are 100% confident are relevant to any context.
+- Never report issues related to software versions, model names, or similar
+  details that you believe have not yet been released.
+- Only include issues that are significantly valuable to the maintainers (e.g.,
+  bugs, security flaws, or clear maintainability concerns).
+- Do not report vague, theoretical, or overly generic advice.
+- Do not report anything with medium or lower confidence.
+- Typographical errors have highest severity.
+{{ requirements }}
+{{ json_requirements }}
+
+Respond with a valid JSON array of issues following this schema:
+[
+  {
+    "title": "<issue_title>",
+    "details": "<issue_description>",
+    "tags": ["<tag1>", "<tag2>", ...],
+    "severity": <1-5>,
+    "confidence": <1-4>,
+    "affected_lines": [
+      {
+        "start_line": <int>,
+        "end_line": <int>,
+        "proposal": "<proposed code to replace the affected lines (optional)>"
+      }
+    ]
+  }
+]
+
+- If present, proposal blocks must match the indentation of the original code
+  and apply cleanly to lines start_line..end_line.
+
+Available issue tags:
+- bug
+- security
+- performance
+- readability
+- maintainability
+- overcomplexity
+- language
+- architecture
+- compatibility
+- deprecation
+- anti-pattern
+- naming
+- code-style
+
+Issue severity scale:
+- 1 — Critical
+- 2 — Major
+- 3 — Minor
+- 4 — Trivial
+- 5 — Suggestion
+
+Confidence scale:
+- 1 — Highest, 100% confidence
+- 2 — Very High
+- 3 — High
+- 4 — Medium (should not be reported)
+
+If no issues are found according to the criteria, respond with an empty list: []
