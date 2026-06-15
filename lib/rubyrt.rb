@@ -4,3 +4,6 @@
 # live under Rubyrt::.
 module Rubyrt
 end
+
+require_relative 'rubyrt/version'
+require_relative 'rubyrt/configuration'

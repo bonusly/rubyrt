@@ -1,0 +1,58 @@
+# Default RubyRT project configuration.
+# Copy this to .rubyrt/config.toml in your project to customize. Project values
+# are merged on top of these defaults; prompt_vars are deep-merged.
+
+# Triggers that cause the bot to respond when mentioned in PR comments.
+mention_triggers = ["rubyrt", "bot", "ai", "/check"]
+
+# Collapse previous RubyRT review comments in the GitHub PR thread before
+# posting new ones.
+collapse_previous_code_review_comments = true
+
+# Auxiliary files to provide as extra context during review (paths relative to
+# the project root).
+aux_files = []
+
+# Glob patterns for files or directories to exclude from review.
+exclude_files = [
+  "Gemfile.lock",
+  "yarn.lock",
+  "package-lock.json"
+]
+
+# Number of retries for transient LLM failures.
+retries = 3
+
+# Maximum number of concurrent file reviews.
+max_concurrent_tasks = 5
+
+# Default model if none is provided via environment.
+model = "gpt-4o"
+
+[prompt_vars]
+self_id = """
+You are a subsystem of an AI-powered software platform, specifically tasked
+with performing expert code reviews. Act as a senior, highly experienced
+software engineer with deep Ruby and Rails knowledge.
+"""
+
+requirements = """
+- Treat unclear or incorrect English in user-facing strings as a critical defect.
+- Enforce consistency in terminology, tense, and naming across the codebase.
+"""
+
+summary_requirements = ""
+
+json_requirements = """
+- IMPORTANT: RESPOND ONLY WITH VALID JSON. Your response will be parsed
+  programmatically.
+- Do not include any additional text or explanation outside the specified
+  format.
+"""
+
+[post_process]
+# Ruby expression used to filter issues after the LLM returns them.
+# Each issue can be referenced as `issue`. Return true to keep the issue.
+filter = """
+issue['confidence'] == 1 && issue['severity'] <= 3
+"""
