@@ -13,6 +13,9 @@
 # Used by dotenv library to load environment variables.
 # .env
 
+# Ignore RSpec persistence file.
+.rspec_status
+
 # Ignore Byebug command history file.
 .byebug_history
 
