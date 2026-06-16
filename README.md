@@ -35,7 +35,8 @@ jobs:
       - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
-          model: gpt-4o
+          provider: openrouter
+          model: moonshotai/kimi-k2.6
 ```
 
 ## Development

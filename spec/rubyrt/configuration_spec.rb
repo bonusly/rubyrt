@@ -53,6 +53,27 @@ RSpec.describe Rubyrt::Configuration do
     end
   end
 
+  context 'with explicit overrides' do
+    subject(:config) { described_class.new(root: tmp_dir, overrides: { model: 'o1-preview' }) }
+
+    it 'overrides model from constructor options' do
+      expect(config['model']).to eq('o1-preview')
+    end
+  end
+
+  context 'with environment variable and explicit override' do
+    subject(:config) { described_class.new(root: tmp_dir, overrides: { model: 'o1-preview' }) }
+
+    before do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('LLM_MODEL', anything).and_return('gpt-5')
+    end
+
+    it 'prefers explicit override over environment variable' do
+      expect(config['model']).to eq('o1-preview')
+    end
+  end
+
   context 'with skill directories' do
     before do
       %w[.agents .claude .cursor].each do |source|

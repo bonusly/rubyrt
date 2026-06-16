@@ -1,4 +1,4 @@
-name: 'RubyRT Review'
+name: "RubyRT Review"
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'Pull Request number'
+        description: "Pull Request number"
         required: true
 
 jobs:
@@ -24,3 +24,4 @@ jobs:
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
           model: gpt-4o
+          rubyrt_version: local
