@@ -43,4 +43,26 @@ RSpec.describe Rubyrt::ReportRenderer do
     expect(output).to include('Unused variable')
     expect(output).to include('app.rb')
   end
+
+  context 'with no issues but processed files' do
+    let(:report) do
+      Rubyrt::Report.new(
+        target: Rubyrt::ReviewTarget.new(
+          platform: 'local', repo_url: nil, pr_number: nil, commit_sha: nil,
+          branch: nil, base_ref: 'main', head_ref: 'HEAD', merge_base: false
+        ),
+        model: 'gpt-4o',
+        issues: [],
+        number_of_processed_files: 5
+      )
+    end
+
+    it 'reports the number of processed files in CLI output' do
+      expect(renderer.to_cli).to include('No issues found across 5 file(s)')
+    end
+
+    it 'reports the number of processed files in Markdown output' do
+      expect(renderer.to_md).to include('**✅ No issues found** across 5 file(s)')
+    end
+  end
 end
