@@ -1,11 +1,24 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tmpdir'
+require 'fileutils'
 
 RSpec.describe Rubyrt::LlmClient do
+  let(:tmp_dir) { Dir.mktmpdir }
+  let(:config_without_key) do
+    Rubyrt::Configuration.new(
+      root: tmp_dir,
+      overrides: { 'llm_api_key' => nil, 'provider' => 'openai' }
+    )
+  end
+  let(:config_with_key) do
+    Rubyrt::Configuration.new(root: tmp_dir, overrides: { 'llm_api_key' => 'sk-test' })
+  end
+
   let(:config) do
     Rubyrt::Configuration.new(
-      root: Dir.mktmpdir,
+      root: tmp_dir,
       overrides: {
         provider: provider,
         llm_api_key: 'secret',
@@ -15,7 +28,16 @@ RSpec.describe Rubyrt::LlmClient do
   end
 
   after do
-    FileUtils.rm_rf(config.instance_variable_get(:@root))
+    FileUtils.remove_entry(tmp_dir)
+  end
+
+  it 'raises when LLM_API_KEY is missing' do
+    expect { described_class.new(config_without_key) }
+      .to raise_error(Rubyrt::ConfigurationError, /Missing LLM_API_KEY/)
+  end
+
+  it 'constructs when LLM_API_KEY is present' do
+    expect { described_class.new(config_with_key) }.not_to raise_error
   end
 
   context 'with an unsupported provider' do
