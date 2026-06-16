@@ -87,8 +87,11 @@ module Rubyrt
       end
 
       def render_report(report)
-        report.save(options[:output] || '.')
-        puts Rubyrt::ReportRenderer.new(report).to_md
+        output = options[:output] || '.'
+        md = Rubyrt::ReportRenderer.new(report).to_md
+        report.save(output)
+        File.write(File.join(output, 'code-review-report.md'), md)
+        puts md
       end
 
       def print_file(file)

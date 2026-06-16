@@ -10,7 +10,7 @@ module Rubyrt
 
     def initialize(repo_path: Dir.pwd, base_ref: nil, head_ref: 'HEAD')
       @repo = Rugged::Repository.discover(repo_path)
-      @head_ref = head_ref
+      @head_ref = head_ref || 'HEAD'
       @base_ref = base_ref || default_base_ref
     end
 
@@ -19,13 +19,12 @@ module Rubyrt
     end
 
     def diff_text_for(file)
-      patch_for(file)&.to_s
+      patch_for(file)&.to_s&.force_encoding('UTF-8')
     end
 
     def full_content_for(file)
-      head_commit.tree.path(file)[:oid]
       blob = @repo.lookup(head_commit.tree.path(file)[:oid])
-      blob.content
+      blob.content.force_encoding('UTF-8')
     rescue Rugged::TreeError
       nil
     end

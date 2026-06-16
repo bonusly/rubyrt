@@ -16,6 +16,9 @@
 # Ignore RSpec persistence file.
 .rspec_status
 
+# Ignore local review output directories.
+tmp_review/
+
 # Ignore Byebug command history file.
 .byebug_history
 
