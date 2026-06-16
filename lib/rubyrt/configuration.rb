@@ -83,6 +83,7 @@ module Rubyrt
     def apply_env_overrides(config)
       config.merge(
         'model' => ENV.fetch('LLM_MODEL', config['model']),
+        'provider' => ENV.fetch('LLM_PROVIDER', config['provider']),
         'retries' => ENV.fetch('LLM_RETRIES', config['retries']).to_i,
         'max_concurrent_tasks' => ENV.fetch('MAX_CONCURRENT_TASKS',
                                             config['max_concurrent_tasks']).to_i,
