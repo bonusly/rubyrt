@@ -5,6 +5,7 @@
 module Rubyrt
 end
 
+require_relative 'rubyrt/errors'
 require_relative 'rubyrt/version'
 require_relative 'rubyrt/configuration'
 require_relative 'rubyrt/prompt_builder'

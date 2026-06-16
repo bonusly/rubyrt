@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+module Rubyrt
+  # Raised when required configuration is missing or invalid.
+  class ConfigurationError < StandardError
+  end
+end

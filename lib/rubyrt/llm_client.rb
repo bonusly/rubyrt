@@ -7,6 +7,7 @@ module Rubyrt
   class LlmClient
     def initialize(config)
       @config = config
+      validate!
       configure!
     end
 
@@ -15,6 +16,13 @@ module Rubyrt
     end
 
     private
+
+    def validate!
+      return if @config['llm_api_key'] && !@config['llm_api_key'].to_s.strip.empty?
+
+      raise ConfigurationError,
+            'Missing LLM_API_KEY. Set it as an environment variable or in ~/.rubyrt/.env.'
+    end
 
     def configure!
       RubyLLM.configure do |ruby_llm_config|
