@@ -4,8 +4,12 @@ require 'octokit'
 
 module Rubyrt
   module GitHub
-    # Posts RubyRT review results to a GitHub pull request.
+    # Posts RubyRT review results to a GitHub pull request. Resolves stale
+    # RubyRT review threads and collapses previous summary comments before
+    # posting new feedback.
     class Commenter
+      REVIEW_COMMENT_MARKER = '<!-- rubyrt-review-comment -->'
+
       def initialize(token:, owner:, repo:, pr_number:)
         @client = Octokit::Client.new(access_token: token)
         @owner = owner
@@ -16,6 +20,7 @@ module Rubyrt
       def post_review(summary:, report:)
         pr = @client.pull_request("#{@owner}/#{@repo}", @pr_number)
         commit_id = pr.head.sha
+        resolve_previous_threads
         collapse_previous_summaries
         post_summary_comment(summary)
         post_file_comments(report.issues, commit_id)
@@ -55,7 +60,39 @@ module Rubyrt
       end
 
       def issue_body(issue)
-        ["**#{issue.title}**", issue.details, "Tags: #{issue.tags.join(', ')}"].compact.join("\n\n")
+        [
+          REVIEW_COMMENT_MARKER,
+          "**#{issue.title}**",
+          issue.details,
+          "Tags: #{issue.tags.join(', ')}"
+        ].compact.join("\n\n")
+      end
+
+      def resolve_previous_threads
+        bot_login = @client.user.login
+        threads = fetch_review_threads
+        threads.each do |thread|
+          resolve_thread(thread, bot_login)
+        end
+      end
+
+      def fetch_review_threads
+        GraphqlClient.new(@client).review_threads(
+          owner: @owner,
+          repo: @repo,
+          pr_number: @pr_number
+        )
+      end
+
+      def resolve_thread(thread, bot_login)
+        return if thread['isResolved']
+
+        first_comment = thread.dig('comments', 'nodes', 0)
+        return unless first_comment
+        return unless first_comment.dig('author', 'login') == bot_login
+        return unless first_comment['body'].include?(REVIEW_COMMENT_MARKER)
+
+        GraphqlClient.new(@client).resolve_thread(thread['id'])
       end
 
       def collapse_previous_summaries

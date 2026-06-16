@@ -29,6 +29,11 @@ max_concurrent_tasks = 5
 # Default model if none is provided via environment.
 model = "gpt-4o"
 
+# LLM provider to use. Must match a provider supported by RubyLLM
+# (e.g. openai, anthropic, gemini, ollama, deepseek, openrouter, mistral,
+# perplexity, xai, azure, bedrock, vertexai, gpustack).
+provider = "openai"
+
 [prompt_vars]
 self_id = """
 You are a subsystem of an AI-powered software platform, specifically tasked

@@ -21,8 +21,11 @@ module Rubyrt
     option :merge_base, type: :boolean, default: true, desc: 'Use merge base for comparison'
     option :output, type: :string, aliases: '-o', desc: 'Output folder for the review report'
     option :all, type: :boolean, default: false, desc: 'Review whole codebase'
-    def review
-      config = Rubyrt::Configuration.new
+    option :model, type: :string, aliases: '-m', desc: 'LLM model to use for the review'
+    option :provider, type: :string, aliases: '-p', desc: 'LLM provider to use (e.g. openai, anthropic)'
+    def review(*)
+      # Thor passes positional args we don't use; accept and ignore them.
+      config = Rubyrt::Configuration.new(overrides: { model: options[:model], provider: options[:provider] }.compact)
       changeset = build_changeset
       report = build_reviewer(config, changeset).review
       render_report(report)
