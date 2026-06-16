@@ -103,7 +103,8 @@ module Rubyrt
 
   # Collection of issues and metadata produced by a review run.
   class Report
-    attr_reader :target, :summary, :issues, :processing_warnings, :created_at, :model
+    attr_reader :target, :summary, :issues, :processing_warnings, :created_at, :model,
+                :number_of_processed_files
 
     def self.from_file(path)
       data = JSON.parse(File.read(path))
@@ -118,21 +119,20 @@ module Rubyrt
         model: data['model'],
         summary: data['summary'],
         issues: issues,
-        processing_warnings: data['processing_warnings'] || []
+        processing_warnings: data['processing_warnings'] || [],
+        number_of_processed_files: data['number_of_processed_files']
       )
     end
 
-    def initialize(target:, model:, summary: nil, issues: [], processing_warnings: [])
+    def initialize(target:, model:, summary: nil, issues: [], processing_warnings: [],
+                   number_of_processed_files: nil)
       @target = target
       @model = model
       @summary = summary
       @issues = Array(issues)
       @processing_warnings = Array(processing_warnings)
+      @number_of_processed_files = number_of_processed_files || @issues.map(&:file).uniq.size
       @created_at = Time.now.iso8601
-    end
-
-    def number_of_processed_files
-      @issues.map(&:file).uniq.size
     end
 
     def total_issues

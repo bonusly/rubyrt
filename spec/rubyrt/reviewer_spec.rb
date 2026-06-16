@@ -40,5 +40,6 @@ RSpec.describe Rubyrt::Reviewer do
     expect(report).to be_a(Rubyrt::Report)
     expect(report.total_issues).to eq(1)
     expect(report.issues.first.title).to eq('Missing return')
+    expect(report.number_of_processed_files).to eq(1)
   end
 end

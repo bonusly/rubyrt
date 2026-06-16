@@ -23,7 +23,8 @@ module Rubyrt
         target: build_target,
         model: @config['model'],
         issues: filtered,
-        processing_warnings: @warnings
+        processing_warnings: @warnings,
+        number_of_processed_files: @changeset.files.size
       )
     end
 
