@@ -1,0 +1,48 @@
+# frozen_string_literal: true
+
+require 'json'
+
+module Rubyrt
+  # Parses a JSON array of LLM issues into Rubyrt domain objects.
+  class IssueParser
+    def initialize(issue_id_source)
+      @issue_id_source = issue_id_source
+    end
+
+    def parse(issues, file)
+      Array(issues).map { |issue| raw_issue(issue).then { |raw| build_issue(raw, file) } }
+    end
+
+    private
+
+    def raw_issue(issue)
+      RawIssue.new(
+        title: issue.fetch('title'),
+        severity: issue.fetch('severity'),
+        confidence: issue.fetch('confidence'),
+        details: issue['details'],
+        tags: issue['tags'] || [],
+        affected_lines: parse_affected_lines(issue['affected_lines'])
+      )
+    end
+
+    def build_issue(raw, file)
+      Issue.new(
+        id: @issue_id_source.next_id,
+        file: file,
+        raw_issue: raw,
+        affected_lines: raw.affected_lines
+      )
+    end
+
+    def parse_affected_lines(lines)
+      Array(lines).map do |line|
+        AffectedRange.new(
+          start_line: line['start_line'],
+          end_line: line['end_line'] || line['start_line'],
+          proposal: line['proposal']
+        )
+      end
+    end
+  end
+end

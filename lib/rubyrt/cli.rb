@@ -18,10 +18,16 @@ module Rubyrt
     option :against, type: :string, aliases: '-v', desc: 'Git ref to compare against'
     option :filters, type: :string, aliases: '-f', desc: 'Filter reviewed files by glob pattern(s)'
     option :merge_base, type: :boolean, default: true, desc: 'Use merge base for comparison'
-    option :output, type: :string, aliases: '-o', desc: 'Output folder for the code review report'
+    option :output, type: :string, aliases: '-o', desc: 'Output folder for the review report'
     option :all, type: :boolean, default: false, desc: 'Review whole codebase'
     def review
-      raise NotImplementedError, 'review command is coming in a future commit'
+      config = Rubyrt::Configuration.new
+      changeset = build_changeset
+      report = build_reviewer(config, changeset).review
+      render_report(report)
+    rescue StandardError => e
+      warn "Review failed: #{e.message}"
+      exit 1
     end
 
     desc 'files', 'List files in the changeset'
@@ -31,28 +37,52 @@ module Rubyrt
     option :merge_base, type: :boolean, default: true, desc: 'Use merge base for comparison'
     option :diff, type: :boolean, default: false, desc: 'Show diff content'
     def files
-      raise NotImplementedError, 'files command is coming in a future commit'
+      build_changeset.files.each { |file| print_file(file) }
     end
 
     desc 'report', 'Render a saved code review report'
     option :source, type: :string, aliases: '-s', desc: 'Source JSON report to load'
     option :format, type: :string, default: 'cli', desc: 'Output format (cli, md)'
     def report
-      raise NotImplementedError, 'report command is coming in a future commit'
+      source = options[:source] || 'code-review-report.json'
+      report = Rubyrt::Report.from_file(source)
+      renderer = Rubyrt::ReportRenderer.new(report)
+      puts options[:format] == 'md' ? renderer.to_md : renderer.to_cli
     end
 
-    desc 'github-comment', 'Post a code review comment to GitHub'
-    option :md_report_file, type: :string, desc: 'Path to the Markdown report'
-    option :pr, type: :numeric, desc: 'Pull Request number'
-    option :gh_repo, type: :string, desc: 'owner/repo'
-    option :token, type: :string, desc: 'GitHub token'
-    def github_comment
-      raise NotImplementedError, 'github-comment command is coming in a future commit'
-    end
+    # rubocop:disable Metrics/BlockLength
+    no_commands do
+      def build_changeset
+        Rubyrt::Changeset.new(
+          head_ref: options[:what],
+          base_ref: options[:against]
+        )
+      end
 
-    desc 'setup', 'Configure rubyrt for local usage'
-    def setup
-      raise NotImplementedError, 'setup command is coming in a future commit'
+      def build_reviewer(config, changeset)
+        Rubyrt::Reviewer.new(
+          config: config,
+          changeset: changeset,
+          prompt_builder: Rubyrt::PromptBuilder.new(config),
+          llm_client: Rubyrt::LlmClient.new(config),
+          adapters: [Rubyrt::Adapters::RuboCopAdapter.new(config: config)]
+        )
+      end
+
+      def render_report(report)
+        report.save(options[:output] || '.')
+        puts Rubyrt::ReportRenderer.new(report).to_md
+      end
+
+      def print_file(file)
+        if options[:diff]
+          puts "--- #{file} ---"
+          puts build_changeset.diff_text_for(file)
+        else
+          puts file
+        end
+      end
     end
+    # rubocop:enable Metrics/BlockLength
   end
 end
