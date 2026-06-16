@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rubyrt (0.1.0)
+    rubyrt (0.1.1)
       dotenv (~> 3.1)
       mcp (~> 0.20)
       mustache (~> 1.0)
@@ -187,7 +187,7 @@ CHECKSUMS
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
   ruby_llm (1.16.0) sha256=26bd5310cf2ce55f74a60f8aae0b0d0327b586ff4532c84828103c3b2b905a18
   ruby_llm-schema (0.4.0) sha256=e930f5a5316f9301bff3fb7fe572e44727d05bb8e50621001bbb49a47d63b8da
-  rubyrt (0.1.0)
+  rubyrt (0.1.1)
   rugged (1.9.0) sha256=7faaa912c5888d6e348d20fa31209b6409f1574346b1b80e309dbc7e8d63efac
   sawyer (0.9.3) sha256=0d0f19298408047037638639fe62f4794483fb04320269169bd41af2bdcf5e41
   simplecov (0.22.0) sha256=fe2622c7834ff23b98066bb0a854284b2729a569ac659f82621fc22ef36213a5

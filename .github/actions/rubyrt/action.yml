@@ -21,7 +21,7 @@ inputs:
     required: false
     default: "."
   rubyrt_version:
-    description: "RubyRT gem version to install"
+    description: "RubyRT gem version to install (use 'local' to build and install from the checked-out repo)"
     required: false
     default: ">= 0"
 runs:
@@ -33,7 +33,13 @@ runs:
         ruby-version: "3.4"
     - name: Install RubyRT
       shell: bash
-      run: gem install rubyrt -v "${{ inputs.rubyrt_version }}"
+      run: |
+        if [ "${{ inputs.rubyrt_version }}" = "local" ]; then
+          gem build rubyrt.gemspec
+          gem install ./rubyrt-*.gem
+        else
+          gem install rubyrt -v "${{ inputs.rubyrt_version }}"
+        fi
     - name: Run RubyRT review
       shell: bash
       env:

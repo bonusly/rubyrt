@@ -5,6 +5,23 @@ require 'ruby_llm'
 module Rubyrt
   # Thin wrapper around ruby_llm for code review prompts.
   class LlmClient
+    # Maps RubyRT provider names to the RubyLLM config attribute names.
+    PROVIDER_CONFIG = {
+      'openai' => { key: :openai_api_key, base: :openai_api_base },
+      'anthropic' => { key: :anthropic_api_key, base: :anthropic_api_base },
+      'gemini' => { key: :gemini_api_key, base: :gemini_api_base },
+      'ollama' => { key: :ollama_api_key, base: :ollama_api_base },
+      'deepseek' => { key: :deepseek_api_key, base: :deepseek_api_base },
+      'openrouter' => { key: :openrouter_api_key, base: :openrouter_api_base },
+      'mistral' => { key: :mistral_api_key, base: :mistral_api_base },
+      'perplexity' => { key: :perplexity_api_key, base: :perplexity_api_base },
+      'xai' => { key: :xai_api_key, base: :xai_api_base },
+      'azure' => { key: :azure_api_key, base: :azure_api_base },
+      'bedrock' => { key: :bedrock_api_key, base: :bedrock_api_base },
+      'vertexai' => { key: :vertexai_service_account_key, base: :vertexai_api_base },
+      'gpustack' => { key: :gpustack_api_key, base: :gpustack_api_base }
+    }.freeze
+
     def initialize(config)
       @config = config
       configure!
@@ -28,52 +45,11 @@ module Rubyrt
 
     def apply_provider_config(config)
       provider = @config['provider'].to_s
-      api_key = @config['llm_api_key']
-      api_base = @config['llm_api_base']
+      mapping = PROVIDER_CONFIG[provider]
+      raise ArgumentError, "Unsupported LLM provider: #{provider}" unless mapping
 
-      case provider
-      when 'openai'
-        config.openai_api_key = api_key
-        config.openai_api_base = api_base if api_base
-      when 'anthropic'
-        config.anthropic_api_key = api_key
-        config.anthropic_api_base = api_base if api_base
-      when 'gemini'
-        config.gemini_api_key = api_key
-        config.gemini_api_base = api_base if api_base
-      when 'ollama'
-        config.ollama_api_key = api_key if api_key
-        config.ollama_api_base = api_base if api_base
-      when 'deepseek'
-        config.deepseek_api_key = api_key
-        config.deepseek_api_base = api_base if api_base
-      when 'openrouter'
-        config.openrouter_api_key = api_key
-        config.openrouter_api_base = api_base if api_base
-      when 'mistral'
-        config.mistral_api_key = api_key
-        config.mistral_api_base = api_base if api_base
-      when 'perplexity'
-        config.perplexity_api_key = api_key
-        config.perplexity_api_base = api_base if api_base
-      when 'xai'
-        config.xai_api_key = api_key
-        config.xai_api_base = api_base if api_base
-      when 'azure'
-        config.azure_api_key = api_key
-        config.azure_api_base = api_base if api_base
-      when 'bedrock'
-        config.bedrock_api_key = api_key
-        config.bedrock_api_base = api_base if api_base
-      when 'vertexai'
-        config.vertexai_service_account_key = api_key
-        config.vertexai_api_base = api_base if api_base
-      when 'gpustack'
-        config.gpustack_api_key = api_key
-        config.gpustack_api_base = api_base if api_base
-      else
-        raise ArgumentError, "Unsupported LLM provider: #{provider}"
-      end
+      config.public_send("#{mapping[:key]}=", @config['llm_api_key'])
+      config.public_send("#{mapping[:base]}=", @config['llm_api_base']) if @config['llm_api_base']
     end
   end
 end

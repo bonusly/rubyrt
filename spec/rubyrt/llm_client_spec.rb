@@ -15,7 +15,7 @@ RSpec.describe Rubyrt::LlmClient do
   end
 
   after do
-    FileUtils.remove_entry(config.instance_variable_get(:@root)) if Dir.exist?(config.instance_variable_get(:@root))
+    FileUtils.rm_rf(config.instance_variable_get(:@root))
   end
 
   context 'with an unsupported provider' do
@@ -29,20 +29,31 @@ RSpec.describe Rubyrt::LlmClient do
   context 'with openai' do
     let(:provider) { 'openai' }
 
-    it 'configures the openai provider' do
-      client = described_class.new(config)
+    it 'returns an llm client' do
+      expect(described_class.new(config)).to be_a(described_class)
+    end
+
+    it 'configures the openai api key' do
+      described_class.new(config)
       expect(RubyLLM.config.openai_api_key).to eq('secret')
+    end
+
+    it 'configures the openai api base' do
+      described_class.new(config)
       expect(RubyLLM.config.openai_api_base).to eq('https://example.com/v1')
-      expect(client).to be_a(described_class)
     end
   end
 
   context 'with anthropic' do
     let(:provider) { 'anthropic' }
 
-    it 'configures the anthropic provider' do
+    it 'configures the anthropic api key' do
       described_class.new(config)
       expect(RubyLLM.config.anthropic_api_key).to eq('secret')
+    end
+
+    it 'configures the anthropic api base' do
+      described_class.new(config)
       expect(RubyLLM.config.anthropic_api_base).to eq('https://example.com/v1')
     end
   end
