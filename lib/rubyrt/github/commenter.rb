@@ -69,11 +69,20 @@ module Rubyrt
       end
 
       def resolve_previous_threads
-        bot_login = @client.user.login
+        bot_login = bot_login_from_token
+        return unless bot_login
+
         threads = fetch_review_threads
         threads.each do |thread|
           resolve_thread(thread, bot_login)
         end
+      end
+
+      def bot_login_from_token
+        @client.user.login
+      rescue Octokit::Forbidden => e
+        warn "Unable to fetch bot user (token may lack 'user' read scope): #{e.message}"
+        nil
       end
 
       def fetch_review_threads
