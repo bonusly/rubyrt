@@ -1,0 +1,52 @@
+name: 'RubyRT Review'
+description: 'Run RubyRT AI code review on pull requests'
+inputs:
+  api_key:
+    description: 'LLM API key'
+    required: true
+  api_base:
+    description: 'OpenAI-compatible API base URL'
+    required: false
+    default: 'https://api.openai.com/v1'
+  model:
+    description: 'LLM model name'
+    required: false
+    default: 'gpt-4o'
+  output_dir:
+    description: 'Directory for review reports'
+    required: false
+    default: '.'
+  rubyrt_version:
+    description: 'RubyRT gem version to install'
+    required: false
+    default: '>= 0'
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4'
+    - name: Install RubyRT
+      shell: bash
+      run: gem install rubyrt -v "${{ inputs.rubyrt_version }}"
+    - name: Run RubyRT review
+      shell: bash
+      env:
+        LLM_API_KEY: ${{ inputs.api_key }}
+        LLM_API_BASE: ${{ inputs.api_base }}
+        LLM_MODEL: ${{ inputs.model }}
+      run: rubyrt review --output "${{ inputs.output_dir }}"
+    - name: Post review to GitHub
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: rubyrt github-comment --md-report-file "${{ inputs.output_dir }}/code-review-report.md"
+    - name: Upload reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: rubyrt-review-results
+        path: |
+          ${{ inputs.output_dir }}/code-review-report.json
+          ${{ inputs.output_dir }}/code-review-report.md

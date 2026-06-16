@@ -1,0 +1,26 @@
+name: 'RubyRT Review'
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number'
+        required: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run RubyRT review
+        uses: ./.github/actions/rubyrt
+        with:
+          api_key: ${{ secrets.LLM_API_KEY }}
+          model: gpt-4o

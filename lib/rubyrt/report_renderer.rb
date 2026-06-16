@@ -17,7 +17,7 @@ module Rubyrt
     end
 
     def to_md
-      lines = ['<h2>RubyRT Code Review</h2>']
+      lines = ['<h2>RubyRT Code Review</h2>', Rubyrt::GitHub::Context::SUMMARY_MARKER]
       lines << md_summary_line
       lines << "\n#{@report.summary}" if @report.summary
       lines += @report.issues.map { |issue| md_issue(issue) }
