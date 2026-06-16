@@ -53,6 +53,7 @@ runs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: rubyrt github-comment --md-report-file "${{ inputs.output_dir }}/code-review-report.md"
+      if: always()
     - name: Upload reports
       uses: actions/upload-artifact@v4
       if: always()

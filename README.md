@@ -39,6 +39,39 @@ jobs:
           model: moonshotai/kimi-k2.6
 ```
 
+### Required secrets and permissions
+
+- `secrets.LLM_API_KEY`: Your LLM provider API key.
+- `secrets.GITHUB_TOKEN` is provided automatically by GitHub Actions. It must have at least `pull-requests: write` permission (set in the workflow `permissions` block) so RubyRT can post review comments and resolve stale threads.
+- If you want RubyRT to resolve its own stale review threads, the token also needs read access to the authenticated user. The default `GITHUB_TOKEN` in a PR workflow from the same repository has this access. In forks or heavily restricted environments, `GITHUB_TOKEN` may not be able to call `GET /user`; RubyRT will skip resolving stale threads and continue posting the new review.
+
+### Configuration options
+
+RubyRT reads configuration from layers (later layers override earlier ones):
+
+1. `lib/rubyrt/config/default.toml` bundled with the gem.
+2. `.rubyrt/config.toml` in your project root.
+3. Environment variables.
+4. CLI flags.
+
+Key settings:
+
+| Setting | Default | Config key | Environment variable | CLI flag |
+|---|---|---|---|---|
+| LLM provider | `openai` | `provider` | `LLM_PROVIDER` | `-p`, `--provider` |
+| LLM model | `gpt-4o` | `model` | `LLM_MODEL` | `-m`, `--model` |
+| API key | — | `llm_api_key` | `LLM_API_KEY` | — |
+| API base URL | provider default | `llm_api_base` | `LLM_API_BASE` | — |
+
+Supported providers match whatever RubyLLM supports, including `openai`, `anthropic`, `gemini`, `ollama`, `deepseek`, `openrouter`, `mistral`, `perplexity`, `xai`, `azure`, `bedrock`, `vertexai`, and `gpustack`.
+
+Example `.rubyrt/config.toml`:
+
+```toml
+provider = "anthropic"
+model = "claude-sonnet-4"
+```
+
 ## Development
 
 ```bash
