@@ -14,6 +14,41 @@ module Rubyrt
       puts Rubyrt::VERSION
     end
 
+    # Override the default help output to also list each command's options,
+    # so `rubyrt --help` shows what flags each command accepts.
+    def help(command = nil, subcommand = false) # rubocop:disable Style/OptionalBooleanParameter
+      return super if command
+
+      shell.say 'Commands:'
+      self.class.commands.reject { |_, c| c.hidden? }.sort.each do |name, cmd|
+        print_command_help(name, cmd)
+      end
+    end
+
+    no_commands do
+      def print_command_help(name, cmd)
+        shell.say "  #{name}"
+        shell.say "    #{cmd.description}" if cmd.description && !cmd.description.empty?
+        print_command_options(cmd)
+      end
+
+      def print_command_options(cmd)
+        opts = cmd.options.values
+        return if opts.empty?
+
+        opts.each { |opt| shell.say option_line(opt) }
+      end
+
+      def option_line(opt)
+        switches = ["--#{opt.name.tr('_', '-')}"]
+        switches.concat(Array(opt.aliases).map(&:to_s))
+        line = "    #{switches.join(', ').ljust(28)}# #{opt.description}"
+        return line if opt.default.nil?
+
+        "#{line} (Default: #{opt.default.inspect})"
+      end
+    end
+
     desc 'review', 'Perform a code review of the target codebase changes'
     option :what, type: :string, aliases: '-w', desc: 'Git ref to review'
     option :against, type: :string, aliases: '-v', desc: 'Git ref to compare against'
@@ -91,10 +126,10 @@ module Rubyrt
 
       def render_report(report)
         output = options[:output] || '.'
-        md = Rubyrt::ReportRenderer.new(report).to_md
+        renderer = Rubyrt::ReportRenderer.new(report)
         report.save(output)
-        File.write(File.join(output, 'code-review-report.md'), md)
-        puts md
+        File.write(File.join(output, 'code-review-report.md'), renderer.to_md)
+        puts renderer.to_cli
       end
 
       def print_file(file)
