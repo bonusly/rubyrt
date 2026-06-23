@@ -12,10 +12,13 @@ module Rubyrt
   # 3. ~/.rubyrt/.env (loaded into ENV via dotenv)
   # 4. OS environment variables
   # 5. Explicit overrides passed to Configuration.new
+  # rubocop:disable Metrics/ClassLength
   class Configuration
-    attr_reader :data
+    attr_reader :data, :root
 
     USER_ENV_FILE = File.expand_path('~/.rubyrt/.env').freeze
+
+    DEFAULT_SKILL_DIRECTORIES = %w[.agents .claude .cursor].freeze
 
     ENV_OVERRIDES = {
       'model' => 'LLM_MODEL',
@@ -52,7 +55,11 @@ module Rubyrt
     end
 
     def skill_directories
-      %w[.agents .claude .cursor].map { |d| File.join(@root, d) }
+      Array(@data.fetch('skill_directories', DEFAULT_SKILL_DIRECTORIES)).map { |d| File.join(@root, d) }
+    end
+
+    def aux_files
+      Array(@data.fetch('aux_files', [])).map { |path| File.join(@root, path) }
     end
 
     def skills
@@ -138,6 +145,7 @@ module Rubyrt
       end
     end
   end
+  # rubocop:enable Metrics/ClassLength
 
   # A single skill prompt fragment discovered from .agents, .claude, or .cursor.
   class SkillFragment

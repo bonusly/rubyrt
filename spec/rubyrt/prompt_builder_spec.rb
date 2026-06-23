@@ -42,6 +42,31 @@ RSpec.describe Rubyrt::PromptBuilder do
         expect(prompt).to include('Always use strong params.')
       end
     end
+
+    context 'with aux_files configured' do
+      let(:config) do
+        Rubyrt::Configuration.new(
+          root: tmp_dir,
+          overrides: { aux_files: ['docs/conventions.md', 'docs/missing.md'] }
+        )
+      end
+
+      before do
+        FileUtils.mkdir_p(File.join(tmp_dir, 'docs'))
+        File.write(File.join(tmp_dir, 'docs', 'conventions.md'), 'Use frozen_string_literal.')
+      end
+
+      it 'injects existing aux file contents into the prompt', :aggregate_failures do
+        prompt = builder.review(diff: '')
+        expect(prompt).to include('AUXILIARY FILE: docs/conventions.md')
+        expect(prompt).to include('Use frozen_string_literal.')
+      end
+
+      it 'skips missing aux files without error' do
+        prompt = builder.review(diff: '')
+        expect(prompt).not_to include('missing.md')
+      end
+    end
   end
 
   describe '#summary' do

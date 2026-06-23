@@ -23,5 +23,6 @@ jobs:
         uses: ./.github/actions/rubyrt
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
-          model: gpt-4o
+          model: ${{ vars.LLM_MODEL }}
+          provider: ${{ vars.LLM_PROVIDER }}
           rubyrt_version: local
