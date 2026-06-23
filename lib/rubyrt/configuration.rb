@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'tomlrb'
+require 'dotenv'
 
 module Rubyrt
   # Loads and merges RubyRT configuration.
@@ -8,10 +9,13 @@ module Rubyrt
   # Layers (later layers override earlier ones):
   # 1. Bundled defaults from lib/rubyrt/config/default.toml
   # 2. Project-specific .rubyrt/config.toml
-  # 3. OS environment variables
-  # 4. Explicit overrides passed to Configuration.new
+  # 3. ~/.rubyrt/.env (loaded into ENV via dotenv)
+  # 4. OS environment variables
+  # 5. Explicit overrides passed to Configuration.new
   class Configuration
     attr_reader :data
+
+    USER_ENV_FILE = File.expand_path('~/.rubyrt/.env').freeze
 
     def initialize(root: Dir.pwd, overrides: {})
       @root = root
@@ -42,6 +46,7 @@ module Rubyrt
     private
 
     def build_data
+      load_user_env_file
       defaults = load_toml(default_config_path)
       project = project_config_path ? load_toml(project_config_path) : {}
 
@@ -49,6 +54,12 @@ module Rubyrt
         apply_env_overrides(deep_merge(defaults, project)),
         @overrides
       )
+    end
+
+    def load_user_env_file
+      return unless File.file?(USER_ENV_FILE)
+
+      Dotenv.load(USER_ENV_FILE, overwrite: true)
     end
 
     def default_config_path

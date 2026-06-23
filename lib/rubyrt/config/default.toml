@@ -17,7 +17,8 @@ aux_files = []
 exclude_files = [
   "Gemfile.lock",
   "yarn.lock",
-  "package-lock.json"
+  "package-lock.json",
+  "tmp/*"
 ]
 
 # Number of retries for transient LLM failures.
