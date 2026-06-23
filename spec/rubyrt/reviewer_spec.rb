@@ -42,4 +42,28 @@ RSpec.describe Rubyrt::Reviewer do
     expect(report.issues.first.title).to eq('Missing return')
     expect(report.number_of_processed_files).to eq(1)
   end
+
+  context 'when the LLM client raises a connection error' do
+    let(:connection_error) { Class.new(StandardError) }
+    let(:fake_llm_client) do
+      instance_double(Rubyrt::LlmClient).tap do |client|
+        allow(client).to receive(:complete)
+          .and_raise(connection_error, 'Failed to open TCP connection')
+      end
+    end
+
+    it 'propagates the error instead of silently returning no issues' do
+      expect { reviewer.review }.to raise_error(connection_error)
+    end
+  end
+
+  context 'when the LLM returns malformed JSON' do
+    let(:fake_llm_client) { instance_double(Rubyrt::LlmClient, complete: 'not valid json') }
+
+    it 'records a warning and continues with no issues for that file', :aggregate_failures do
+      report = reviewer.review
+      expect(report.total_issues).to eq(0)
+      expect(report.processing_warnings).to include(/Could not parse LLM response for app.rb/)
+    end
+  end
 end

@@ -42,8 +42,8 @@ module Rubyrt
       prompt = @prompt_builder.review(diff: diff, file_lines: full)
       response = @llm_client.complete(prompt)
       parse_response(response, file)
-    rescue StandardError => e
-      @warnings << "Failed to review #{file}: #{e.message}"
+    rescue JSON::ParserError => e
+      @warnings << "Could not parse LLM response for #{file}: #{e.message}"
       []
     end
 
@@ -51,9 +51,6 @@ module Rubyrt
       return [] if response.nil? || response.to_s.strip.empty?
 
       IssueParser.new(@id_generator).parse(JSON.parse(response.to_s), file)
-    rescue JSON::ParserError => e
-      @warnings << "Could not parse LLM response for #{file}: #{e.message}"
-      []
     end
 
     def gather_adapter_issues
