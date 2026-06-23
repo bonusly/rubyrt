@@ -88,6 +88,14 @@ RSpec.describe Rubyrt::LlmClient do
       expect(RubyLLM.config.request_timeout).to eq(120)
       expect(RubyLLM.config.max_retries).to eq(3)
     end
+
+    it 'passes the configured provider to RubyLLM.chat so requests route correctly' do
+      client = described_class.new(config)
+      chat_double = instance_double(RubyLLM::Chat, ask: 'response')
+      allow(RubyLLM).to receive(:chat).and_return(chat_double)
+      client.complete('test prompt')
+      expect(RubyLLM).to have_received(:chat).with(model: config['model'], provider: 'openai')
+    end
   end
 
   context 'with log_file and log_level from config' do

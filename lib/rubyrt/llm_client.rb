@@ -65,7 +65,7 @@ module Rubyrt
     end
 
     def chat
-      RubyLLM.chat(model: @config['model'])
+      RubyLLM.chat(model: @config['model'], provider: @config['provider'])
     end
 
     def apply_provider_config(config)
