@@ -67,10 +67,10 @@ Gemfile.lock
 .env.*
 .envrc
 
-# Various agent nonsense:
+# Various agent directories:
+/.scratch/
 /.claude/
 /.codex/
-/.scratch/
 
 # Used by RuboCop. Remote config files pulled in from inherit_from directive.
 # .rubocop-https?--*
