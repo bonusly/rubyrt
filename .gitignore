@@ -67,5 +67,10 @@ build-iPhoneSimulator/
 .env.*
 .envrc
 
+# Various agent directories:
+/.scratch/
+/.claude/
+/.codex/
+
 # Used by RuboCop. Remote config files pulled in from inherit_from directive.
 # .rubocop-https?--*
