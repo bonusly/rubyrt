@@ -56,7 +56,7 @@ provider = "openai"
 [severity_scale]
 1 = "Critical"
 2 = "High"
-3 = "Major"
+3 = "Medium"
 4 = "Low"
 
 # Confidence scale shown to the LLM in the review prompt.
