@@ -47,12 +47,12 @@ log_file = ""
 log_level = "info"
 
 # Default model if none is provided via environment.
-model = "qwen/qwen3.7-max"
+model = "gpt-5.4-nano"
 
 # LLM provider to use. Must match a provider supported by RubyLLM
 # (e.g. openai, anthropic, gemini, ollama, deepseek, openrouter, mistral,
 # perplexity, xai, azure, bedrock, vertexai, gpustack).
-provider = "openrouter"
+provider = "openai"
 
 [prompt_vars]
 self_id = """
