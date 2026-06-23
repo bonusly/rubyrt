@@ -110,4 +110,23 @@ RSpec.describe Rubyrt::Configuration do
       expect(skill.content).to eq('.agents rule')
     end
   end
+
+  context 'with custom skill_directories' do
+    subject(:config) do
+      described_class.new(root: tmp_dir, overrides: { skill_directories: ['.github'] })
+    end
+
+    before do
+      FileUtils.mkdir_p(File.join(tmp_dir, '.github'))
+      File.write(File.join(tmp_dir, '.github', 'review_rules.md'), 'Custom rules.')
+      # Create a default skill dir that should NOT be loaded
+      FileUtils.mkdir_p(File.join(tmp_dir, '.agents'))
+      File.write(File.join(tmp_dir, '.agents', 'default_rules.md'), 'Default rules.')
+    end
+
+    it 'only scans configured directories', :aggregate_failures do
+      expect(config.skills.map(&:name)).to eq(['review_rules'])
+      expect(config.skills.map(&:source)).to all(end_with('.github'))
+    end
+  end
 end

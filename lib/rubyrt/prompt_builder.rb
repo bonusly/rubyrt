@@ -21,7 +21,8 @@ module Rubyrt
         File.read(REVIEW_TEMPLATE),
         template_vars.merge(
           'input' => diff,
-          'file_lines' => file_lines
+          'file_lines' => file_lines,
+          'aux_files' => aux_file_contents
         )
       )
     end
@@ -59,6 +60,18 @@ module Rubyrt
       @config.skills.map do |skill|
         "----RULES FROM #{skill.source.upcase} SKILL: #{skill.name}----\n#{skill.content}"
       end.join("\n\n")
+    end
+
+    def aux_file_contents
+      @config.aux_files.filter_map do |path|
+        next unless File.file?(path)
+
+        "----AUXILIARY FILE: #{relative_path(path)}----\n#{File.read(path)}"
+      end.join("\n\n")
+    end
+
+    def relative_path(path)
+      path.sub(%r{#{@config.root}/}, '')
     end
   end
 end

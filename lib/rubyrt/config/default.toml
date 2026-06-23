@@ -13,6 +13,10 @@ collapse_previous_code_review_comments = true
 # the project root).
 aux_files = []
 
+# Directories to scan for skill fragments (.md files) that get injected into
+# the review prompt as additional rules.
+skill_directories = [".agents", ".claude", ".cursor", "skills", ".rubyrt/skills"]
+
 # Glob patterns for files or directories to exclude from review.
 exclude_files = [
   "Gemfile.lock",
@@ -43,12 +47,12 @@ log_file = ""
 log_level = "info"
 
 # Default model if none is provided via environment.
-model = "gpt-4o"
+model = "qwen/qwen3.7-max"
 
 # LLM provider to use. Must match a provider supported by RubyLLM
 # (e.g. openai, anthropic, gemini, ollama, deepseek, openrouter, mistral,
 # perplexity, xai, azure, bedrock, vertexai, gpustack).
-provider = "openai"
+provider = "openrouter"
 
 [prompt_vars]
 self_id = """
