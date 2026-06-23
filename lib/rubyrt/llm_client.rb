@@ -44,7 +44,24 @@ module Rubyrt
     def configure!
       RubyLLM.configure do |ruby_llm_config|
         apply_provider_config(ruby_llm_config)
+        ruby_llm_config.request_timeout = @config['request_timeout'] if @config['request_timeout']
+        ruby_llm_config.max_retries = @config['retries'] if @config['retries']
+        apply_logging_config(ruby_llm_config)
       end
+    end
+
+    def apply_logging_config(ruby_llm_config)
+      log_file = @config['log_file']
+      ruby_llm_config.log_file = log_file if log_file && !log_file.to_s.strip.empty?
+
+      level = parse_log_level(@config['log_level'])
+      ruby_llm_config.log_level = level if level
+    end
+
+    def parse_log_level(value)
+      return nil unless value && !value.to_s.strip.empty?
+
+      Logger::SEV_LABEL.index(value.to_s.upcase) || Logger::INFO
     end
 
     def chat

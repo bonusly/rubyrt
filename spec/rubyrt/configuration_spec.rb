@@ -13,6 +13,7 @@ RSpec.describe Rubyrt::Configuration do
     expect(config['mention_triggers']).to eq(%w[rubyrt bot ai /check])
     expect(config['collapse_previous_code_review_comments']).to be true
     expect(config['retries']).to eq(3)
+    expect(config['request_timeout']).to eq(120)
   end
 
   it 'exposes prompt_vars' do

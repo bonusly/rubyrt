@@ -21,11 +21,26 @@ exclude_files = [
   "tmp/*"
 ]
 
+# A reasonable default for request timeout
+
+
 # Number of retries for transient LLM failures.
 retries = 3
 
 # Maximum number of concurrent file reviews.
 max_concurrent_tasks = 5
+
+# Timeout (in seconds) for a single LLM request, including connection and
+# response. Set lower to fail fast on unreachable providers.
+request_timeout = 120
+
+# Path to a log file for RubyLLM request logging. Leave empty to log to stdout.
+# Set to a file path to persist LLM request/response details for debugging.
+log_file = ""
+
+# Log level for RubyLLM: "debug", "info", "warn", "error", or "fatal".
+# Use "debug" to see full request/response bodies.
+log_level = "info"
 
 # Default model if none is provided via environment.
 model = "gpt-4o"

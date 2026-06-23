@@ -79,4 +79,56 @@ RSpec.describe Rubyrt::LlmClient do
       expect(RubyLLM.config.anthropic_api_base).to eq('https://example.com/v1')
     end
   end
+
+  context 'with timeout and retries from config' do
+    let(:provider) { 'openai' }
+
+    it 'applies request_timeout and retries to RubyLLM', :aggregate_failures do
+      described_class.new(config)
+      expect(RubyLLM.config.request_timeout).to eq(120)
+      expect(RubyLLM.config.max_retries).to eq(3)
+    end
+  end
+
+  context 'with log_file and log_level from config' do
+    let(:provider) { 'openai' }
+    let(:config) do
+      Rubyrt::Configuration.new(
+        root: tmp_dir,
+        overrides: {
+          provider: provider,
+          llm_api_key: 'secret',
+          log_file: '/tmp/rubyrt-test.log',
+          log_level: 'debug'
+        }
+      )
+    end
+
+    after { RubyLLM.instance_variable_set(:@logger, nil) }
+
+    it 'applies log_file and log_level to RubyLLM', :aggregate_failures do
+      described_class.new(config)
+      expect(RubyLLM.config.log_file).to eq('/tmp/rubyrt-test.log')
+      expect(RubyLLM.config.log_level).to eq(Logger::DEBUG)
+    end
+  end
+
+  context 'with an invalid log_level' do
+    let(:provider) { 'openai' }
+    let(:config) do
+      Rubyrt::Configuration.new(
+        root: tmp_dir,
+        overrides: {
+          provider: provider,
+          llm_api_key: 'secret',
+          log_level: 'verbose'
+        }
+      )
+    end
+
+    it 'falls back to info level' do
+      described_class.new(config)
+      expect(RubyLLM.config.log_level).to eq(Logger::INFO)
+    end
+  end
 end

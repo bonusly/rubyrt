@@ -17,6 +17,22 @@ module Rubyrt
 
     USER_ENV_FILE = File.expand_path('~/.rubyrt/.env').freeze
 
+    ENV_OVERRIDES = {
+      'model' => 'LLM_MODEL',
+      'provider' => 'LLM_PROVIDER',
+      'llm_api_key' => 'LLM_API_KEY',
+      'llm_api_base' => 'LLM_API_BASE',
+      'github_token' => 'GITHUB_TOKEN',
+      'log_file' => 'RUBYRT_LOG_FILE',
+      'log_level' => 'RUBYRT_LOG_LEVEL'
+    }.freeze
+
+    INTEGER_ENV_OVERRIDES = {
+      'retries' => 'LLM_RETRIES',
+      'request_timeout' => 'LLM_REQUEST_TIMEOUT',
+      'max_concurrent_tasks' => 'MAX_CONCURRENT_TASKS'
+    }.freeze
+
     def initialize(root: Dir.pwd, overrides: {})
       @root = root
       @overrides = overrides.transform_keys(&:to_s)
@@ -92,16 +108,22 @@ module Rubyrt
     end
 
     def apply_env_overrides(config)
-      config.merge(
-        'model' => ENV.fetch('LLM_MODEL', config['model']),
-        'provider' => ENV.fetch('LLM_PROVIDER', config['provider']),
-        'retries' => ENV.fetch('LLM_RETRIES', config['retries']).to_i,
-        'max_concurrent_tasks' => ENV.fetch('MAX_CONCURRENT_TASKS',
-                                            config['max_concurrent_tasks']).to_i,
-        'github_token' => ENV.fetch('GITHUB_TOKEN', config['github_token']),
-        'llm_api_key' => ENV.fetch('LLM_API_KEY', config['llm_api_key']),
-        'llm_api_base' => ENV.fetch('LLM_API_BASE', config['llm_api_base'])
-      )
+      config.merge(string_env_overrides).merge(integer_env_overrides(config))
+    end
+
+    def string_env_overrides
+      ENV_OVERRIDES.transform_values do |env_key|
+        ENV.fetch(env_key, nil)
+      end.compact
+    end
+
+    def integer_env_overrides(config)
+      result = {}
+      INTEGER_ENV_OVERRIDES.each do |key, env_key|
+        value = ENV.fetch(env_key, nil)
+        result[key] = value ? value.to_i : config[key]
+      end
+      result
     end
 
     def apply_string_overrides(config, overrides)

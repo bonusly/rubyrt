@@ -58,7 +58,7 @@ module Rubyrt
     option :all, type: :boolean, default: false, desc: 'Review whole codebase'
     option :model, type: :string, aliases: '-m', desc: 'LLM model to use for the review'
     option :provider, type: :string, aliases: '-p', desc: 'LLM provider to use (e.g. openai, anthropic)'
-    option :verbose, type: :boolean, default: false, desc: 'Print error backtraces for debugging'
+    option :debug, type: :boolean, default: false, desc: 'Print error backtraces for debugging'
     def review(*) # rubocop:disable Metrics/AbcSize
       # Thor passes positional args we don't use; accept and ignore them.
       config = Rubyrt::Configuration.new(overrides: { model: options[:model], provider: options[:provider] }.compact)
@@ -67,7 +67,7 @@ module Rubyrt
       render_report(report)
     rescue StandardError => e
       warn "Review failed: #{e.class}: #{e.message}"
-      warn e.backtrace.first(5).join("\n") if ENV['RUBYRT_DEBUG'] || options[:verbose]
+      warn e.backtrace.first(5).join("\n") if ENV['RUBYRT_DEBUG'] || options[:debug]
       exit 1
     end
 
