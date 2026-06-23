@@ -26,9 +26,10 @@ RSpec.describe Rubyrt::Reviewer do
                     head_ref: 'HEAD')
   end
   let(:fake_llm_client) do
-    response = '[{"title": "Missing return", "details": "No return value", "severity": 2, ' \
-               '"confidence": 1, "tags": ["bug"], "affected_lines": [{"start_line": 1}]}]'
-    instance_double(Rubyrt::LlmClient, complete: response)
+    issues = [{ 'title' => 'Missing return', 'details' => 'No return value', 'severity' => 2,
+                'confidence' => 1, 'tags' => ['bug'], 'affected_lines' => [{ 'start_line' => 1 }] }]
+    response = instance_double(RubyLLM::Message, content: { 'issues' => issues })
+    instance_double(Rubyrt::LlmClient, complete_with_schema: response)
   end
 
   after do
@@ -47,7 +48,7 @@ RSpec.describe Rubyrt::Reviewer do
     let(:connection_error) { Class.new(StandardError) }
     let(:fake_llm_client) do
       instance_double(Rubyrt::LlmClient).tap do |client|
-        allow(client).to receive(:complete)
+        allow(client).to receive(:complete_with_schema)
           .and_raise(connection_error, 'Failed to open TCP connection')
       end
     end
@@ -58,12 +59,30 @@ RSpec.describe Rubyrt::Reviewer do
   end
 
   context 'when the LLM returns malformed JSON' do
-    let(:fake_llm_client) { instance_double(Rubyrt::LlmClient, complete: 'not valid json') }
+    let(:fake_llm_client) do
+      response = instance_double(RubyLLM::Message, content: 'not valid json')
+      instance_double(Rubyrt::LlmClient, complete_with_schema: response)
+    end
 
     it 'records a warning and continues with no issues for that file', :aggregate_failures do
       report = reviewer.review
       expect(report.total_issues).to eq(0)
       expect(report.processing_warnings).to include(/Could not parse LLM response for app.rb/)
+    end
+  end
+
+  context 'when the LLM returns a raw JSON array string (fallback)' do
+    let(:fake_llm_client) do
+      json = '[{"title":"Bug","details":"desc","severity":1,"confidence":1,' \
+             '"tags":[],"affected_lines":[{"start_line":1}]}]'
+      response = instance_double(RubyLLM::Message, content: json)
+      instance_double(Rubyrt::LlmClient, complete_with_schema: response)
+    end
+
+    it 'parses the array response', :aggregate_failures do
+      report = reviewer.review
+      expect(report.total_issues).to eq(1)
+      expect(report.issues.first.title).to eq('Bug')
     end
   end
 end

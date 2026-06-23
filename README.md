@@ -104,6 +104,10 @@ aux_files = ["docs/coding-standards.md", "docs/security-rules.md"]
 
 Set `log_file` to a file path to persist RubyLLM request logs for debugging. Set `log_level` to `debug` to see full request and response bodies. Valid levels are `debug`, `info`, `warn`, `error`, and `fatal`.
 
+### Structured output
+
+RubyRT uses [structured output](https://rubyllm.com/available-models/#structured-output-469) to ensure the LLM returns valid JSON. Not all models support this feature; see the [RubyLLM available models page](https://rubyllm.com/available-models/#structured-output-469) for a list of compatible models. For models that don't support structured output, RubyRT falls back to parsing the response as JSON from the prompt instructions.
+
 ## Development
 
 ```bash

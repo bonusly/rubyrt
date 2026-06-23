@@ -22,7 +22,9 @@ module Rubyrt
         template_vars.merge(
           'input' => diff,
           'file_lines' => file_lines,
-          'aux_files' => aux_file_contents
+          'aux_files' => aux_file_contents,
+          'severity_scale' => format_scale(@config['severity_scale']),
+          'confidence_scale' => format_scale(@config['confidence_scale'])
         )
       )
     end
@@ -72,6 +74,12 @@ module Rubyrt
 
     def relative_path(path)
       path.sub(%r{#{@config.root}/}, '')
+    end
+
+    def format_scale(scale)
+      return '' unless scale.is_a?(Hash) && !scale.empty?
+
+      scale.sort_by { |k, _| k.to_i }.map { |level, label| "- #{level} — #{label}" }.join("\n")
     end
   end
 end

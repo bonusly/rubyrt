@@ -67,6 +67,27 @@ RSpec.describe Rubyrt::PromptBuilder do
         expect(prompt).not_to include('missing.md')
       end
     end
+
+    context 'with custom severity and confidence scales' do
+      let(:config) do
+        Rubyrt::Configuration.new(
+          root: tmp_dir,
+          overrides: {
+            severity_scale: { '1' => 'Blocker', '2' => 'Needs Fix' },
+            confidence_scale: { '1' => 'Sure', '2' => 'Guess' }
+          }
+        )
+      end
+
+      it 'renders the custom scales in the prompt', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        prompt = builder.review(diff: '')
+        expect(prompt).to include('- 1 — Blocker')
+        expect(prompt).to include('- 2 — Needs Fix')
+        expect(prompt).to include('- 1 — Sure')
+        expect(prompt).to include('- 2 — Guess')
+        expect(prompt).not_to include('Critical')
+      end
+    end
   end
 
   describe '#summary' do

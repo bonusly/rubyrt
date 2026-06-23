@@ -32,6 +32,10 @@ module Rubyrt
       chat.ask(prompt)
     end
 
+    def complete_with_schema(prompt, schema)
+      chat.with_schema(schema).ask(prompt)
+    end
+
     private
 
     def validate!

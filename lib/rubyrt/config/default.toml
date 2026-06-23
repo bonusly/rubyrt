@@ -25,9 +25,6 @@ exclude_files = [
   "tmp/*"
 ]
 
-# A reasonable default for request timeout
-
-
 # Number of retries for transient LLM failures.
 retries = 3
 
@@ -53,6 +50,22 @@ model = "gpt-5.4-nano"
 # (e.g. openai, anthropic, gemini, ollama, deepseek, openrouter, mistral,
 # perplexity, xai, azure, bedrock, vertexai, gpustack).
 provider = "openai"
+
+# Issue severity scale shown to the LLM in the review prompt.
+# Keys are numeric levels (as strings), values are labels.
+[severity_scale]
+1 = "Critical"
+2 = "High"
+3 = "Major"
+4 = "Low"
+
+# Confidence scale shown to the LLM in the review prompt.
+# Keys are numeric levels (as strings), values are labels.
+[confidence_scale]
+1 = "Highest, 100% confidence"
+2 = "Very High"
+3 = "High"
+4 = "Medium (should not be reported)"
 
 [prompt_vars]
 self_id = """

@@ -40,7 +40,7 @@ module Rubyrt
       diff = @changeset.diff_text_for(file)
       full = @changeset.full_content_for(file)
       prompt = @prompt_builder.review(diff: diff, file_lines: full)
-      response = @llm_client.complete(prompt)
+      response = @llm_client.complete_with_schema(prompt, Schemas::ISSUE_SCHEMA)
       parse_response(response, file)
     rescue JSON::ParserError => e
       @warnings << "Could not parse LLM response for #{file}: #{e.message}"
@@ -48,9 +48,18 @@ module Rubyrt
     end
 
     def parse_response(response, file)
-      return [] if response.nil? || response.to_s.strip.empty?
+      return [] if response.nil?
 
-      IssueParser.new(@id_generator).parse(JSON.parse(response.to_s), file)
+      content = response.content
+      issues = extract_issues(content)
+      IssueParser.new(@id_generator).parse(issues, file)
+    end
+
+    def extract_issues(content)
+      return [] if content.nil? || (content.is_a?(String) && content.strip.empty?)
+
+      parsed = content.is_a?(String) ? JSON.parse(content) : content
+      parsed.is_a?(Array) ? parsed : parsed['issues'] || []
     end
 
     def gather_adapter_issues
