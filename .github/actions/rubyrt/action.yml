@@ -1,5 +1,8 @@
 name: "RubyRT Review"
 description: "Run RubyRT AI code review on pull requests"
+branding:
+  icon: "star"
+  color: "red"
 inputs:
   api_key:
     description: "LLM API key"

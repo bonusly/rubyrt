@@ -54,7 +54,7 @@ RSpec.describe Rubyrt::Reviewer do
     end
 
     it 'propagates the error instead of silently returning no issues' do
-      expect { reviewer.review }.to raise_error(connection_error)
+      expect { reviewer.review }.to raise_error(/Parallel review failures.*Failed to open TCP connection/m)
     end
   end
 

@@ -68,11 +68,14 @@ module Rubyrt
     end
 
     def all_tracked_files
-      head_commit.tree.walk(:preorder).map do |root, entry|
+      files = []
+      head_commit.tree.walk(:preorder) do |root, entry|
         next unless entry[:type] == :blob
 
-        File.join(root, entry[:name])
-      end.compact.uniq
+        path = root.empty? ? entry[:name] : "#{root}#{entry[:name]}"
+        files << path
+      end
+      files.uniq
     end
   end
 end

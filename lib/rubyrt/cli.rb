@@ -76,6 +76,7 @@ module Rubyrt
     option :against, type: :string, aliases: '-v', desc: 'Git ref to compare against'
     option :filters, type: :string, aliases: '-f', desc: 'Filter reviewed files by glob pattern(s)'
     option :merge_base, type: :boolean, default: true, desc: 'Use merge base for comparison'
+    option :all, type: :boolean, default: false, desc: 'List all tracked files'
     option :diff, type: :boolean, default: false, desc: 'Show diff content'
     def files
       build_changeset.files.each { |file| print_file(file) }
@@ -113,7 +114,7 @@ module Rubyrt
         Rubyrt::Changeset.new(
           head_ref: options[:what],
           base_ref: options[:against],
-          all: options[:all]
+          all: options[:all] || false
         )
       end
 

@@ -17,7 +17,7 @@ Style/Documentation:
   Enabled: true
 
 Metrics/MethodLength:
-  Enabled: false
+  Max: 65
 
 Metrics/BlockLength:
   Exclude:

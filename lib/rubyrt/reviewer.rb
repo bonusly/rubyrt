@@ -51,14 +51,19 @@ module Rubyrt
           semaphore.async do
             results[index] = review_file(file)
           rescue StandardError => e
-            errors << e
+            errors << [file, e]
           end
         end
       end
 
-      raise errors.first if errors.any?
+      raise_parallel_errors(errors) if errors.any?
 
       results.flatten
+    end
+
+    def raise_parallel_errors(errors)
+      message = errors.map { |file, e| "#{file}: #{e.class}: #{e.message}" }.join("\n")
+      raise "Parallel review failures (#{errors.size} files):\n#{message}"
     end
 
     def review_file(file)
