@@ -6,7 +6,7 @@ module Rubyrt
   # its confidence and severity are at or below the configured maximums.
   #
   # Uses plain comparisons rather than evaluating a config-supplied Ruby
-  # expression, which avoided arbitrary code execution at the config boundary.
+  # expression, which avoids arbitrary code execution at the config boundary.
   class PostProcessor
     def initialize(settings)
       settings = (settings || {}).transform_keys(&:to_s)
