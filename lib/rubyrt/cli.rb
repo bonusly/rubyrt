@@ -137,7 +137,7 @@ module Rubyrt
         puts renderer.to_cli
       end
 
-      def print_file(file, changeset = build_changeset)
+      def print_file(file, changeset)
         if options[:diff]
           puts "--- #{file} ---"
           puts changeset.diff_text_for(file)

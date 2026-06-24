@@ -85,7 +85,9 @@ module Rubyrt
         issues.each_with_object({}) do |issue, hash|
           hash[issue.file] ||= []
           issue.affected_lines.each do |range|
-            hash[issue.file] << range.start_line if range.start_line
+            next unless range.start_line
+
+            hash[issue.file] << (range.end_line || range.start_line)
           end
         end
       end
