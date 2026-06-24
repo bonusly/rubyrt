@@ -159,7 +159,10 @@ module Rubyrt
     def load_skills_from(dir)
       return [] unless Dir.exist?(dir)
 
-      Dir.glob(File.join(dir, '**', '*.md')).map do |path|
+      # Use base: so the directory name is taken literally — glob metacharacters
+      # in the path (e.g. brackets) don't change which files are matched.
+      Dir.glob('**/*.md', base: dir).map do |relative|
+        path = File.join(dir, relative)
         SkillFragment.new(path: path, content: File.read(path), source: dir)
       end
     end
