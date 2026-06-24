@@ -5,10 +5,6 @@ require 'json'
 module Rubyrt
   # Parses a JSON array of LLM issues into Rubyrt domain objects.
   class IssueParser
-    def initialize(issue_id_source)
-      @issue_id_source = issue_id_source
-    end
-
     def parse(issues, file)
       Array(issues).map { |issue| raw_issue(issue).then { |raw| build_issue(raw, file) } }
     end
@@ -28,7 +24,7 @@ module Rubyrt
 
     def build_issue(raw, file)
       Issue.new(
-        id: @issue_id_source.next_id,
+        id: nil,
         file: file,
         raw_issue: raw,
         affected_lines: raw.affected_lines

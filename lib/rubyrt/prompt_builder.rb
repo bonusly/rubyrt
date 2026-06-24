@@ -17,29 +17,22 @@ module Rubyrt
     end
 
     def review(diff:, file_lines: nil)
-      Mustache.render(
-        File.read(REVIEW_TEMPLATE),
-        template_vars.merge(
-          'input' => diff,
-          'file_lines' => file_lines,
-          'aux_files' => aux_file_contents,
-          'severity_scale' => format_scale(@config['severity_scale']),
-          'confidence_scale' => format_scale(@config['confidence_scale'])
-        )
-      )
+      render_template(REVIEW_TEMPLATE, 'input' => diff, 'file_lines' => file_lines,
+                                       'aux_files' => aux_file_contents,
+                                       'severity_scale' => format_scale(@config['severity_scale']),
+                                       'confidence_scale' => format_scale(@config['confidence_scale']))
     end
 
     def summary(diff:, issues:)
-      Mustache.render(
-        File.read(SUMMARY_TEMPLATE),
-        template_vars.merge(
-          'diff' => diff,
-          'issues_json' => issues.to_json
-        )
-      )
+      render_template(SUMMARY_TEMPLATE, 'diff' => diff, 'issues_json' => issues.to_json)
     end
 
     private
+
+    def render_template(path, vars)
+      template = File.read(path)
+      Mustache.render(template, template_vars.merge(vars))
+    end
 
     def template_vars
       @config.prompt_vars.merge(

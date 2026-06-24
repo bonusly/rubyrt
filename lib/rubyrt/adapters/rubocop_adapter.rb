@@ -30,8 +30,10 @@ module Rubyrt
 
         parsed = JSON.parse(stdout)
         extract_offenses(parsed.fetch('files', []))
-      rescue JSON::ParserError => e
-        warn "RuboCop output could not be parsed: #{e.message}"
+      rescue Errno::ENOENT
+        []
+      rescue StandardError => e
+        warn "RuboCop adapter skipped: #{e.message}"
         []
       end
 

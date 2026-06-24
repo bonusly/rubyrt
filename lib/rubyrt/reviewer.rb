@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+require 'async'
+require 'async/semaphore'
+require 'async/barrier'
+require 'kernel/sync'
+
 module Rubyrt
   # Orchestrates reviewing the changeset: builds prompts, calls the LLM,
   # integrates static analysis adapters, post-processes issues, and builds a
@@ -12,17 +17,18 @@ module Rubyrt
       @llm_client = llm_client
       @adapters = adapters
       @warnings = []
-      @id_generator = IssueIdGenerator.new
     end
 
     def review
       issues = gather_llm_issues + gather_adapter_issues
       filtered = PostProcessor.new(@config.dig('post_process', 'filter')).call(issues)
       CodeEnricher.new(@changeset).call(filtered)
+      sorted = filtered.sort_by { |issue| issue.severity || Float::INFINITY }
+      assign_issue_ids(sorted)
       Report.new(
         target: build_target,
         model: @config['model'],
-        issues: filtered,
+        issues: sorted,
         processing_warnings: @warnings,
         number_of_processed_files: @changeset.files.size
       )
@@ -31,9 +37,37 @@ module Rubyrt
     private
 
     def gather_llm_issues
-      @changeset.files.flat_map do |file|
-        review_file(file)
+      files = @changeset.files
+      concurrency = [@config['max_concurrent_tasks'] || 10, 1].max
+      return files.flat_map { |f| review_file(f) } if concurrency == 1
+
+      review_in_parallel(files, concurrency)
+    end
+
+    def review_in_parallel(files, concurrency) # rubocop:disable Metrics/AbcSize
+      results = Array.new(files.size)
+      errors = []
+      barrier = Async::Barrier.new
+      semaphore = Async::Semaphore.new(concurrency, parent: barrier)
+
+      Sync do
+        files.each_with_index do |file, index|
+          semaphore.async(parent: barrier) do
+            results[index] = review_file(file)
+          rescue StandardError => e
+            errors << [file, e]
+          end
+        end
+      ensure
+        barrier.wait
       end
+
+      if errors.any?
+        message = errors.map { |file, e| "#{file}: #{e.class}: #{e.message}" }.join("\n")
+        raise "Parallel review failures (#{errors.size} files):\n#{message}"
+      end
+
+      results.flatten
     end
 
     def review_file(file)
@@ -52,7 +86,7 @@ module Rubyrt
 
       content = response.content
       issues = extract_issues(content)
-      IssueParser.new(@id_generator).parse(issues, file)
+      IssueParser.new.parse(issues, file)
     end
 
     def extract_issues(content)
@@ -67,11 +101,17 @@ module Rubyrt
 
       @adapters.flat_map { |adapter| adapter.call(@changeset.files) }.map do |file, raw|
         Issue.new(
-          id: @id_generator.next_id,
+          id: nil,
           file: file,
           raw_issue: raw,
           affected_lines: raw.affected_lines
         )
+      end
+    end
+
+    def assign_issue_ids(issues)
+      issues.each_with_index do |issue, index|
+        issue.id = index + 1
       end
     end
 

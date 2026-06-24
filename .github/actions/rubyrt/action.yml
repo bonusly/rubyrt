@@ -1,5 +1,8 @@
 name: "RubyRT Review"
 description: "Run RubyRT AI code review on pull requests"
+branding:
+  icon: "star"
+  color: "red"
 inputs:
   api_key:
     description: "LLM API key"
@@ -7,7 +10,6 @@ inputs:
   api_base:
     description: "OpenAI-compatible API base URL"
     required: false
-    default: "https://api.openai.com/v1"
   model:
     description: "LLM model name"
     required: false

@@ -36,11 +36,12 @@ RSpec.describe Rubyrt::Reviewer do
     FileUtils.remove_entry(tmp_dir)
   end
 
-  it 'returns a report with parsed issues', :aggregate_failures do
+  it 'returns a report with parsed issues', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     report = reviewer.review
     expect(report).to be_a(Rubyrt::Report)
     expect(report.total_issues).to eq(1)
     expect(report.issues.first.title).to eq('Missing return')
+    expect(report.issues.first.id).to eq(1)
     expect(report.number_of_processed_files).to eq(1)
   end
 
@@ -54,7 +55,9 @@ RSpec.describe Rubyrt::Reviewer do
     end
 
     it 'propagates the error instead of silently returning no issues' do
-      expect { reviewer.review }.to raise_error(connection_error)
+      expect do
+        reviewer.review
+      end.to raise_error(RuntimeError, /Parallel review failures.*Failed to open TCP connection/m)
     end
   end
 
