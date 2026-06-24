@@ -68,17 +68,18 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
     expect(client).not_to have_received(:create_pull_request_comment)
   end
 
-  it 'does not post the summary comment when issues are found' do
+  it 'does not post any PR-level comment when an in-diff issue is found' do
     commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 11)]))
 
     expect(client).not_to have_received(:add_comment)
   end
 
-  it 'skips (does not post) issues outside the diff and posts no summary', :aggregate_failures do
+  it 'collapses issues outside the diff into a details comment, not the summary', :aggregate_failures do
     commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 999)]))
 
     expect(client).not_to have_received(:create_pull_request_comment)
-    expect(client).not_to have_received(:add_comment)
+    expect(client).to have_received(:add_comment)
+      .with('o/r', 1, a_string_including('<details>', 'outside this diff', 'app.rb:999'))
   end
 
   context 'when resolving stale review threads' do

@@ -33,7 +33,8 @@ module Rubyrt
           # Only post the overview comment when there's nothing to flag inline.
           post_summary_comment(summary)
         else
-          post_inline_comments(report.issues, commit_id)
+          off_diff = post_inline_comments(report.issues, commit_id)
+          post_off_diff_comment(off_diff)
         end
       end
 
@@ -41,13 +42,26 @@ module Rubyrt
 
       # Post one inline comment per affected line that falls inside the PR diff.
       # GitHub's review-comment API only accepts line-based comments on diff
-      # lines; issues elsewhere are skipped (and warned) rather than posted.
+      # lines; returns the issues that couldn't be posted inline (off-diff).
       def post_inline_comments(issues, commit_id)
-        issues.each do |issue|
-          next if post_issue_inline?(issue, commit_id)
+        issues.reject { |issue| post_issue_inline?(issue, commit_id) }
+      end
 
-          warn "Skipped #{issue.file}: issue is not on a line in this PR's diff"
-        end
+      # Issues outside the diff can't be inline comments. Collect them into a
+      # single collapsed comment so the feedback isn't lost or noisy.
+      def post_off_diff_comment(issues)
+        return if issues.empty?
+
+        rows = issues.map { |issue| off_diff_row(issue) }
+        body = "<details><summary>#{issues.size} RubyRT finding(s) outside this diff</summary>\n\n" \
+               "#{rows.join("\n")}\n\n</details>\n\n#{Context::SUMMARY_MARKER}"
+        @client.add_comment("#{@owner}/#{@repo}", @pr_number, body)
+      end
+
+      def off_diff_row(issue)
+        line = issue.affected_lines.first&.start_line
+        location = line ? ":#{line}" : ''
+        "- **#{severity_label(issue.severity)}** `#{issue.file}#{location}` — #{issue.title}"
       end
 
       def post_issue_inline?(issue, commit_id)
