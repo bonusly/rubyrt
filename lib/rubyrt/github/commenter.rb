@@ -70,8 +70,8 @@ module Rubyrt
           issue_body(issue),
           commit_id,
           issue.file,
-          nil, # legacy diff position — pass nil and use line: for the modern API
-          { line: line, side: 'RIGHT' }
+          line, # Octokit 9: 6th positional is the new-side line number
+          { side: 'RIGHT' }
         )
       end
 
@@ -167,7 +167,7 @@ module Rubyrt
 
       def bot_login_from_token
         @client.user.login
-      rescue Octokit::Forbidden
+      rescue Octokit::Forbidden, Octokit::Unauthorized
         # The default GITHUB_TOKEN in Actions can't read /user. This is expected
         # and non-fatal — we just skip resolving stale threads.
         nil

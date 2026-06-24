@@ -67,7 +67,16 @@ module Rubyrt
     end
 
     def patch_for(file)
-      diff.patches.find { |p| p.delta.old_file[:path] == file || p.delta.new_file[:path] == file }
+      patches_by_path[file]
+    end
+
+    # Index patches by both old and new path once, so per-file lookups during
+    # review are O(1) instead of re-scanning every patch.
+    def patches_by_path
+      @patches_by_path ||= diff.patches.each_with_object({}) do |patch, map|
+        map[patch.delta.old_file[:path]] = patch
+        map[patch.delta.new_file[:path]] = patch
+      end
     end
 
     def diff

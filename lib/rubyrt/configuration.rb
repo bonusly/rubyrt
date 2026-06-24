@@ -92,7 +92,9 @@ module Rubyrt
       path = File.expand_path(USER_ENV_FILE)
       return unless File.file?(path)
 
-      Dotenv.load(path, overwrite: true)
+      # Parse and assign explicitly so the user's file always overrides any
+      # inherited ENV, without relying on a particular Dotenv overwrite API.
+      Dotenv.parse(path).each { |key, value| ENV[key] = value }
     end
 
     def default_config_path

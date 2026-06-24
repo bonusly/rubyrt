@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'tmpdir'
 require 'fileutils'
+require 'logger'
 
 RSpec.describe Rubyrt::LlmClient do
   let(:tmp_dir) { Dir.mktmpdir }

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'json'
-
 module Rubyrt
   # Parses a JSON array of LLM issues into Rubyrt domain objects.
   class IssueParser
