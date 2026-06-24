@@ -101,7 +101,7 @@ module Rubyrt
 
     def project_config_path
       path = File.join(@root, '.rubyrt', 'config.toml')
-      File.exist?(path) ? path : nil
+      File.file?(path) ? path : nil
     end
 
     def load_toml(path)

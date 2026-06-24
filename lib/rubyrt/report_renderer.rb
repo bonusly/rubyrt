@@ -56,12 +56,12 @@ module Rubyrt
       location = first_location(issue)
       link = location ? "[#{issue.file}:#{location}](#{issue.file}##{location})" : issue.file
       lines = ["## ##{issue.id} #{issue.title}", link, issue.details]
-      lines << "**Tags:** #{issue.tags.join(', ')}" unless issue.tags.empty?
+      lines << "**Tags:** #{issue.tags.join(', ')}" unless issue.tags.to_a.empty?
       lines.compact.join("\n\n")
     end
 
     def first_location(issue)
-      line = issue.affected_lines.first
+      line = issue.affected_lines&.first
       return unless line&.start_line
 
       if line.end_line && line.end_line != line.start_line

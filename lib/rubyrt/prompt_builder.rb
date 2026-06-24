@@ -35,7 +35,7 @@ module Rubyrt
 
     def template_cache(path)
       @template_cache ||= {}
-      @template_cache[path] ||= File.read(path)
+      @template_cache[path] ||= File.read(path, encoding: 'UTF-8')
     end
 
     def template_vars
@@ -70,7 +70,7 @@ module Rubyrt
       @config.aux_files.filter_map do |path|
         next unless File.file?(path)
 
-        "----AUXILIARY FILE: #{relative_path(path)}----\n#{File.read(path)}"
+        "----AUXILIARY FILE: #{relative_path(path)}----\n#{File.read(path, encoding: 'UTF-8')}"
       end.join("\n\n")
     end
 

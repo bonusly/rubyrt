@@ -12,7 +12,7 @@ RSpec.describe Rubyrt::Configuration do
   # Clean up the temp dir so the suite doesn't leak directories, and keep it
   # hermetic by never reading a developer's real ~/.rubyrt/.env.
   before { stub_const('Rubyrt::Configuration::USER_ENV_FILE', File.join(tmp_dir, 'no-such.env')) }
-  after { FileUtils.remove_entry(tmp_dir) }
+  after { FileUtils.rm_rf(tmp_dir) }
 
   it 'loads bundled defaults', :aggregate_failures do
     expect(config['mention_triggers']).to eq(%w[rubyrt bot ai /check])
@@ -94,9 +94,12 @@ RSpec.describe Rubyrt::Configuration do
   context 'with environment variable and explicit override' do
     subject(:config) { described_class.new(root: tmp_dir, overrides: { model: 'o1-preview' }) }
 
-    before do
-      allow(ENV).to receive(:fetch).and_call_original
-      allow(ENV).to receive(:fetch).with('LLM_MODEL', anything).and_return('gpt-5')
+    around do |example|
+      original = ENV.fetch('LLM_MODEL', nil)
+      ENV['LLM_MODEL'] = 'gpt-5'
+      example.run
+    ensure
+      ENV['LLM_MODEL'] = original
     end
 
     it 'prefers explicit override over environment variable' do

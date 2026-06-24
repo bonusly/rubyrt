@@ -127,7 +127,7 @@ module Rubyrt
           changeset: changeset,
           prompt_builder: Rubyrt::PromptBuilder.new(config),
           llm_client: Rubyrt::LlmClient.new(config),
-          adapters: [Rubyrt::Adapters::RuboCopAdapter.new(config: config)]
+          adapters: [Rubyrt::Adapters::RuboCopAdapter.new]
         )
       end
 

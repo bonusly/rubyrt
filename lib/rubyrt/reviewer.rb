@@ -17,8 +17,9 @@ module Rubyrt
       @prompt_builder = prompt_builder
       @llm_client = llm_client
       @adapters = adapters
+      # ponytail: plain array — Async runs fibers cooperatively on one thread,
+      # so appends between await points don't race. No lock needed.
       @warnings = []
-      @warnings_mutex = Mutex.new
     end
 
     def review
@@ -83,7 +84,7 @@ module Rubyrt
       response = @llm_client.complete_with_schema(prompt, Schemas::ISSUE_SCHEMA)
       parse_response(response, file)
     rescue JSON::ParserError => e
-      @warnings_mutex.synchronize { @warnings << "Could not parse LLM response for #{file}: #{e.message}" }
+      @warnings << "Could not parse LLM response for #{file}: #{e.message}"
       []
     end
 

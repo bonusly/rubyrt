@@ -71,7 +71,7 @@ module Rubyrt
           commit_id,
           issue.file,
           nil, # legacy diff position — pass nil and use line: for the modern API
-          { line: line }
+          { line: line, side: 'RIGHT' }
         )
       end
 
@@ -82,7 +82,8 @@ module Rubyrt
           issue_body(issue),
           commit_id,
           issue.file,
-          nil # no line: file-level comment
+          nil, # no line: file-level comment
+          { subject_type: 'file' }
         )
       end
 

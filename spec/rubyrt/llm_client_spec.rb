@@ -28,7 +28,7 @@ RSpec.describe Rubyrt::LlmClient do
   end
 
   after do
-    FileUtils.remove_entry(tmp_dir)
+    FileUtils.rm_rf(tmp_dir)
     # RubyLLM is a global singleton; reset its config and logger so per-example
     # provider, key, timeout, retry, and logging settings don't leak.
     RubyLLM.instance_variable_set(:@config, nil)

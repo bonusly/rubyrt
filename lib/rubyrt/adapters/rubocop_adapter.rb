@@ -18,10 +18,6 @@ module Rubyrt
         'info' => 4
       }.freeze
 
-      def initialize(config: nil)
-        @config = config
-      end
-
       def call(files)
         return [] if files.empty?
 
