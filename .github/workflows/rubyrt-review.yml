@@ -18,8 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || format('refs/pull/{0}/head', github.event.inputs.pr_number) }}
+          fetch-depth: 2
       - name: Run RubyRT review
         uses: ./.github/actions/rubyrt
         env:
