@@ -91,6 +91,9 @@ module Rubyrt
       report = Rubyrt::Report.from_file(source)
       renderer = Rubyrt::ReportRenderer.new(report)
       puts options[:format] == 'md' ? renderer.to_md : renderer.to_cli
+    rescue StandardError => e
+      warn "Could not render report: #{e.class}: #{e.message}"
+      exit 1
     end
 
     desc 'github-comment', 'Post a code review comment to GitHub'

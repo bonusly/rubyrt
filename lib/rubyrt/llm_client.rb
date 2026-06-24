@@ -80,11 +80,14 @@ module Rubyrt
     end
 
     def chat
-      llm_context.chat(model: @config['model'], provider: @config['provider'])
+      llm_context.chat(model: @config['model'], provider: provider)
+    end
+
+    def provider
+      @config['provider'].to_s.downcase
     end
 
     def apply_provider_config(llm_config)
-      provider = @config['provider'].to_s.downcase
       mapping = PROVIDER_CONFIG[provider]
       raise ArgumentError, "Unsupported LLM provider: #{provider}" unless mapping
 

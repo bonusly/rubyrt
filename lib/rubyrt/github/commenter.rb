@@ -16,7 +16,9 @@ module Rubyrt
       SEVERITY_LABELS = { 1 => 'Critical', 2 => 'High', 3 => 'Medium', 4 => 'Low' }.freeze
 
       def initialize(token:, owner:, repo:, pr_number:)
-        @client = Octokit::Client.new(access_token: token)
+        # auto_paginate so PRs with many files/comments aren't truncated to the
+        # first page when validating diff lines or collapsing old summaries.
+        @client = Octokit::Client.new(access_token: token, auto_paginate: true)
         @owner = owner
         @repo = repo
         @pr_number = pr_number

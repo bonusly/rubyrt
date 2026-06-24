@@ -34,6 +34,8 @@ module Rubyrt
       # GraphQL returns HTTP 200 even on errors, signalling them via a top-level
       # `errors` array. Surface them instead of silently reporting no threads.
       def raise_on_errors(body)
+        return unless body.is_a?(Hash)
+
         errors = Array(body['errors'])
         return if errors.empty?
 
@@ -107,7 +109,7 @@ module Rubyrt
         {
           owner: owner,
           repo: repo,
-          pr_number: pr_number,
+          pr_number: pr_number.to_i, # GraphQL Int! — coerce in case a string slips through
           first: THREAD_PAGE_SIZE
         }
       end
