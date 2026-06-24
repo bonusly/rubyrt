@@ -31,8 +31,8 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
     )
     allow(client).to receive(:create_pull_request_comment)
     allow(client).to receive(:add_comment)
-    # Skip stale-thread resolution; covered elsewhere.
-    allow(client).to receive(:user).and_raise(Octokit::Forbidden.new)
+    # GraphQL review-thread fetch returns no threads by default.
+    allow(client).to receive(:post).and_return({})
   end
 
   def build_issue(file, start_line)
@@ -61,27 +61,51 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
       .with('o/r', 1, a_string_including('[Critical]'), 'commit-sha', 'app.rb', 11, { side: 'RIGHT' })
   end
 
-  it 'lists issues outside the diff in the summary instead of a file-level comment', :aggregate_failures do
+  it 'posts the summary comment only when there are no issues', :aggregate_failures do
+    commenter.post_review(summary: 'All good', report: report_for([]))
+
+    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including('All good'))
+    expect(client).not_to have_received(:create_pull_request_comment)
+  end
+
+  it 'does not post the summary comment when issues are found' do
+    commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 11)]))
+
+    expect(client).not_to have_received(:add_comment)
+  end
+
+  it 'skips (does not post) issues outside the diff and posts no summary', :aggregate_failures do
     commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 999)]))
 
     expect(client).not_to have_received(:create_pull_request_comment)
-    expect(client).to have_received(:add_comment)
-      .with('o/r', 1, a_string_including('Other findings', 'Critical', 'app.rb:999'))
+    expect(client).not_to have_received(:add_comment)
   end
 
-  it 'lists issues for files not in the PR diff in the summary', :aggregate_failures do
-    commenter.post_review(summary: 'S', report: report_for([build_issue('untouched.rb', 5)]))
+  context 'when resolving stale review threads' do
+    let(:stale_thread) do
+      {
+        'id' => 'THREAD1', 'isResolved' => false, 'isOutdated' => false,
+        'line' => 42, 'path' => 'gone.rb',
+        'comments' => { 'nodes' => [{ 'author' => { 'login' => 'bot' },
+                                      'body' => "x #{described_class::REVIEW_COMMENT_MARKER}" }] }
+      }
+    end
 
-    expect(client).not_to have_received(:create_pull_request_comment)
-    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including('untouched.rb:5'))
-  end
+    before do
+      allow(client).to receive(:post) do |_path, opts|
+        if opts[:query].include?('reviewThreads')
+          { 'data' => { 'repository' => { 'pullRequest' => { 'reviewThreads' => { 'nodes' => [stale_thread] } } } } }
+        else
+          {}
+        end
+      end
+    end
 
-  it 'falls back to the summary when the PR diff cannot be fetched', :aggregate_failures do
-    allow(client).to receive(:pull_request_files).and_raise(Octokit::Error.new)
+    it 'resolves a RubyRT thread whose issue is no longer reported, without needing the bot login' do
+      commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 11)]))
 
-    commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 999)]))
-
-    expect(client).not_to have_received(:create_pull_request_comment)
-    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including('app.rb:999'))
+      expect(client).to have_received(:post)
+        .with('/graphql', hash_including(query: a_string_including('resolveReviewThread')))
+    end
   end
 end

@@ -29,18 +29,25 @@ module Rubyrt
         commit_id = pr.head.sha
         resolve_previous_threads(report.issues)
         collapse_previous_summaries
-        uncommented = post_inline_comments(report.issues, commit_id)
-        post_summary_comment(summary, uncommented)
+        if report.issues.empty?
+          # Only post the overview comment when there's nothing to flag inline.
+          post_summary_comment(summary)
+        else
+          post_inline_comments(report.issues, commit_id)
+        end
       end
 
       private
 
       # Post one inline comment per affected line that falls inside the PR diff.
       # GitHub's review-comment API only accepts line-based comments on diff
-      # lines, so issues elsewhere are returned for the summary instead of being
-      # forced through the file-level API (which it rejects).
+      # lines; issues elsewhere are skipped (and warned) rather than posted.
       def post_inline_comments(issues, commit_id)
-        issues.reject { |issue| post_issue_inline?(issue, commit_id) }
+        issues.each do |issue|
+          next if post_issue_inline?(issue, commit_id)
+
+          warn "Skipped #{issue.file}: issue is not on a line in this PR's diff"
+        end
       end
 
       def post_issue_inline?(issue, commit_id)
@@ -70,22 +77,8 @@ module Rubyrt
         )
       end
 
-      def post_summary_comment(summary, uncommented)
-        body = [summary, uncommented_section(uncommented), Context::SUMMARY_MARKER].compact.join("\n\n")
-        @client.add_comment("#{@owner}/#{@repo}", @pr_number, body)
-      end
-
-      # Issues outside the diff can't be inline comments, so list them in the
-      # summary so the feedback isn't lost.
-      def uncommented_section(issues)
-        return nil if issues.empty?
-
-        rows = issues.map do |issue|
-          line = issue.affected_lines.first&.start_line
-          location = line ? ":#{line}" : ''
-          "- **#{severity_label(issue.severity)}** `#{issue.file}#{location}` — #{issue.title}"
-        end
-        "### Other findings (outside this diff)\n\n#{rows.join("\n")}"
+      def post_summary_comment(summary)
+        @client.add_comment("#{@owner}/#{@repo}", @pr_number, "#{summary}\n\n#{Context::SUMMARY_MARKER}")
       end
 
       def severity_label(severity)
@@ -144,15 +137,18 @@ module Rubyrt
         ].compact.join("\n\n")
       end
 
+      # Resolve RubyRT's own review threads whose issue is no longer reported
+      # (fixed) or whose anchor line is outdated. Threads are identified by the
+      # REVIEW_COMMENT_MARKER in their first comment, so this works even with the
+      # default Actions GITHUB_TOKEN (which can't read /user to learn the bot's
+      # login).
       def resolve_previous_threads(current_issues)
-        bot_login = bot_login_from_token
-        return unless bot_login
-
         current_lines = current_issue_lines(current_issues)
-        threads = fetch_review_threads
-        threads.each do |thread|
-          resolve_thread(thread, bot_login, current_lines)
+        fetch_review_threads.each do |thread|
+          resolve_thread(thread, current_lines)
         end
+      rescue StandardError => e
+        warn "Could not resolve previous review threads — #{e.message}"
       end
 
       def current_issue_lines(issues)
@@ -164,14 +160,6 @@ module Rubyrt
             hash[issue.file] << (range.end_line || range.start_line)
           end
         end
-      end
-
-      def bot_login_from_token
-        @client.user.login
-      rescue Octokit::Forbidden, Octokit::Unauthorized
-        # The default GITHUB_TOKEN in Actions can't read /user. This is expected
-        # and non-fatal — we just skip resolving stale threads.
-        nil
       end
 
       def graphql_client
@@ -186,19 +174,17 @@ module Rubyrt
         )
       end
 
-      def resolve_thread(thread, bot_login, current_lines)
+      def resolve_thread(thread, current_lines)
         return if thread['isResolved']
-        return unless rubyrt_thread?(thread, bot_login)
+        return unless rubyrt_thread?(thread)
         return if line_still_reported?(thread, current_lines)
 
         graphql_client.resolve_thread(thread['id'])
       end
 
-      def rubyrt_thread?(thread, bot_login)
+      def rubyrt_thread?(thread)
         first_comment = thread.dig('comments', 'nodes', 0)
-        first_comment &&
-          first_comment.dig('author', 'login') == bot_login &&
-          first_comment['body'].include?(REVIEW_COMMENT_MARKER)
+        first_comment && first_comment['body'].to_s.include?(REVIEW_COMMENT_MARKER)
       end
 
       def line_still_reported?(thread, current_lines)
