@@ -67,7 +67,7 @@ module Rubyrt
       render_report(report)
     rescue StandardError => e
       warn "Review failed: #{e.class}: #{e.message}"
-      warn e.backtrace.first(5).join("\n") if ENV['RUBYRT_DEBUG'] || options[:debug]
+      warn e.backtrace&.first(5)&.join("\n") if ENV['RUBYRT_DEBUG'] || options[:debug]
       exit 1
     end
 

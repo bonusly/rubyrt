@@ -64,11 +64,13 @@ module Rubyrt
     end
 
     def skill_directories
-      Array(@data.fetch('skill_directories', DEFAULT_SKILL_DIRECTORIES)).map { |d| File.join(@root, d) }
+      # expand_path leaves absolute paths intact and resolves relative ones
+      # against the project root.
+      Array(@data.fetch('skill_directories', DEFAULT_SKILL_DIRECTORIES)).map { |d| File.expand_path(d, @root) }
     end
 
     def aux_files
-      Array(@data.fetch('aux_files', [])).map { |path| File.join(@root, path) }
+      Array(@data.fetch('aux_files', [])).map { |path| File.expand_path(path, @root) }
     end
 
     def skills

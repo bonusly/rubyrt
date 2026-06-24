@@ -44,7 +44,7 @@ module Rubyrt
         return @event_payload if defined?(@event_payload)
 
         @event_payload =
-          (JSON.parse(File.read(@event_path)) if @event_path && File.exist?(@event_path))
+          (JSON.parse(File.read(@event_path)) if @event_path && File.file?(@event_path))
       end
     end
   end
