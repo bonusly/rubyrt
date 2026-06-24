@@ -51,13 +51,18 @@ RSpec.describe Rubyrt::Configuration do
   context 'with ~/.rubyrt/.env' do
     let(:env_file) { File.join(tmp_dir, 'fake-home.env') }
 
-    before do
+    around do |example|
+      original = ENV.fetch('LLM_API_KEY', nil)
       ENV.delete('LLM_API_KEY')
+      example.run
+    ensure
+      ENV['LLM_API_KEY'] = original
+    end
+
+    before do
       File.write(env_file, "LLM_API_KEY=from-dotenv-file\n")
       stub_const('Rubyrt::Configuration::USER_ENV_FILE', env_file)
     end
-
-    after { ENV.delete('LLM_API_KEY') }
 
     it 'loads LLM_API_KEY from the env file' do
       expect(config['llm_api_key']).to eq('from-dotenv-file')

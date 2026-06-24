@@ -147,13 +147,13 @@ module Rubyrt
       end
 
       def repo_owner(context)
-        return context.owner unless options[:gh_repo]
+        return context&.owner unless options[:gh_repo]
 
         options[:gh_repo].split('/').first
       end
 
       def repo_name(context)
-        return context.repo_name unless options[:gh_repo]
+        return context&.repo_name unless options[:gh_repo]
 
         options[:gh_repo].split('/').last
       end

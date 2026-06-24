@@ -17,9 +17,9 @@ module Rubyrt
 
     def enrich_issue(issue)
       lines = lines_for(issue.file)
-      issue.affected_lines.each do |range|
-        next unless lines.any?
+      return if lines.empty?
 
+      issue.affected_lines.each do |range|
         start_index = [(range.start_line || 1) - 1, 0].max
         end_index = [(range.end_line || range.start_line || 1) - 1, 0].max
         range.affected_code = lines[start_index..end_index]&.join

@@ -53,7 +53,7 @@ module Rubyrt
 
     def md_issue(issue)
       location = first_location(issue)
-      link = location ? "[#{issue.file}:#{location}](#{issue.file})" : issue.file
+      link = location ? "[#{issue.file}:#{location}](#{issue.file}##{location})" : issue.file
       lines = ["## ##{issue.id} #{issue.title}", link, issue.details]
       lines << "**Tags:** #{issue.tags.join(', ')}" unless issue.tags.empty?
       lines.compact.join("\n\n")

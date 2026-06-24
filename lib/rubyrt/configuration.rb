@@ -15,7 +15,9 @@ module Rubyrt
   class Configuration
     attr_reader :data, :root
 
-    USER_ENV_FILE = File.expand_path('~/.rubyrt/.env').freeze
+    # Expanded lazily in load_user_env_file so a missing/unresolvable home
+    # directory can't crash at load time.
+    USER_ENV_FILE = '~/.rubyrt/.env'
 
     DEFAULT_SKILL_DIRECTORIES = %w[.agents .claude .cursor].freeze
 
@@ -87,9 +89,10 @@ module Rubyrt
     end
 
     def load_user_env_file
-      return unless File.file?(USER_ENV_FILE)
+      path = File.expand_path(USER_ENV_FILE)
+      return unless File.file?(path)
 
-      Dotenv.overload(USER_ENV_FILE)
+      Dotenv.overwrite(path)
     end
 
     def default_config_path

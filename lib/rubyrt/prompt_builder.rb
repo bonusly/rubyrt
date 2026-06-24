@@ -30,8 +30,12 @@ module Rubyrt
     private
 
     def render_template(path, vars)
-      template = File.read(path)
-      Mustache.render(template, template_vars.merge(vars))
+      Mustache.render(template_cache(path), template_vars.merge(vars))
+    end
+
+    def template_cache(path)
+      @template_cache ||= {}
+      @template_cache[path] ||= File.read(path)
     end
 
     def template_vars
@@ -72,7 +76,7 @@ module Rubyrt
     def format_scale(scale)
       return '' unless scale.is_a?(Hash) && !scale.empty?
 
-      scale.sort_by { |k, _| k.to_i }.map { |level, label| "- #{level} — #{label}" }.join("\n")
+      scale.sort_by { |k, _| k.to_s.to_i }.map { |level, label| "- #{level} — #{label}" }.join("\n")
     end
   end
 end

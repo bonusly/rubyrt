@@ -25,7 +25,7 @@ module Rubyrt
       def call(files)
         return [] if files.empty?
 
-        stdout, stderr, = Open3.capture3('rubocop', '--format', 'json', '--force-exclusion', *files)
+        stdout, stderr, = Open3.capture3('rubocop', '--format', 'json', '--force-exclusion', '--', *files)
         warn stderr unless stderr.empty?
 
         parsed = JSON.parse(stdout)

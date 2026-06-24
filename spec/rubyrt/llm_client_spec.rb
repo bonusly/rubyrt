@@ -29,6 +29,9 @@ RSpec.describe Rubyrt::LlmClient do
 
   after do
     FileUtils.remove_entry(tmp_dir)
+    # RubyLLM.config is a global singleton; reset it so per-example provider,
+    # key, timeout, and retry settings don't leak across examples.
+    RubyLLM.instance_variable_set(:@config, nil)
   end
 
   it 'raises when LLM_API_KEY is missing' do
@@ -88,6 +91,7 @@ RSpec.describe Rubyrt::LlmClient do
         overrides: {
           provider: provider,
           llm_api_key: 'secret',
+          model: 'gpt-4o-mini',
           request_timeout: 45,
           retries: 7
         }
@@ -100,12 +104,12 @@ RSpec.describe Rubyrt::LlmClient do
       expect(RubyLLM.config.max_retries).to eq(7)
     end
 
-    it 'passes the configured provider to RubyLLM.chat so requests route correctly' do
+    it 'passes the configured provider and model to RubyLLM.chat so requests route correctly' do
       client = described_class.new(config)
       chat_double = instance_double(RubyLLM::Chat, ask: 'response')
       allow(RubyLLM).to receive(:chat).and_return(chat_double)
       client.complete('test prompt')
-      expect(RubyLLM).to have_received(:chat).with(model: config['model'], provider: 'openai')
+      expect(RubyLLM).to have_received(:chat).with(model: 'gpt-4o-mini', provider: 'openai')
     end
   end
 

@@ -18,6 +18,7 @@ module Rubyrt
       @llm_client = llm_client
       @adapters = adapters
       @warnings = []
+      @warnings_mutex = Mutex.new
     end
 
     def review
@@ -72,7 +73,7 @@ module Rubyrt
         raise "Parallel review failures (#{errors.size} files):\n#{message}"
       end
 
-      results.flatten
+      results.flatten(1)
     end
 
     def review_file(file)
@@ -82,7 +83,7 @@ module Rubyrt
       response = @llm_client.complete_with_schema(prompt, Schemas::ISSUE_SCHEMA)
       parse_response(response, file)
     rescue JSON::ParserError => e
-      @warnings << "Could not parse LLM response for #{file}: #{e.message}"
+      @warnings_mutex.synchronize { @warnings << "Could not parse LLM response for #{file}: #{e.message}" }
       []
     end
 
@@ -97,8 +98,14 @@ module Rubyrt
     def extract_issues(content)
       return [] if content.nil? || (content.is_a?(String) && content.strip.empty?)
 
-      parsed = content.is_a?(String) ? JSON.parse(content) : content
-      parsed.is_a?(Array) ? parsed : parsed['issues'] || []
+      issues_from(content.is_a?(String) ? JSON.parse(content) : content)
+    end
+
+    def issues_from(parsed)
+      return parsed if parsed.is_a?(Array)
+      return parsed['issues'] || [] if parsed.is_a?(Hash)
+
+      []
     end
 
     def gather_adapter_issues

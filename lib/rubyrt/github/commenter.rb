@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'set' # rubocop:disable Lint/RedundantRequireStatement -- explicit for Ruby < 3.2
 require 'octokit'
 
 module Rubyrt
