@@ -5,8 +5,18 @@ require 'json'
 module Rubyrt
   # Renders a Rubyrt::Report to Markdown or CLI formats.
   class ReportRenderer
-    def initialize(report)
+    # Fallback labels used when no severity scale is supplied (e.g. when
+    # rendering a saved report via `rubyrt report` without config context).
+    DEFAULT_SEVERITY_SCALE = {
+      1 => 'Critical',
+      2 => 'High',
+      3 => 'Medium',
+      4 => 'Low'
+    }.freeze
+
+    def initialize(report, severity_scale: nil)
       @report = report
+      @severity_scale = normalize_scale(severity_scale) || DEFAULT_SEVERITY_SCALE
     end
 
     def to_cli
@@ -46,7 +56,9 @@ module Rubyrt
 
     def render_issue(issue)
       location = first_location(issue)
-      heading = "## [#{issue.id}] #{issue.title}\n  #{issue.file}"
+      heading = "## [#{issue.id}] #{issue.title}"
+      heading += " [#{severity_label(issue.severity)}]" if issue.severity
+      heading += "\n  #{issue.file}"
       heading += ":#{location}" if location
       details = "  #{issue.details}" if issue.details
       "#{[heading, details].compact.join("\n")}\n"
@@ -55,9 +67,19 @@ module Rubyrt
     def md_issue(issue)
       location = first_location(issue)
       link = location ? "[#{issue.file}:#{location}](#{issue.file}##{location})" : issue.file
-      lines = ["## ##{issue.id} #{issue.title}", link, issue.details]
+      lines = ["## ##{issue.id} #{md_title(issue)}", link, issue.details]
       lines << "**Tags:** #{issue.tags.join(', ')}" unless issue.tags.to_a.empty?
       lines.compact.join("\n\n")
+    end
+
+    def md_title(issue)
+      return issue.title unless issue.severity
+
+      "#{issue.title} **[#{severity_label(issue.severity)}]**"
+    end
+
+    def severity_label(severity)
+      @severity_scale[severity.to_i] || "L#{severity}"
     end
 
     def first_location(issue)
@@ -68,6 +90,16 @@ module Rubyrt
         "L#{line.start_line}-L#{line.end_line}"
       else
         "L#{line.start_line}"
+      end
+    end
+
+    # Accept either string-keyed (from TOML) or integer-keyed scales and return
+    # a lookup keyed by integer severity. Returns nil if no scale was supplied.
+    def normalize_scale(scale)
+      return nil if scale.nil? || scale.empty?
+
+      scale.each_with_object({}) do |(key, label), map|
+        map[key.to_s.to_i] = label
       end
     end
   end

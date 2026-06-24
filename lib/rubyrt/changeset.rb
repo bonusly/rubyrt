@@ -137,17 +137,11 @@ module Rubyrt
       files = []
       head_commit.tree.walk(:preorder) do |root, entry|
         next unless entry[:type] == :blob
-        next if binary_blob?(entry[:oid])
 
         path = root.empty? ? entry[:name] : "#{root}#{entry[:name]}"
         files << path
       end
       files.uniq
-    end
-
-    def binary_blob?(oid)
-      blob = @repo.lookup(oid)
-      blob.respond_to?(:binary?) ? blob.binary? : false
     end
   end
 end
