@@ -16,7 +16,8 @@ module Rubyrt
         response = @client.post('/graphql',
                                 query: review_threads_query,
                                 variables: thread_variables(owner, repo, pr_number))
-        response.dig('data', 'repository', 'pullRequest', 'reviewThreads', 'nodes') || []
+        nodes = response.dig(:data, :repository, :pullRequest, :reviewThreads, :nodes) || []
+        nodes.map { |node| stringify(node) }
       end
 
       def resolve_thread(thread_id)
@@ -26,6 +27,14 @@ module Rubyrt
       end
 
       private
+
+      # Octokit parses responses into Sawyer::Resource objects keyed by symbols.
+      # Convert each thread into a plain, deeply string-keyed Hash so downstream
+      # consumers can traverse it with string keys.
+      def stringify(resource)
+        source = resource.respond_to?(:to_h) ? resource.to_h : resource
+        JSON.parse(JSON.generate(source))
+      end
 
       def review_threads_query
         <<~GRAPHQL

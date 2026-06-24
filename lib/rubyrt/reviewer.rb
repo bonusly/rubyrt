@@ -49,7 +49,7 @@ module Rubyrt
       barrier = Async::Barrier.new
       semaphore = Async::Semaphore.new(concurrency, parent: barrier)
 
-      Sync do
+      Async do
         files.each_with_index do |file, index|
           semaphore.async(parent: barrier) do
             results[index] = review_file(file)
