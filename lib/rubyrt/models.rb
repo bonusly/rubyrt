@@ -58,6 +58,7 @@ module Rubyrt
     end
 
     def self.parse_affected_lines(lines)
+      lines = [lines] if lines.is_a?(Hash) # a lone Hash is one range, not pairs
       Array(lines).map do |line|
         line = line.transform_keys(&:to_s) if line.respond_to?(:transform_keys)
         AffectedRange.new(

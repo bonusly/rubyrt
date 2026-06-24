@@ -53,7 +53,7 @@ module Rubyrt
     end
 
     def all_requirements
-      [base_requirements, skill_requirements].compact.join("\n")
+      [base_requirements, skill_requirements].reject(&:empty?).join("\n")
     end
 
     def base_requirements
