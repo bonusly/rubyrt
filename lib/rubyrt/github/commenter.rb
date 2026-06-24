@@ -48,6 +48,21 @@ module Rubyrt
 
       def post_line_comment(issue, commit_id, range)
         line = range.end_line || range.start_line
+        # GitHub only resolves inline comments on lines that are part of the PR
+        # diff. Issues the LLM finds in unchanged code fall back to a file-level
+        # comment so the feedback isn't silently dropped.
+        if line_in_diff?(issue.file, line)
+          create_inline_comment(issue, commit_id, line)
+        elsif file_in_diff?(issue.file)
+          create_file_comment(issue, commit_id)
+        else
+          warn "Skipping comment on #{issue.file}:#{line} — file is not part of the PR diff"
+        end
+      rescue Octokit::UnprocessableEntity => e
+        warn "Could not post comment on #{issue.file}:#{line} — #{e.message}"
+      end
+
+      def create_inline_comment(issue, commit_id, line)
         @client.create_pull_request_comment(
           "#{@owner}/#{@repo}",
           @pr_number,
@@ -57,8 +72,63 @@ module Rubyrt
           line,
           { line: line }
         )
-      rescue Octokit::UnprocessableEntity => e
-        warn "Could not post comment on #{issue.file}:#{line} — #{e.message}"
+      end
+
+      def create_file_comment(issue, commit_id)
+        @client.create_pull_request_comment(
+          "#{@owner}/#{@repo}",
+          @pr_number,
+          issue_body(issue),
+          commit_id,
+          issue.file
+        )
+      end
+
+      def line_in_diff?(file, line)
+        return true unless commentable_lines
+
+        commentable_lines.fetch(file, Set.new).include?(line)
+      end
+
+      def file_in_diff?(file)
+        return true unless commentable_lines
+
+        commentable_lines.key?(file)
+      end
+
+      # Maps each changed file to the set of new-side line numbers GitHub will
+      # accept inline comments on (added and context lines within diff hunks).
+      # Returns nil when the diff can't be fetched, so posting degrades to the
+      # previous best-effort behavior.
+      def commentable_lines
+        return @commentable_lines if defined?(@commentable_lines)
+
+        files = @client.pull_request_files("#{@owner}/#{@repo}", @pr_number)
+        @commentable_lines = files.each_with_object({}) do |file, hash|
+          hash[file.filename] = new_side_lines(file.patch) if file.patch
+        end
+      rescue Octokit::Error => e
+        warn "Could not fetch PR diff to validate comment lines — #{e.message}"
+        @commentable_lines = nil
+      end
+
+      def new_side_lines(patch)
+        lines = Set.new
+        new_line = nil
+        patch.each_line do |raw|
+          line = raw.chomp
+          if (match = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)/))
+            new_line = match[1].to_i
+          # Skip hunk metadata, "\ No newline" markers, and deletions: none of
+          # these advance or anchor a new-side line number.
+          elsif new_line.nil? || line.start_with?('\\', '-')
+            next
+          else
+            lines << new_line # added ('+') or context (' ') line
+            new_line += 1
+          end
+        end
+        lines
       end
 
       def issue_body(issue)
