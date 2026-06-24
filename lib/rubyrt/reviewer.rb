@@ -2,6 +2,8 @@
 
 require 'async'
 require 'async/semaphore'
+require 'async/barrier'
+require 'kernel/sync'
 
 module Rubyrt
   # Orchestrates reviewing the changeset: builds prompts, calls the LLM,
@@ -42,29 +44,30 @@ module Rubyrt
       review_in_parallel(files, concurrency)
     end
 
-    def review_in_parallel(files, concurrency)
+    def review_in_parallel(files, concurrency) # rubocop:disable Metrics/AbcSize
       results = Array.new(files.size)
       errors = []
-      semaphore = Async::Semaphore.new(concurrency)
+      barrier = Async::Barrier.new
+      semaphore = Async::Semaphore.new(concurrency, parent: barrier)
 
       Sync do
         files.each_with_index do |file, index|
-          semaphore.async do
+          semaphore.async(parent: barrier) do
             results[index] = review_file(file)
           rescue StandardError => e
             errors << [file, e]
           end
         end
+      ensure
+        barrier.wait
       end
 
-      raise_parallel_errors(errors) if errors.any?
+      if errors.any?
+        message = errors.map { |file, e| "#{file}: #{e.class}: #{e.message}" }.join("\n")
+        raise "Parallel review failures (#{errors.size} files):\n#{message}"
+      end
 
       results.flatten
-    end
-
-    def raise_parallel_errors(errors)
-      message = errors.map { |file, e| "#{file}: #{e.class}: #{e.message}" }.join("\n")
-      raise "Parallel review failures (#{errors.size} files):\n#{message}"
     end
 
     def review_file(file)

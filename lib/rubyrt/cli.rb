@@ -79,7 +79,8 @@ module Rubyrt
     option :all, type: :boolean, default: false, desc: 'List all tracked files'
     option :diff, type: :boolean, default: false, desc: 'Show diff content'
     def files
-      build_changeset.files.each { |file| print_file(file) }
+      changeset = build_changeset
+      changeset.files.each { |file| print_file(file, changeset) }
     end
 
     desc 'report', 'Render a saved code review report'
@@ -136,10 +137,10 @@ module Rubyrt
         puts renderer.to_cli
       end
 
-      def print_file(file)
+      def print_file(file, changeset = build_changeset)
         if options[:diff]
           puts "--- #{file} ---"
-          puts build_changeset.diff_text_for(file)
+          puts changeset.diff_text_for(file)
         else
           puts file
         end

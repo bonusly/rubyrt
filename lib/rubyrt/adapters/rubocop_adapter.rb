@@ -24,7 +24,6 @@ module Rubyrt
 
       def call(files)
         return [] if files.empty?
-        return [] unless rubocop_available?
 
         stdout, stderr, = Open3.capture3('rubocop', '--format', 'json', '--force-exclusion', *files)
         warn stderr unless stderr.empty?
@@ -36,13 +35,6 @@ module Rubyrt
       rescue StandardError => e
         warn "RuboCop adapter skipped: #{e.message}"
         []
-      end
-
-      def rubocop_available?
-        _, status = Open3.capture2('rubocop', '--version')
-        status.success?
-      rescue Errno::ENOENT
-        false
       end
 
       private
