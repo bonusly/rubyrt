@@ -13,23 +13,26 @@ module Rubyrt
       end
 
       def review_threads(owner:, repo:, pr_number:)
-        response = @client.post('/graphql',
-                                query: review_threads_query,
-                                variables: thread_variables(owner, repo, pr_number))
+        response = post_graphql(review_threads_query, thread_variables(owner, repo, pr_number))
         body = stringify(to_hash(response))
         raise_on_errors(body)
         body.dig('data', 'repository', 'pullRequest', 'reviewThreads', 'nodes') || []
       end
 
       def resolve_thread(thread_id)
-        response = @client.post('/graphql',
-                                query: resolve_thread_mutation,
-                                variables: { threadId: thread_id })
+        response = post_graphql(resolve_thread_mutation, { threadId: thread_id })
         raise_on_errors(stringify(to_hash(response)))
         response
       end
 
       private
+
+      # Octokit's #request strips a top-level :query key from Hash bodies (it
+      # means URL params there), which would mangle a GraphQL query. Send a
+      # pre-serialized JSON string so the whole payload reaches the body intact.
+      def post_graphql(query, variables)
+        @client.post('/graphql', { query: query, variables: variables }.to_json)
+      end
 
       # GraphQL returns HTTP 200 even on errors, signalling them via a top-level
       # `errors` array. Surface them instead of silently reporting no threads.

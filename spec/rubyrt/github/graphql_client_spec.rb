@@ -45,5 +45,16 @@ RSpec.describe Rubyrt::GitHub::GraphqlClient do # rubocop:disable RSpec/SpecFile
 
       expect { review_threads }.to raise_error(/GitHub GraphQL request failed: Could not resolve to a Repository/)
     end
+
+    # Octokit::Connection#request deletes a top-level :query key from Hash
+    # bodies, so the query must travel as a JSON string body, not a Hash.
+    it 'posts the query as a JSON string body' do
+      stub_post(nodes_response([]))
+      review_threads
+      expect(client).to have_received(:post) do |path, body|
+        expect(path).to eq('/graphql')
+        expect(JSON.parse(body)).to include('query' => a_string_including('reviewThreads'))
+      end
+    end
   end
 end
