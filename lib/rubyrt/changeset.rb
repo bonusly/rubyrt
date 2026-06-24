@@ -79,8 +79,12 @@ module Rubyrt
 
     # Index patches by both old and new path once, so per-file lookups during
     # review are O(1) instead of re-scanning every patch.
+    def patches
+      @patches ||= diff.patches.to_a
+    end
+
     def patches_by_path
-      @patches_by_path ||= diff.patches.each_with_object({}) do |patch, map|
+      @patches_by_path ||= patches.each_with_object({}) do |patch, map|
         [patch.delta.old_file[:path], patch.delta.new_file[:path]].compact.each do |path|
           map[path] = patch
         end
@@ -93,7 +97,7 @@ module Rubyrt
     end
 
     def build_files
-      files = @all ? all_tracked_files : diff.patches.map { |patch| patch.delta.new_file[:path] }.compact.uniq
+      files = @all ? all_tracked_files : patches.map { |patch| patch.delta.new_file[:path] }.compact.uniq
       apply_filters(files)
     end
 

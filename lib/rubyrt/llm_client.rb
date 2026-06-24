@@ -75,6 +75,7 @@ module Rubyrt
 
     def parse_log_level(value)
       return nil unless value && !value.to_s.strip.empty?
+      return value if value.is_a?(Integer) # already a Logger level
 
       LOG_LEVELS.fetch(value.to_s.downcase, Logger::INFO)
     end

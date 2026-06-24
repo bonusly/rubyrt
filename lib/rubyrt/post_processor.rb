@@ -24,9 +24,11 @@ module Rubyrt
     end
 
     def within?(value, max)
-      return true if max.nil? || value.nil?
+      max_int = Integer(max, exception: false) if max
+      return true if max_int.nil? # no/invalid threshold means no filtering
 
-      Integer(value, exception: false).then { |n| n.nil? || n <= max.to_i }
+      value_int = Integer(value, exception: false)
+      value_int.nil? || value_int <= max_int
     end
   end
 end

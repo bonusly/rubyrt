@@ -50,6 +50,7 @@ module Rubyrt
     def review_in_parallel(files, concurrency) # rubocop:disable Metrics/AbcSize
       results = Array.new(files.size)
       errors = []
+      barrier = nil # declared here so it's in scope for the ensure block below
 
       # Sync (not Async) so the block always blocks until the barrier is
       # drained, even when invoked inside an existing reactor. Async would
