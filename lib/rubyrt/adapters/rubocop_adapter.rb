@@ -61,7 +61,7 @@ module Rubyrt
 
       def extract_location(offense)
         location = offense['location'] || {}
-        start_line = location['start_line'] || location['line']
+        start_line = location['start_line'] || location['line'] || 1
         [start_line, location['last_line'] || start_line]
       end
     end

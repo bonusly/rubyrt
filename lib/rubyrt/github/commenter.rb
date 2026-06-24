@@ -81,7 +81,8 @@ module Rubyrt
           @pr_number,
           issue_body(issue),
           commit_id,
-          issue.file
+          issue.file,
+          nil # no line: file-level comment
         )
       end
 

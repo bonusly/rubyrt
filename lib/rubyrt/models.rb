@@ -63,7 +63,8 @@ module Rubyrt
         AffectedRange.new(
           start_line: line['start_line'],
           end_line: line['end_line'] || line['start_line'],
-          proposal: line['proposal']
+          proposal: line['proposal'],
+          affected_code: line['affected_code']
         )
       end
     end

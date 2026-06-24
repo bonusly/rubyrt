@@ -48,7 +48,8 @@ module Rubyrt
       location = first_location(issue)
       heading = "## [#{issue.id}] #{issue.title}\n  #{issue.file}"
       heading += ":#{location}" if location
-      "#{[heading, "  #{issue.details}"].compact.join("\n")}\n"
+      details = "  #{issue.details}" if issue.details
+      "#{[heading, details].compact.join("\n")}\n"
     end
 
     def md_issue(issue)

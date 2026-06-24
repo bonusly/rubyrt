@@ -92,7 +92,7 @@ module Rubyrt
       path = File.expand_path(USER_ENV_FILE)
       return unless File.file?(path)
 
-      Dotenv.overwrite(path)
+      Dotenv.load(path, overwrite: true)
     end
 
     def default_config_path

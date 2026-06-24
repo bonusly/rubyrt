@@ -70,9 +70,12 @@ RSpec.describe Rubyrt::Configuration do
   end
 
   context 'with environment variables' do
-    before do
-      allow(ENV).to receive(:fetch).and_call_original
-      allow(ENV).to receive(:fetch).with('LLM_MODEL', anything).and_return('gpt-5')
+    around do |example|
+      original = ENV.fetch('LLM_MODEL', nil)
+      ENV['LLM_MODEL'] = 'gpt-5'
+      example.run
+    ensure
+      ENV['LLM_MODEL'] = original
     end
 
     it 'overrides model from environment' do

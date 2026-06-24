@@ -9,7 +9,7 @@ module Rubyrt
   # expression, which avoided arbitrary code execution at the config boundary.
   class PostProcessor
     def initialize(settings)
-      @settings = settings || {}
+      @settings = (settings || {}).transform_keys(&:to_s)
     end
 
     def call(issues)
@@ -19,7 +19,7 @@ module Rubyrt
     private
 
     def keep?(issue)
-      hash = issue.to_h
+      hash = issue.to_h.transform_keys(&:to_s)
       within?(hash['confidence'], @settings['max_confidence']) &&
         within?(hash['severity'], @settings['max_severity'])
     end

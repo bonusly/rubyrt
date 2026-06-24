@@ -35,12 +35,14 @@ runs:
         ruby-version: "3.4"
     - name: Install RubyRT
       shell: bash
+      env:
+        RUBYRT_VERSION: ${{ inputs.rubyrt_version }}
       run: |
-        if [ "${{ inputs.rubyrt_version }}" = "local" ]; then
+        if [ "$RUBYRT_VERSION" = "local" ]; then
           gem build rubyrt.gemspec
           gem install ./rubyrt-*.gem
         else
-          gem install rubyrt -v "${{ inputs.rubyrt_version }}"
+          gem install rubyrt -v "$RUBYRT_VERSION"
         fi
     - name: Determine base ref
       id: base
@@ -63,13 +65,16 @@ runs:
         LLM_API_BASE: ${{ inputs.api_base }}
         LLM_MODEL: ${{ inputs.model }}
         LLM_PROVIDER: ${{ inputs.provider }}
-      run: rubyrt review --output "${{ inputs.output_dir }}" --what HEAD --against "${{ steps.base.outputs.ref }}"
+        OUTPUT_DIR: ${{ inputs.output_dir }}
+        BASE_REF: ${{ steps.base.outputs.ref }}
+      run: rubyrt review --output "$OUTPUT_DIR" --what HEAD --against "$BASE_REF"
     - name: Post review to GitHub
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        OUTPUT_DIR: ${{ inputs.output_dir }}
       run: |
-        REPORT="${{ inputs.output_dir }}/code-review-report.md"
+        REPORT="$OUTPUT_DIR/code-review-report.md"
         if [ -f "$REPORT" ]; then
           rubyrt github-comment --md-report-file "$REPORT"
         else

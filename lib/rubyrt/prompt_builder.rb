@@ -39,12 +39,17 @@ module Rubyrt
     end
 
     def template_vars
-      @config.prompt_vars.merge(
+      prompt_vars.merge(
         'requirements' => all_requirements,
-        'json_requirements' => @config.prompt_vars.fetch('json_requirements', ''),
-        'summary_requirements' => @config.prompt_vars.fetch('summary_requirements', ''),
-        'self_id' => @config.prompt_vars.fetch('self_id', '')
+        'json_requirements' => prompt_vars.fetch('json_requirements', ''),
+        'summary_requirements' => prompt_vars.fetch('summary_requirements', ''),
+        'self_id' => prompt_vars.fetch('self_id', '')
       )
+    end
+
+    # Normalize to string keys so symbol-keyed config can't silently miss lookups.
+    def prompt_vars
+      @prompt_vars ||= @config.prompt_vars.transform_keys(&:to_s)
     end
 
     def all_requirements
@@ -52,7 +57,7 @@ module Rubyrt
     end
 
     def base_requirements
-      @config.prompt_vars.fetch('requirements', '')
+      prompt_vars.fetch('requirements', '')
     end
 
     def skill_requirements

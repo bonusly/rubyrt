@@ -29,9 +29,10 @@ RSpec.describe Rubyrt::LlmClient do
 
   after do
     FileUtils.remove_entry(tmp_dir)
-    # RubyLLM.config is a global singleton; reset it so per-example provider,
-    # key, timeout, and retry settings don't leak across examples.
+    # RubyLLM is a global singleton; reset its config and logger so per-example
+    # provider, key, timeout, retry, and logging settings don't leak.
     RubyLLM.instance_variable_set(:@config, nil)
+    RubyLLM.instance_variable_set(:@logger, nil)
   end
 
   it 'raises when LLM_API_KEY is missing' do
@@ -126,8 +127,6 @@ RSpec.describe Rubyrt::LlmClient do
         }
       )
     end
-
-    after { RubyLLM.instance_variable_set(:@logger, nil) }
 
     it 'applies log_file and log_level to RubyLLM', :aggregate_failures do
       described_class.new(config)

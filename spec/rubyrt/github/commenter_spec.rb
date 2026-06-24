@@ -57,7 +57,7 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
     commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 999)]))
 
     expect(client).to have_received(:create_pull_request_comment)
-      .with('o/r', 1, anything, 'commit-sha', 'app.rb')
+      .with('o/r', 1, anything, 'commit-sha', 'app.rb', nil)
   end
 
   it 'skips files that are not part of the PR diff' do

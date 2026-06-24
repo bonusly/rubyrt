@@ -115,7 +115,9 @@ module Rubyrt
         Rubyrt::Changeset.new(
           head_ref: options[:what],
           base_ref: options[:against],
-          all: options[:all] || false
+          all: options[:all] || false,
+          filters: options[:filters]&.split(','),
+          merge_base: options.fetch(:merge_base, true)
         )
       end
 
