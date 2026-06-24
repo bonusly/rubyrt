@@ -47,7 +47,8 @@ module Rubyrt
 
   # Normalized issue enriched with file context and an assigned ID.
   class Issue
-    attr_reader :id, :file, :title, :details, :severity, :confidence, :tags, :affected_lines
+    attr_accessor :id
+    attr_reader :file, :title, :details, :severity, :confidence, :tags, :affected_lines
 
     def self.from_hash(hash)
       ranges = parse_affected_lines(hash['affected_lines'])

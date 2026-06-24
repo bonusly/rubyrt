@@ -5,17 +5,17 @@ Review the provided code diff carefully and identify *only* highly confident
 issues which are relevant to any code context.
 
 ----CODEBASE CHANGES TO REVIEW----
-{{ input }}
+{{{ input }}}
 --------
 
 {{# file_lines }}
 ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
-{{ file_lines }}
+{{{ file_lines }}}
 --------
 {{/ file_lines }}
 
 {{# aux_files }}
-{{ aux_files }}
+{{{ aux_files }}}
 {{/ aux_files }}
 
 ----TASK GUIDELINES----
@@ -27,8 +27,8 @@ issues which are relevant to any code context.
 - Do not report vague, theoretical, or overly generic advice.
 - Do not report anything with medium or lower confidence.
 - Typographical errors have highest severity.
-{{ requirements }}
-{{ json_requirements }}
+{{{ requirements }}}
+{{{ json_requirements }}}
 
 Respond with a JSON object containing an "issues" array following this schema:
 {
@@ -69,9 +69,9 @@ Available issue tags:
 - code-style
 
 Issue severity scale:
-{{ severity_scale }}
+{{{ severity_scale }}}
 
 Confidence scale:
-{{ confidence_scale }}
+{{{ confidence_scale }}}
 
 If no issues are found according to the criteria, respond with an empty list: []

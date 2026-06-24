@@ -15,17 +15,18 @@ module Rubyrt
       @llm_client = llm_client
       @adapters = adapters
       @warnings = []
-      @id_generator = IssueIdGenerator.new
     end
 
     def review
       issues = gather_llm_issues + gather_adapter_issues
       filtered = PostProcessor.new(@config.dig('post_process', 'filter')).call(issues)
       CodeEnricher.new(@changeset).call(filtered)
+      sorted = filtered.sort_by { |issue| issue.severity || Float::INFINITY }
+      assign_issue_ids(sorted)
       Report.new(
         target: build_target,
         model: @config['model'],
-        issues: filtered,
+        issues: sorted,
         processing_warnings: @warnings,
         number_of_processed_files: @changeset.files.size
       )
@@ -82,7 +83,7 @@ module Rubyrt
 
       content = response.content
       issues = extract_issues(content)
-      IssueParser.new(@id_generator).parse(issues, file)
+      IssueParser.new.parse(issues, file)
     end
 
     def extract_issues(content)
@@ -97,11 +98,17 @@ module Rubyrt
 
       @adapters.flat_map { |adapter| adapter.call(@changeset.files) }.map do |file, raw|
         Issue.new(
-          id: @id_generator.next_id,
+          id: nil,
           file: file,
           raw_issue: raw,
           affected_lines: raw.affected_lines
         )
+      end
+    end
+
+    def assign_issue_ids(issues)
+      issues.each_with_index do |issue, index|
+        issue.id = index + 1
       end
     end
 

@@ -36,11 +36,12 @@ RSpec.describe Rubyrt::Reviewer do
     FileUtils.remove_entry(tmp_dir)
   end
 
-  it 'returns a report with parsed issues', :aggregate_failures do
+  it 'returns a report with parsed issues', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     report = reviewer.review
     expect(report).to be_a(Rubyrt::Report)
     expect(report.total_issues).to eq(1)
     expect(report.issues.first.title).to eq('Missing return')
+    expect(report.issues.first.id).to eq(1)
     expect(report.number_of_processed_files).to eq(1)
   end
 

@@ -28,6 +28,8 @@ module Rubyrt
 
     def full_content_for(file)
       blob = @repo.lookup(head_commit.tree.path(file)[:oid])
+      return nil if blob.nil?
+
       blob.content.force_encoding('UTF-8')
     rescue Rugged::TreeError
       nil
