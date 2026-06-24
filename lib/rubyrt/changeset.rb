@@ -43,7 +43,7 @@ module Rubyrt
     private
 
     def head_commit
-      @head_commit ||= @repo.rev_parse(@head_ref)
+      @head_commit ||= peel_to_commit(@repo.rev_parse(@head_ref))
     end
 
     def base_commit
@@ -51,11 +51,18 @@ module Rubyrt
     end
 
     def resolve_base_commit
-      base = @repo.rev_parse(@base_ref)
+      base = peel_to_commit(@repo.rev_parse(@base_ref))
       return base unless @merge_base
 
       oid = @repo.merge_base(base, head_commit)
       oid ? @repo.lookup(oid) : base
+    end
+
+    # rev_parse can return an annotated tag rather than a commit; peel it so
+    # callers always get something that responds to #tree.
+    def peel_to_commit(object)
+      object = object.target while object.respond_to?(:target) && !object.is_a?(Rugged::Commit)
+      object
     end
 
     def default_base_ref
@@ -74,8 +81,9 @@ module Rubyrt
     # review are O(1) instead of re-scanning every patch.
     def patches_by_path
       @patches_by_path ||= diff.patches.each_with_object({}) do |patch, map|
-        map[patch.delta.old_file[:path]] = patch
-        map[patch.delta.new_file[:path]] = patch
+        [patch.delta.old_file[:path], patch.delta.new_file[:path]].compact.each do |path|
+          map[path] = patch
+        end
       end
     end
 

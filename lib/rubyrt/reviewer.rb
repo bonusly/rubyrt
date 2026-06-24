@@ -17,8 +17,8 @@ module Rubyrt
       @prompt_builder = prompt_builder
       @llm_client = llm_client
       @adapters = adapters
-      # ponytail: plain array — Async runs fibers cooperatively on one thread,
-      # so appends between await points don't race. No lock needed.
+      # ponytail: plain array — Async runs fibers cooperatively on a single
+      # thread, so appends between scheduler yields do not race. No lock needed.
       @warnings = []
     end
 

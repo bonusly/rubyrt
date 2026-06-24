@@ -89,12 +89,16 @@ module Rubyrt
     end
 
     def load_user_env_file
+      # File.expand_path('~/...') raises ArgumentError when HOME is unresolvable
+      # (e.g. some containers); a missing user env file is not fatal.
       path = File.expand_path(USER_ENV_FILE)
       return unless File.file?(path)
 
       # Parse and assign explicitly so the user's file always overrides any
       # inherited ENV, without relying on a particular Dotenv overwrite API.
       Dotenv.parse(path).each { |key, value| ENV[key] = value }
+    rescue ArgumentError
+      nil
     end
 
     def default_config_path

@@ -56,7 +56,7 @@ RSpec.describe Rubyrt::Configuration do
       ENV.delete('LLM_API_KEY')
       example.run
     ensure
-      ENV['LLM_API_KEY'] = original
+      original ? ENV['LLM_API_KEY'] = original : ENV.delete('LLM_API_KEY')
     end
 
     before do
@@ -75,7 +75,7 @@ RSpec.describe Rubyrt::Configuration do
       ENV['LLM_MODEL'] = 'gpt-5'
       example.run
     ensure
-      ENV['LLM_MODEL'] = original
+      original ? ENV['LLM_MODEL'] = original : ENV.delete('LLM_MODEL')
     end
 
     it 'overrides model from environment' do
@@ -99,7 +99,7 @@ RSpec.describe Rubyrt::Configuration do
       ENV['LLM_MODEL'] = 'gpt-5'
       example.run
     ensure
-      ENV['LLM_MODEL'] = original
+      original ? ENV['LLM_MODEL'] = original : ENV.delete('LLM_MODEL')
     end
 
     it 'prefers explicit override over environment variable' do
