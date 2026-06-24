@@ -10,7 +10,6 @@ inputs:
   api_base:
     description: "OpenAI-compatible API base URL"
     required: false
-    default: ""
   model:
     description: "LLM model name"
     required: false

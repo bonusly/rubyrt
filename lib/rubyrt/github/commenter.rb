@@ -22,7 +22,7 @@ module Rubyrt
         commit_id = pr.head.sha
         resolve_previous_threads
         collapse_previous_summaries
-        post_summary_comment(summary)
+        post_summary_comment(summary) if report.issues.empty?
         post_file_comments(report.issues, commit_id)
       end
 
@@ -80,8 +80,9 @@ module Rubyrt
 
       def bot_login_from_token
         @client.user.login
-      rescue Octokit::Forbidden => e
-        warn "Unable to fetch bot user (token may lack 'user' read scope): #{e.message}"
+      rescue Octokit::Forbidden
+        # The default GITHUB_TOKEN in Actions can't read /user. This is expected
+        # and non-fatal — we just skip resolving stale threads.
         nil
       end
 
