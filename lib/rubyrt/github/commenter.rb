@@ -57,6 +57,8 @@ module Rubyrt
           line,
           { line: line }
         )
+      rescue Octokit::UnprocessableEntity => e
+        warn "Could not post comment on #{issue.file}:#{line} — #{e.message}"
       end
 
       def issue_body(issue)
