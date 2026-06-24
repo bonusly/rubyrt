@@ -67,7 +67,7 @@ module Rubyrt
     end
 
     def aux_file_contents
-      @config.aux_files.filter_map do |path|
+      @aux_file_contents ||= @config.aux_files.filter_map do |path|
         next unless File.file?(path)
 
         "----AUXILIARY FILE: #{relative_path(path)}----\n#{File.read(path, encoding: 'UTF-8')}"

@@ -17,8 +17,8 @@ module Rubyrt
       @prompt_builder = prompt_builder
       @llm_client = llm_client
       @adapters = adapters
-      # ponytail: plain array — Async runs fibers cooperatively on a single
-      # thread, so appends between scheduler yields do not race. No lock needed.
+      # Plain array: Async runs fibers cooperatively on a single thread, so
+      # appends between scheduler yields do not race. No lock needed.
       @warnings = []
     end
 
@@ -105,7 +105,7 @@ module Rubyrt
 
     def issues_from(parsed)
       return parsed if parsed.is_a?(Array)
-      return parsed['issues'] || [] if parsed.is_a?(Hash)
+      return parsed['issues'] || parsed[:issues] || [] if parsed.is_a?(Hash)
 
       []
     end

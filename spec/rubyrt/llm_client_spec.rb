@@ -85,8 +85,9 @@ RSpec.describe Rubyrt::LlmClient do
     let(:provider) { 'openai' }
 
     it 'does not mutate the global RubyLLM openai_api_key' do
+      before_key = RubyLLM.config.openai_api_key
       described_class.new(config)
-      expect(RubyLLM.config.openai_api_key).not_to eq('secret')
+      expect(RubyLLM.config.openai_api_key).to eq(before_key)
     end
   end
 
