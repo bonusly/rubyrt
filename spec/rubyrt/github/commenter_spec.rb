@@ -93,8 +93,8 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
     end
 
     before do
-      allow(client).to receive(:post) do |_path, opts|
-        if opts[:query].include?('reviewThreads')
+      allow(client).to receive(:post) do |_path, body|
+        if JSON.parse(body)['query'].include?('reviewThreads')
           { 'data' => { 'repository' => { 'pullRequest' => { 'reviewThreads' => { 'nodes' => [stale_thread] } } } } }
         else
           {}
@@ -106,7 +106,7 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
       commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 11)]))
 
       expect(client).to have_received(:post)
-        .with('/graphql', hash_including(query: a_string_including('resolveReviewThread')))
+        .with('/graphql', a_string_including('resolveReviewThread'))
     end
   end
 end
