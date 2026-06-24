@@ -9,11 +9,13 @@ module Rubyrt
   class Changeset
     attr_reader :base_ref, :head_ref
 
-    def initialize(repo_path: Dir.pwd, base_ref: nil, head_ref: 'HEAD', all: false)
+    def initialize(repo_path: Dir.pwd, base_ref: nil, head_ref: 'HEAD', all: false, filters: nil, merge_base: true)
       @repo = Rugged::Repository.discover(repo_path)
       @head_ref = head_ref || 'HEAD'
       @base_ref = base_ref || default_base_ref
       @all = all
+      @filters = Array(filters)
+      @merge_base = merge_base
     end
 
     def files
@@ -27,10 +29,13 @@ module Rubyrt
     end
 
     def full_content_for(file)
-      blob = @repo.lookup(head_commit.tree.path(file)[:oid])
+      entry = head_commit.tree.path(file)
+      return nil unless entry[:type] == :blob
+
+      blob = @repo.lookup(entry[:oid])
       return nil if blob.nil?
 
-      blob.content.force_encoding('UTF-8')
+      blob.content.dup.force_encoding('UTF-8')
     rescue Rugged::TreeError
       nil
     end
@@ -38,11 +43,26 @@ module Rubyrt
     private
 
     def head_commit
-      @repo.lookup(@repo.rev_parse(@head_ref).oid)
+      @head_commit ||= peel_to_commit(@repo.rev_parse(@head_ref))
     end
 
     def base_commit
-      @repo.lookup(@repo.rev_parse(@base_ref).oid)
+      @base_commit ||= resolve_base_commit
+    end
+
+    def resolve_base_commit
+      base = peel_to_commit(@repo.rev_parse(@base_ref))
+      return base unless @merge_base
+
+      oid = @repo.merge_base(base, head_commit)
+      oid ? @repo.lookup(oid) : base
+    end
+
+    # rev_parse can return an annotated tag rather than a commit; peel it so
+    # callers always get something that responds to #tree.
+    def peel_to_commit(object)
+      object = object.target while object.respond_to?(:target) && !object.is_a?(Rugged::Commit)
+      object
     end
 
     def default_base_ref
@@ -54,19 +74,37 @@ module Rubyrt
     end
 
     def patch_for(file)
-      diff.patches.find { |p| p.delta.old_file[:path] == file || p.delta.new_file[:path] == file }
+      patches_by_path[file]
+    end
+
+    # Index patches by both old and new path once, so per-file lookups during
+    # review are O(1) instead of re-scanning every patch.
+    def patches
+      @patches ||= diff.patches.to_a
+    end
+
+    def patches_by_path
+      @patches_by_path ||= patches.each_with_object({}) do |patch, map|
+        [patch.delta.old_file[:path], patch.delta.new_file[:path]].compact.each do |path|
+          map[path] = patch
+        end
+      end
     end
 
     def diff
-      @diff ||= @repo.diff(base_commit, head_commit)
+      # Diff the trees explicitly rather than relying on commit coercion.
+      @diff ||= @repo.diff(base_commit.tree, head_commit.tree)
     end
 
     def build_files
-      return all_tracked_files if @all
+      files = @all ? all_tracked_files : patches.map { |patch| patch.delta.new_file[:path] }.compact.uniq
+      apply_filters(files)
+    end
 
-      diff.patches.map do |patch|
-        patch.delta.new_file[:path]
-      end.compact.uniq
+    def apply_filters(files)
+      return files if @filters.empty?
+
+      files.select { |file| @filters.any? { |pattern| File.fnmatch?(pattern, file, File::FNM_PATHNAME | File::FNM_EXTGLOB) } }
     end
 
     def all_tracked_files

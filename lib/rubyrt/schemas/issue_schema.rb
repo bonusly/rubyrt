@@ -30,10 +30,12 @@ module Rubyrt
                     type: 'object',
                     properties: {
                       start_line: { type: 'integer' },
-                      end_line: { type: 'integer' },
-                      proposal: { type: 'string' }
+                      end_line: { type: %w[integer null] },
+                      proposal: { type: %w[string null] }
                     },
-                    required: %w[start_line],
+                    # OpenAI strict mode requires every property in `required`;
+                    # optional fields are expressed as nullable types instead.
+                    required: %w[start_line end_line proposal],
                     additionalProperties: false
                   }
                 }

@@ -1,34 +1,35 @@
 # frozen_string_literal: true
 
 module Rubyrt
-  # Filters issues using a Ruby expression from configuration.
-  # The expression can reference `issue` which is a Hash representation of the
-  # raw issue. It must return a truthy value to keep the issue.
+  # Filters issues using simple numeric thresholds from configuration.
+  # Lower numbers are more severe / more confident, so an issue is kept when
+  # its confidence and severity are at or below the configured maximums.
+  #
+  # Uses plain comparisons rather than evaluating a config-supplied Ruby
+  # expression, which avoids arbitrary code execution at the config boundary.
   class PostProcessor
-    def initialize(filter_expression)
-      @filter_expression = filter_expression
+    def initialize(settings)
+      settings = (settings || {}).transform_keys(&:to_s)
+      # Parse thresholds once; an absent/invalid value means "no limit".
+      @max_confidence = Integer(settings['max_confidence'], exception: false)
+      @max_severity = Integer(settings['max_severity'], exception: false)
     end
 
     def call(issues)
-      return issues if @filter_expression.nil? || @filter_expression.strip.empty?
-
-      issues.select do |issue|
-        context = PostProcessorContext.new(issue)
-        context.keep?(@filter_expression)
-      end
-    end
-  end
-
-  # Execution context for the post-processing filter expression.
-  class PostProcessorContext
-    def initialize(issue)
-      @issue = issue.to_h
+      issues.select { |issue| keep?(issue) }
     end
 
-    attr_reader :issue
+    private
 
-    def keep?(expression)
-      instance_eval(expression, __FILE__, __LINE__)
+    def keep?(issue)
+      within?(issue.confidence, @max_confidence) && within?(issue.severity, @max_severity)
+    end
+
+    def within?(value, max)
+      return true if max.nil?
+
+      value_int = Integer(value, exception: false)
+      value_int.nil? || value_int <= max
     end
   end
 end

@@ -9,6 +9,11 @@ RSpec.describe Rubyrt::Configuration do
 
   let(:tmp_dir) { Dir.mktmpdir }
 
+  # Clean up the temp dir so the suite doesn't leak directories, and keep it
+  # hermetic by never reading a developer's real ~/.rubyrt/.env.
+  before { stub_const('Rubyrt::Configuration::USER_ENV_FILE', File.join(tmp_dir, 'no-such.env')) }
+  after { FileUtils.rm_rf(tmp_dir) }
+
   it 'loads bundled defaults', :aggregate_failures do
     expect(config['mention_triggers']).to eq(%w[rubyrt bot ai /check])
     expect(config['collapse_previous_code_review_comments']).to be true
@@ -46,13 +51,18 @@ RSpec.describe Rubyrt::Configuration do
   context 'with ~/.rubyrt/.env' do
     let(:env_file) { File.join(tmp_dir, 'fake-home.env') }
 
-    before do
+    around do |example|
+      original = ENV.fetch('LLM_API_KEY', nil)
       ENV.delete('LLM_API_KEY')
+      example.run
+    ensure
+      original ? ENV['LLM_API_KEY'] = original : ENV.delete('LLM_API_KEY')
+    end
+
+    before do
       File.write(env_file, "LLM_API_KEY=from-dotenv-file\n")
       stub_const('Rubyrt::Configuration::USER_ENV_FILE', env_file)
     end
-
-    after { ENV.delete('LLM_API_KEY') }
 
     it 'loads LLM_API_KEY from the env file' do
       expect(config['llm_api_key']).to eq('from-dotenv-file')
@@ -60,9 +70,12 @@ RSpec.describe Rubyrt::Configuration do
   end
 
   context 'with environment variables' do
-    before do
-      allow(ENV).to receive(:fetch).and_call_original
-      allow(ENV).to receive(:fetch).with('LLM_MODEL', anything).and_return('gpt-5')
+    around do |example|
+      original = ENV.fetch('LLM_MODEL', nil)
+      ENV['LLM_MODEL'] = 'gpt-5'
+      example.run
+    ensure
+      original ? ENV['LLM_MODEL'] = original : ENV.delete('LLM_MODEL')
     end
 
     it 'overrides model from environment' do
@@ -81,9 +94,12 @@ RSpec.describe Rubyrt::Configuration do
   context 'with environment variable and explicit override' do
     subject(:config) { described_class.new(root: tmp_dir, overrides: { model: 'o1-preview' }) }
 
-    before do
-      allow(ENV).to receive(:fetch).and_call_original
-      allow(ENV).to receive(:fetch).with('LLM_MODEL', anything).and_return('gpt-5')
+    around do |example|
+      original = ENV.fetch('LLM_MODEL', nil)
+      ENV['LLM_MODEL'] = 'gpt-5'
+      example.run
+    ensure
+      original ? ENV['LLM_MODEL'] = original : ENV.delete('LLM_MODEL')
     end
 
     it 'prefers explicit override over environment variable' do

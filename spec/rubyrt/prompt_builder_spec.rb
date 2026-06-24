@@ -11,7 +11,7 @@ RSpec.describe Rubyrt::PromptBuilder do
   let(:config) { Rubyrt::Configuration.new(root: tmp_dir) }
 
   after do
-    FileUtils.remove_entry(tmp_dir)
+    FileUtils.rm_rf(tmp_dir)
   end
 
   describe '#review' do

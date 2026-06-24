@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# RubyRT namespace module. CLI, configuration, review engine, and reporters
-# live under Rubyrt::.
+# Top-level namespace for RubyRT. The CLI, configuration, review engine, and
+# reporters all live under the Rubyrt module.
 module Rubyrt
 end
 

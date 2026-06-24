@@ -33,7 +33,7 @@ RSpec.describe Rubyrt::Reviewer do
   end
 
   after do
-    FileUtils.remove_entry(tmp_dir)
+    FileUtils.rm_rf(tmp_dir)
   end
 
   it 'returns a report with parsed issues', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

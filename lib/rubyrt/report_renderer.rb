@@ -19,9 +19,9 @@ module Rubyrt
     def to_md
       lines = ['## RubyRT Code Review', Rubyrt::GitHub::Context::SUMMARY_MARKER]
       lines << md_summary_line
-      lines << "\n#{@report.summary}" if @report.summary
+      lines << @report.summary if @report.summary
       lines += @report.issues.map { |issue| md_issue(issue) }
-      lines.join("\n")
+      lines.join("\n\n")
     end
 
     private
@@ -48,19 +48,20 @@ module Rubyrt
       location = first_location(issue)
       heading = "## [#{issue.id}] #{issue.title}\n  #{issue.file}"
       heading += ":#{location}" if location
-      "#{[heading, "  #{issue.details}"].compact.join("\n")}\n"
+      details = "  #{issue.details}" if issue.details
+      "#{[heading, details].compact.join("\n")}\n"
     end
 
     def md_issue(issue)
       location = first_location(issue)
-      link = location ? "[#{issue.file}:#{location}](#{issue.file})" : issue.file
-      lines = ["## ##{issue.id} #{issue.title}", "#{link}\n", issue.details]
-      lines << "**Tags:** #{issue.tags.join(', ')}" unless issue.tags.empty?
-      lines.compact.join("\n")
+      link = location ? "[#{issue.file}:#{location}](#{issue.file}##{location})" : issue.file
+      lines = ["## ##{issue.id} #{issue.title}", link, issue.details]
+      lines << "**Tags:** #{issue.tags.join(', ')}" unless issue.tags.to_a.empty?
+      lines.compact.join("\n\n")
     end
 
     def first_location(issue)
-      line = issue.affected_lines.first
+      line = issue.affected_lines&.first
       return unless line&.start_line
 
       if line.end_line && line.end_line != line.start_line

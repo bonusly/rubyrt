@@ -25,7 +25,9 @@ module Rubyrt
       end
 
       def pr_number
-        @workflow_pr || event_payload&.dig('pull_request', 'number')
+        raw = @workflow_pr unless @workflow_pr.nil? || @workflow_pr.to_s.strip.empty?
+        raw ||= event_payload&.dig('pull_request', 'number')
+        raw && Integer(raw, exception: false)
       end
 
       def owner
@@ -39,9 +41,10 @@ module Rubyrt
       private
 
       def event_payload
-        return unless @event_path && File.exist?(@event_path)
+        return @event_payload if defined?(@event_payload)
 
-        JSON.parse(File.read(@event_path))
+        @event_payload =
+          (JSON.parse(File.read(@event_path)) if @event_path && File.file?(@event_path))
       end
     end
   end

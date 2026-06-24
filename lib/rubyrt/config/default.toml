@@ -89,8 +89,8 @@ json_requirements = """
 """
 
 [post_process]
-# Ruby expression used to filter issues after the LLM returns them.
-# Each issue can be referenced as `issue`. Return true to keep the issue.
-filter = """
-issue['confidence'] == 1 && issue['severity'] <= 3
-"""
+# Thresholds applied to issues after the LLM returns them. Lower numbers are
+# more confident / more severe, so an issue is kept only when its confidence
+# and severity are at or below these maximums.
+max_confidence = 1
+max_severity = 3

@@ -35,12 +35,28 @@ runs:
         ruby-version: "3.4"
     - name: Install RubyRT
       shell: bash
+      env:
+        RUBYRT_VERSION: ${{ inputs.rubyrt_version }}
       run: |
-        if [ "${{ inputs.rubyrt_version }}" = "local" ]; then
-          gem build rubyrt.gemspec
-          gem install ./rubyrt-*.gem
+        if [ "$RUBYRT_VERSION" = "local" ]; then
+          gem build rubyrt.gemspec -o rubyrt.gem
+          gem install ./rubyrt.gem
         else
-          gem install rubyrt -v "${{ inputs.rubyrt_version }}"
+          gem install rubyrt -v "$RUBYRT_VERSION"
+        fi
+    - name: Determine base ref
+      id: base
+      shell: bash
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        if [ -n "$BASE_SHA" ]; then
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" || true
+          echo "ref=$BASE_SHA" >> "$GITHUB_OUTPUT"
+        else
+          # Non-PR run: ensure HEAD~1 exists even on a shallow checkout.
+          git fetch --no-tags --deepen=1 || true
+          echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
         fi
     - name: Run RubyRT review
       shell: bash
@@ -49,12 +65,21 @@ runs:
         LLM_API_BASE: ${{ inputs.api_base }}
         LLM_MODEL: ${{ inputs.model }}
         LLM_PROVIDER: ${{ inputs.provider }}
-      run: rubyrt review --output "${{ inputs.output_dir }}" --what HEAD --against ${{ github.event.pull_request.base.sha }}
+        OUTPUT_DIR: ${{ inputs.output_dir }}
+        BASE_REF: ${{ steps.base.outputs.ref }}
+      run: rubyrt review --output "$OUTPUT_DIR" --what HEAD --against "$BASE_REF"
     - name: Post review to GitHub
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
-      run: rubyrt github-comment --md-report-file "${{ inputs.output_dir }}/code-review-report.md"
+        OUTPUT_DIR: ${{ inputs.output_dir }}
+      run: |
+        REPORT="$OUTPUT_DIR/code-review-report.md"
+        if [ -f "$REPORT" ]; then
+          rubyrt github-comment --md-report-file "$REPORT"
+        else
+          echo "No report at $REPORT; skipping comment."
+        fi
       if: always()
     - name: Upload reports
       uses: actions/upload-artifact@v4

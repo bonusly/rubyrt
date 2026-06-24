@@ -18,14 +18,10 @@ module Rubyrt
         'info' => 4
       }.freeze
 
-      def initialize(config: nil)
-        @config = config
-      end
-
       def call(files)
         return [] if files.empty?
 
-        stdout, stderr, = Open3.capture3('rubocop', '--format', 'json', '--force-exclusion', *files)
+        stdout, stderr, = Open3.capture3('rubocop', '--format', 'json', '--force-exclusion', '--', *files)
         warn stderr unless stderr.empty?
 
         parsed = JSON.parse(stdout)
@@ -60,8 +56,9 @@ module Rubyrt
       end
 
       def extract_location(offense)
-        location = offense['location']
-        [location['start_line'], location['last_line'] || location['start_line']]
+        location = offense['location'] || {}
+        start_line = location['start_line'] || location['line'] || 1
+        [start_line, location['last_line'] || start_line]
       end
     end
   end

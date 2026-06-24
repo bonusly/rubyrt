@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require 'logger'
 require 'ruby_llm'
+require_relative 'errors'
 
 module Rubyrt
   # Thin wrapper around ruby_llm for code review prompts.
@@ -22,11 +24,20 @@ module Rubyrt
       'gpustack' => { key: :gpustack_api_key, base: :gpustack_api_base }
     }.freeze
 
+    LOG_LEVELS = {
+      'debug' => Logger::DEBUG, 'info' => Logger::INFO, 'warn' => Logger::WARN,
+      'error' => Logger::ERROR, 'fatal' => Logger::FATAL
+    }.freeze
+
     def initialize(config)
       @config = config
       validate!
-      configure!
+      @llm_context = build_context
     end
+
+    # Per-instance RubyLLM context; configuration never mutates global state, so
+    # multiple clients with different providers/keys can coexist safely.
+    attr_reader :llm_context
 
     def complete(prompt)
       chat.ask(prompt)
@@ -45,40 +56,44 @@ module Rubyrt
             'Missing LLM_API_KEY. Set it as an environment variable or in ~/.rubyrt/.env.'
     end
 
-    def configure!
-      RubyLLM.configure do |ruby_llm_config|
-        apply_provider_config(ruby_llm_config)
-        ruby_llm_config.request_timeout = @config['request_timeout'] if @config['request_timeout']
-        ruby_llm_config.max_retries = @config['retries'] if @config['retries']
-        apply_logging_config(ruby_llm_config)
+    def build_context
+      RubyLLM.context do |llm_config|
+        apply_provider_config(llm_config)
+        llm_config.request_timeout = @config['request_timeout'] if @config['request_timeout']
+        llm_config.max_retries = @config['retries'] if @config['retries']
+        apply_logging_config(llm_config)
       end
     end
 
-    def apply_logging_config(ruby_llm_config)
+    def apply_logging_config(llm_config)
       log_file = @config['log_file']
-      ruby_llm_config.log_file = log_file if log_file && !log_file.to_s.strip.empty?
+      llm_config.log_file = log_file if log_file && !log_file.to_s.strip.empty?
 
       level = parse_log_level(@config['log_level'])
-      ruby_llm_config.log_level = level if level
+      llm_config.log_level = level if level
     end
 
     def parse_log_level(value)
       return nil unless value && !value.to_s.strip.empty?
+      return value if value.is_a?(Integer) # already a Logger level
 
-      Logger::SEV_LABEL.index(value.to_s.upcase) || Logger::INFO
+      LOG_LEVELS.fetch(value.to_s.downcase, Logger::INFO)
     end
 
     def chat
-      RubyLLM.chat(model: @config['model'], provider: @config['provider'])
+      llm_context.chat(model: @config['model'], provider: provider)
     end
 
-    def apply_provider_config(config)
-      provider = @config['provider'].to_s
+    def provider
+      @config['provider'].to_s.downcase
+    end
+
+    def apply_provider_config(llm_config)
       mapping = PROVIDER_CONFIG[provider]
       raise ArgumentError, "Unsupported LLM provider: #{provider}" unless mapping
 
-      config.public_send("#{mapping[:key]}=", @config['llm_api_key'])
-      config.public_send("#{mapping[:base]}=", @config['llm_api_base']) if @config['llm_api_base']
+      llm_config.public_send("#{mapping[:key]}=", @config['llm_api_key'])
+      llm_config.public_send("#{mapping[:base]}=", @config['llm_api_base']) if @config['llm_api_base']
     end
   end
 end

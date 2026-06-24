@@ -16,11 +16,13 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Run RubyRT review
         uses: ./.github/actions/rubyrt
+        env:
+          PR_NUMBER_FROM_WORKFLOW_DISPATCH: ${{ github.event.inputs.pr_number }}
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
           model: ${{ vars.LLM_MODEL }}

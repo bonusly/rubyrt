@@ -67,7 +67,7 @@ module Rubyrt
       render_report(report)
     rescue StandardError => e
       warn "Review failed: #{e.class}: #{e.message}"
-      warn e.backtrace.first(5).join("\n") if ENV['RUBYRT_DEBUG'] || options[:debug]
+      warn e.backtrace&.first(5)&.join("\n") if ENV['RUBYRT_DEBUG'] || options[:debug]
       exit 1
     end
 
@@ -81,6 +81,9 @@ module Rubyrt
     def files
       changeset = build_changeset
       changeset.files.each { |file| print_file(file, changeset) }
+    rescue StandardError => e
+      warn "Could not list files: #{e.class}: #{e.message}"
+      exit 1
     end
 
     desc 'report', 'Render a saved code review report'
@@ -91,6 +94,9 @@ module Rubyrt
       report = Rubyrt::Report.from_file(source)
       renderer = Rubyrt::ReportRenderer.new(report)
       puts options[:format] == 'md' ? renderer.to_md : renderer.to_cli
+    rescue StandardError => e
+      warn "Could not render report: #{e.class}: #{e.message}"
+      exit 1
     end
 
     desc 'github-comment', 'Post a code review comment to GitHub'
@@ -99,7 +105,7 @@ module Rubyrt
     option :gh_repo, type: :string, desc: 'owner/repo'
     option :token, type: :string, desc: 'GitHub token'
     def github_comment
-      context = Rubyrt::GitHub::Context.from_env
+      context = resolve_github_context
       commenter = build_commenter(context)
       summary = File.read(options[:md_report_file] || 'code-review-report.md')
       report = Rubyrt::Report.from_file(json_path_for(options[:md_report_file]))
@@ -115,7 +121,11 @@ module Rubyrt
         Rubyrt::Changeset.new(
           head_ref: options[:what],
           base_ref: options[:against],
-          all: options[:all] || false
+          all: options[:all] || false,
+          filters: options[:filters]&.split(','),
+          # Thor's options hash isn't indifferent for #fetch, so read via [] (it
+          # always has a value because the option declares default: true).
+          merge_base: options[:merge_base]
         )
       end
 
@@ -125,7 +135,7 @@ module Rubyrt
           changeset: changeset,
           prompt_builder: Rubyrt::PromptBuilder.new(config),
           llm_client: Rubyrt::LlmClient.new(config),
-          adapters: [Rubyrt::Adapters::RuboCopAdapter.new(config: config)]
+          adapters: [Rubyrt::Adapters::RuboCopAdapter.new]
         )
       end
 
@@ -137,7 +147,7 @@ module Rubyrt
         puts renderer.to_cli
       end
 
-      def print_file(file, changeset = build_changeset)
+      def print_file(file, changeset)
         if options[:diff]
           puts "--- #{file} ---"
           puts changeset.diff_text_for(file)
@@ -147,13 +157,13 @@ module Rubyrt
       end
 
       def repo_owner(context)
-        return context.owner unless options[:gh_repo]
+        return context&.owner unless options[:gh_repo]
 
         options[:gh_repo].split('/').first
       end
 
       def repo_name(context)
-        return context.repo_name unless options[:gh_repo]
+        return context&.repo_name unless options[:gh_repo]
 
         options[:gh_repo].split('/').last
       end
@@ -161,7 +171,16 @@ module Rubyrt
       def json_path_for(md_path)
         return 'code-review-report.json' unless md_path
 
-        md_path.sub(/\.md\z/, '.json')
+        ext = File.extname(md_path)
+        ext.empty? ? "#{md_path}.json" : md_path.sub(/#{Regexp.escape(ext)}\z/, '.json')
+      end
+
+      # Only read the GitHub Actions environment when the caller hasn't supplied
+      # the repo and PR explicitly, so manual/local runs aren't forced through it.
+      def resolve_github_context
+        return nil if options[:gh_repo] && options[:pr]
+
+        Rubyrt::GitHub::Context.from_env
       end
 
       def build_commenter(context)
@@ -169,7 +188,7 @@ module Rubyrt
           token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
           owner: repo_owner(context),
           repo: repo_name(context),
-          pr_number: options[:pr] || context.pr_number
+          pr_number: options[:pr] || context&.pr_number
         )
       end
     end

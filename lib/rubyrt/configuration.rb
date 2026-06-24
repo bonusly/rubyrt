@@ -12,11 +12,12 @@ module Rubyrt
   # 3. ~/.rubyrt/.env (loaded into ENV via dotenv)
   # 4. OS environment variables
   # 5. Explicit overrides passed to Configuration.new
-  # rubocop:disable Metrics/ClassLength
   class Configuration
     attr_reader :data, :root
 
-    USER_ENV_FILE = File.expand_path('~/.rubyrt/.env').freeze
+    # Expanded lazily in load_user_env_file so a missing/unresolvable home
+    # directory can't crash at load time.
+    USER_ENV_FILE = '~/.rubyrt/.env'
 
     DEFAULT_SKILL_DIRECTORIES = %w[.agents .claude .cursor].freeze
 
@@ -54,12 +55,22 @@ module Rubyrt
       @data.fetch('prompt_vars', {})
     end
 
+    def severity_scale
+      @data.fetch('severity_scale', {})
+    end
+
+    def confidence_scale
+      @data.fetch('confidence_scale', {})
+    end
+
     def skill_directories
-      Array(@data.fetch('skill_directories', DEFAULT_SKILL_DIRECTORIES)).map { |d| File.join(@root, d) }
+      # expand_path leaves absolute paths intact and resolves relative ones
+      # against the project root.
+      Array(@data.fetch('skill_directories', DEFAULT_SKILL_DIRECTORIES)).map { |d| File.expand_path(d, @root) }
     end
 
     def aux_files
-      Array(@data.fetch('aux_files', [])).map { |path| File.join(@root, path) }
+      Array(@data.fetch('aux_files', [])).map { |path| File.expand_path(path, @root) }
     end
 
     def skills
@@ -80,9 +91,17 @@ module Rubyrt
     end
 
     def load_user_env_file
-      return unless File.file?(USER_ENV_FILE)
+      # File.expand_path('~/...') raises ArgumentError when HOME is unresolvable
+      # (e.g. some containers); a missing user env file is not fatal.
+      path = File.expand_path(USER_ENV_FILE)
+      return unless File.file?(path)
 
-      Dotenv.load(USER_ENV_FILE, overwrite: true)
+      # Fill only unset keys so real OS environment variables (layer 4) keep
+      # precedence over the user's ~/.rubyrt/.env defaults (layer 3).
+      Dotenv.parse(path).each { |key, value| ENV[key] ||= value }
+    rescue StandardError
+      # A missing/unreadable/malformed user env file must never be fatal.
+      nil
     end
 
     def default_config_path
@@ -91,7 +110,7 @@ module Rubyrt
 
     def project_config_path
       path = File.join(@root, '.rubyrt', 'config.toml')
-      File.exist?(path) ? path : nil
+      File.file?(path) ? path : nil
     end
 
     def load_toml(path)
@@ -115,7 +134,7 @@ module Rubyrt
     end
 
     def apply_env_overrides(config)
-      config.merge(string_env_overrides).merge(integer_env_overrides(config))
+      config.merge(string_env_overrides).merge(integer_env_overrides)
     end
 
     def string_env_overrides
@@ -124,13 +143,13 @@ module Rubyrt
       end.compact
     end
 
-    def integer_env_overrides(config)
-      result = {}
-      INTEGER_ENV_OVERRIDES.each do |key, env_key|
+    def integer_env_overrides
+      # Only override keys that have a non-blank env var set; otherwise leave the
+      # merged config value untouched (a blank var must not coerce to 0).
+      INTEGER_ENV_OVERRIDES.each_with_object({}) do |(key, env_key), result|
         value = ENV.fetch(env_key, nil)
-        result[key] = value ? value.to_i : config[key]
+        result[key] = value.to_i if value && !value.strip.empty?
       end
-      result
     end
 
     def apply_string_overrides(config, overrides)
@@ -140,12 +159,14 @@ module Rubyrt
     def load_skills_from(dir)
       return [] unless Dir.exist?(dir)
 
-      Dir.glob(File.join(dir, '**', '*.md')).map do |path|
+      # Use base: so the directory name is taken literally — glob metacharacters
+      # in the path (e.g. brackets) don't change which files are matched.
+      Dir.glob('**/*.md', base: dir).map do |relative|
+        path = File.join(dir, relative)
         SkillFragment.new(path: path, content: File.read(path), source: dir)
       end
     end
   end
-  # rubocop:enable Metrics/ClassLength
 
   # A single skill prompt fragment discovered from .agents, .claude, or .cursor.
   class SkillFragment
