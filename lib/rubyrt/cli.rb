@@ -117,7 +117,9 @@ module Rubyrt
           base_ref: options[:against],
           all: options[:all] || false,
           filters: options[:filters]&.split(','),
-          merge_base: options.fetch(:merge_base, true)
+          # Thor's options hash isn't indifferent for #fetch, so read via [] (it
+          # always has a value because the option declares default: true).
+          merge_base: options[:merge_base]
         )
       end
 

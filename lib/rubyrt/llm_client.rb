@@ -24,6 +24,11 @@ module Rubyrt
       'gpustack' => { key: :gpustack_api_key, base: :gpustack_api_base }
     }.freeze
 
+    LOG_LEVELS = {
+      'debug' => Logger::DEBUG, 'info' => Logger::INFO, 'warn' => Logger::WARN,
+      'error' => Logger::ERROR, 'fatal' => Logger::FATAL
+    }.freeze
+
     def initialize(config)
       @config = config
       validate!
@@ -71,7 +76,7 @@ module Rubyrt
     def parse_log_level(value)
       return nil unless value && !value.to_s.strip.empty?
 
-      Logger::SEV_LABEL.index(value.to_s.upcase) || Logger::INFO
+      LOG_LEVELS.fetch(value.to_s.downcase, Logger::INFO)
     end
 
     def chat

@@ -54,6 +54,9 @@ module Rubyrt
       # Recursively converts symbol keys to strings so both this client and its
       # downstream consumers can traverse the result with string keys.
       def stringify(value)
+        # Convert any nested Sawyer::Resource into a plain Hash before recursing
+        # so string-key traversal (dig/[]) works all the way down.
+        value = value.to_attrs if value.respond_to?(:to_attrs)
         case value
         when Hash
           value.each_with_object({}) { |(k, v), acc| acc[k.to_s] = stringify(v) }

@@ -96,9 +96,9 @@ module Rubyrt
       path = File.expand_path(USER_ENV_FILE)
       return unless File.file?(path)
 
-      # Parse and assign explicitly so the user's file always overrides any
-      # inherited ENV, without relying on a particular Dotenv overwrite API.
-      Dotenv.parse(path).each { |key, value| ENV[key] = value }
+      # Fill only unset keys so real OS environment variables (layer 4) keep
+      # precedence over the user's ~/.rubyrt/.env defaults (layer 3).
+      Dotenv.parse(path).each { |key, value| ENV[key] ||= value }
     rescue StandardError
       # A missing/unreadable/malformed user env file must never be fatal.
       nil
