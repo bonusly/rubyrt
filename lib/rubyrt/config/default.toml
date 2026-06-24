@@ -28,8 +28,8 @@ exclude_files = [
 # Number of retries for transient LLM failures.
 retries = 3
 
-# Maximum number of concurrent file reviews.
-max_concurrent_tasks = 5
+# Maximum number of concurrent file reviews (uses fibers).
+max_concurrent_tasks = 10
 
 # Timeout (in seconds) for a single LLM request, including connection and
 # response. Set lower to fail fast on unreachable providers.

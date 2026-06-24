@@ -112,7 +112,8 @@ module Rubyrt
       def build_changeset
         Rubyrt::Changeset.new(
           head_ref: options[:what],
-          base_ref: options[:against]
+          base_ref: options[:against],
+          all: options[:all]
         )
       end
 

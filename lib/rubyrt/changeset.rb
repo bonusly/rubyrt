@@ -4,14 +4,16 @@ require 'rugged'
 require 'fileutils'
 
 module Rubyrt
-  # Represents a set of changed files between two git refs.
+  # Represents a set of changed files between two git refs, or all tracked
+  # files in the repository when `all: true`.
   class Changeset
     attr_reader :base_ref, :head_ref
 
-    def initialize(repo_path: Dir.pwd, base_ref: nil, head_ref: 'HEAD')
+    def initialize(repo_path: Dir.pwd, base_ref: nil, head_ref: 'HEAD', all: false)
       @repo = Rugged::Repository.discover(repo_path)
       @head_ref = head_ref || 'HEAD'
       @base_ref = base_ref || default_base_ref
+      @all = all
     end
 
     def files
@@ -19,6 +21,8 @@ module Rubyrt
     end
 
     def diff_text_for(file)
+      return full_content_for(file) if @all
+
       patch_for(file)&.to_s&.force_encoding('UTF-8')
     end
 
@@ -56,8 +60,18 @@ module Rubyrt
     end
 
     def build_files
+      return all_tracked_files if @all
+
       diff.patches.map do |patch|
         patch.delta.new_file[:path]
+      end.compact.uniq
+    end
+
+    def all_tracked_files
+      head_commit.tree.walk(:preorder).map do |root, entry|
+        next unless entry[:type] == :blob
+
+        File.join(root, entry[:name])
       end.compact.uniq
     end
   end

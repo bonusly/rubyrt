@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'async'
+require 'async/semaphore'
+
 module Rubyrt
   # Orchestrates reviewing the changeset: builds prompts, calls the LLM,
   # integrates static analysis adapters, post-processes issues, and builds a
@@ -31,9 +34,31 @@ module Rubyrt
     private
 
     def gather_llm_issues
-      @changeset.files.flat_map do |file|
-        review_file(file)
+      files = @changeset.files
+      concurrency = [@config['max_concurrent_tasks'] || 10, 1].max
+      return files.flat_map { |f| review_file(f) } if concurrency == 1
+
+      review_in_parallel(files, concurrency)
+    end
+
+    def review_in_parallel(files, concurrency)
+      results = Array.new(files.size)
+      errors = []
+      semaphore = Async::Semaphore.new(concurrency)
+
+      Sync do
+        files.each_with_index do |file, index|
+          semaphore.async do
+            results[index] = review_file(file)
+          rescue StandardError => e
+            errors << e
+          end
+        end
       end
+
+      raise errors.first if errors.any?
+
+      results.flatten
     end
 
     def review_file(file)

@@ -42,6 +42,9 @@ Gem::Specification.new do |spec|
   # Git access
   spec.add_dependency 'rugged', '~> 1.9'
 
+  # Async reviews
+  spec.add_dependency 'async', '~> 2.40'
+
   # GitHub API
   spec.add_dependency 'octokit', '~> 9.0'
 

@@ -16,6 +16,9 @@ AllCops:
 Style/Documentation:
   Enabled: true
 
+Metrics/MethodLength:
+  Enabled: false
+
 Metrics/BlockLength:
   Exclude:
     - "spec/**/*"
