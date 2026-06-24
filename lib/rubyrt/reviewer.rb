@@ -25,8 +25,8 @@ module Rubyrt
     def review
       issues = gather_llm_issues + gather_adapter_issues
       filtered = PostProcessor.new(@config['post_process']).call(issues)
-      CodeEnricher.new(@changeset).call(filtered)
-      sorted = filtered.sort_by { |issue| issue.severity || Float::INFINITY }
+      enriched = CodeEnricher.new(@changeset).call(filtered)
+      sorted = enriched.sort_by { |issue| issue.severity || Float::INFINITY }
       assign_issue_ids(sorted)
       Report.new(
         target: build_target,

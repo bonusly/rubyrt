@@ -81,6 +81,9 @@ module Rubyrt
     def files
       changeset = build_changeset
       changeset.files.each { |file| print_file(file, changeset) }
+    rescue StandardError => e
+      warn "Could not list files: #{e.class}: #{e.message}"
+      exit 1
     end
 
     desc 'report', 'Render a saved code review report'
