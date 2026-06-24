@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Rubyrt::PostProcessor do
   def issue(confidence:, severity:)
-    instance_double(Rubyrt::Issue, to_h: { 'confidence' => confidence, 'severity' => severity })
+    instance_double(Rubyrt::Issue, confidence: confidence, severity: severity)
   end
 
   let(:issues) do

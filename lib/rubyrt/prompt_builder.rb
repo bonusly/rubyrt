@@ -75,7 +75,7 @@ module Rubyrt
     end
 
     def relative_path(path)
-      path.delete_prefix("#{@config.root}/")
+      path.to_s.delete_prefix("#{@config.root}/")
     end
 
     def format_scale(scale)

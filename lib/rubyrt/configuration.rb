@@ -140,7 +140,8 @@ module Rubyrt
       result = {}
       INTEGER_ENV_OVERRIDES.each do |key, env_key|
         value = ENV.fetch(env_key, nil)
-        result[key] = value ? value.to_i : config[key]
+        # Treat a blank env var as unset so it doesn't coerce to 0.
+        result[key] = value && !value.strip.empty? ? value.to_i : config[key]
       end
       result
     end

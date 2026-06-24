@@ -80,7 +80,8 @@ module Rubyrt
     end
 
     def diff
-      @diff ||= @repo.diff(base_commit, head_commit)
+      # Diff the trees explicitly rather than relying on commit coercion.
+      @diff ||= @repo.diff(base_commit.tree, head_commit.tree)
     end
 
     def build_files

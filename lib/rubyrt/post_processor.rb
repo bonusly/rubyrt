@@ -19,15 +19,14 @@ module Rubyrt
     private
 
     def keep?(issue)
-      hash = issue.to_h.transform_keys(&:to_s)
-      within?(hash['confidence'], @settings['max_confidence']) &&
-        within?(hash['severity'], @settings['max_severity'])
+      within?(issue.confidence, @settings['max_confidence']) &&
+        within?(issue.severity, @settings['max_severity'])
     end
 
     def within?(value, max)
       return true if max.nil? || value.nil?
 
-      value <= max
+      Integer(value, exception: false).then { |n| n.nil? || n <= max.to_i }
     end
   end
 end
