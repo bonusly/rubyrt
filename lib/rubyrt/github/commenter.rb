@@ -147,7 +147,8 @@ module Rubyrt
       end
 
       def outdated_body(body)
-        "<details><summary>Outdated RubyRT summary</summary>\n\n#{body}\n\n</details>"
+        stripped = body.sub(Context::SUMMARY_MARKER, '')
+        "<details><summary>Outdated RubyRT summary</summary>\n\n#{stripped}\n\n</details>"
       end
     end
   end

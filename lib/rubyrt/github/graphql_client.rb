@@ -22,7 +22,7 @@ module Rubyrt
       def resolve_thread(thread_id)
         @client.post('/graphql',
                      query: resolve_thread_mutation,
-                     variables: { thread_id: thread_id })
+                     variables: { threadId: thread_id })
       end
 
       private
