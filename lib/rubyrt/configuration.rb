@@ -134,7 +134,7 @@ module Rubyrt
     end
 
     def apply_env_overrides(config)
-      config.merge(string_env_overrides).merge(integer_env_overrides(config))
+      config.merge(string_env_overrides).merge(integer_env_overrides)
     end
 
     def string_env_overrides
@@ -143,14 +143,13 @@ module Rubyrt
       end.compact
     end
 
-    def integer_env_overrides(config)
-      result = {}
-      INTEGER_ENV_OVERRIDES.each do |key, env_key|
+    def integer_env_overrides
+      # Only override keys that have a non-blank env var set; otherwise leave the
+      # merged config value untouched (a blank var must not coerce to 0).
+      INTEGER_ENV_OVERRIDES.each_with_object({}) do |(key, env_key), result|
         value = ENV.fetch(env_key, nil)
-        # Treat a blank env var as unset so it doesn't coerce to 0.
-        result[key] = value && !value.strip.empty? ? value.to_i : config[key]
+        result[key] = value.to_i if value && !value.strip.empty?
       end
-      result
     end
 
     def apply_string_overrides(config, overrides)

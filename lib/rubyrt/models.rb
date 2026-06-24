@@ -141,7 +141,7 @@ module Rubyrt
       @summary = summary
       @issues = Array(issues)
       @processing_warnings = Array(processing_warnings)
-      @number_of_processed_files = number_of_processed_files || @issues.map(&:file).uniq.size
+      @number_of_processed_files = number_of_processed_files || @issues.map(&:file).compact.uniq.size
       @created_at = Time.now.iso8601
     end
 

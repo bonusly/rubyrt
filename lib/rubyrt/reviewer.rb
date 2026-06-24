@@ -67,7 +67,7 @@ module Rubyrt
         end
         barrier.wait # drain on normal path; wait can raise and mask errors in ensure
       ensure
-        barrier.stop
+        barrier&.stop
       end
 
       if errors.any?
