@@ -30,6 +30,7 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
       issue_comments: []
     )
     allow(client).to receive(:create_pull_request_comment)
+    allow(client).to receive(:add_comment)
     # Skip stale-thread resolution; covered elsewhere.
     allow(client).to receive(:user).and_raise(Octokit::Forbidden.new)
   end
@@ -53,25 +54,34 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
       .with('o/r', 1, anything, 'commit-sha', 'app.rb', 11, { side: 'RIGHT' })
   end
 
-  it 'falls back to a file-level comment when the line is outside the diff hunks' do
-    commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 999)]))
+  it 'includes the severity label in the inline comment body' do
+    commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 11)]))
 
     expect(client).to have_received(:create_pull_request_comment)
-      .with('o/r', 1, anything, 'commit-sha', 'app.rb', nil, { subject_type: 'file' })
+      .with('o/r', 1, a_string_including('[Critical]'), 'commit-sha', 'app.rb', 11, { side: 'RIGHT' })
   end
 
-  it 'skips files that are not part of the PR diff' do
+  it 'lists issues outside the diff in the summary instead of a file-level comment', :aggregate_failures do
+    commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 999)]))
+
+    expect(client).not_to have_received(:create_pull_request_comment)
+    expect(client).to have_received(:add_comment)
+      .with('o/r', 1, a_string_including('Other findings', 'Critical', 'app.rb:999'))
+  end
+
+  it 'lists issues for files not in the PR diff in the summary', :aggregate_failures do
     commenter.post_review(summary: 'S', report: report_for([build_issue('untouched.rb', 5)]))
 
     expect(client).not_to have_received(:create_pull_request_comment)
+    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including('untouched.rb:5'))
   end
 
-  it 'degrades to inline posting when the PR diff cannot be fetched' do
+  it 'falls back to the summary when the PR diff cannot be fetched', :aggregate_failures do
     allow(client).to receive(:pull_request_files).and_raise(Octokit::Error.new)
 
     commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 999)]))
 
-    expect(client).to have_received(:create_pull_request_comment)
-      .with('o/r', 1, anything, 'commit-sha', 'app.rb', 999, { side: 'RIGHT' })
+    expect(client).not_to have_received(:create_pull_request_comment)
+    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including('app.rb:999'))
   end
 end

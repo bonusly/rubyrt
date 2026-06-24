@@ -11,6 +11,10 @@ module Rubyrt
     class Commenter # rubocop:disable Metrics/ClassLength
       REVIEW_COMMENT_MARKER = '<!-- rubyrt-review-comment -->'
 
+      # Mirrors the default severity_scale in config/default.toml — used only
+      # for human-facing labels in comments.
+      SEVERITY_LABELS = { 1 => 'Critical', 2 => 'High', 3 => 'Medium', 4 => 'Low' }.freeze
+
       def initialize(token:, owner:, repo:, pr_number:)
         @client = Octokit::Client.new(access_token: token)
         @owner = owner
@@ -23,44 +27,33 @@ module Rubyrt
         commit_id = pr.head.sha
         resolve_previous_threads(report.issues)
         collapse_previous_summaries
-        post_summary_comment(summary) if report.issues.empty?
-        post_file_comments(report.issues, commit_id)
+        uncommented = post_inline_comments(report.issues, commit_id)
+        post_summary_comment(summary, uncommented)
       end
 
       private
 
-      def post_summary_comment(summary)
-        @client.add_comment(
-          "#{@owner}/#{@repo}",
-          @pr_number,
-          "#{summary}\n\n#{Context::SUMMARY_MARKER}"
-        )
+      # Post one inline comment per affected line that falls inside the PR diff.
+      # GitHub's review-comment API only accepts line-based comments on diff
+      # lines, so issues elsewhere are returned for the summary instead of being
+      # forced through the file-level API (which it rejects).
+      def post_inline_comments(issues, commit_id)
+        issues.reject { |issue| post_issue_inline?(issue, commit_id) }
       end
 
-      def post_file_comments(issues, commit_id)
-        issues.each do |issue|
-          issue.affected_lines.each do |range|
-            next unless range.start_line
+      def post_issue_inline?(issue, commit_id)
+        issue.affected_lines.filter_map do |range|
+          next unless range.start_line
 
-            post_line_comment(issue, commit_id, range)
-          end
-        end
-      end
+          line = range.end_line || range.start_line
+          next unless line_in_diff?(issue.file, line)
 
-      def post_line_comment(issue, commit_id, range)
-        line = range.end_line || range.start_line
-        # GitHub only resolves inline comments on lines that are part of the PR
-        # diff. Issues the LLM finds in unchanged code fall back to a file-level
-        # comment so the feedback isn't silently dropped.
-        if line_in_diff?(issue.file, line)
           create_inline_comment(issue, commit_id, line)
-        elsif file_in_diff?(issue.file)
-          create_file_comment(issue, commit_id)
-        else
-          warn "Skipping comment on #{issue.file}:#{line} — file is not part of the PR diff"
-        end
-      rescue Octokit::UnprocessableEntity => e
-        warn "Could not post comment on #{issue.file}:#{line} — #{e.message}"
+          true
+        rescue Octokit::UnprocessableEntity => e
+          warn "Could not post comment on #{issue.file}:#{line} — #{e.message}"
+          nil
+        end.any?
       end
 
       def create_inline_comment(issue, commit_id, line)
@@ -75,34 +68,39 @@ module Rubyrt
         )
       end
 
-      def create_file_comment(issue, commit_id)
-        @client.create_pull_request_comment(
-          "#{@owner}/#{@repo}",
-          @pr_number,
-          issue_body(issue),
-          commit_id,
-          issue.file,
-          nil, # no line: file-level comment
-          { subject_type: 'file' }
-        )
+      def post_summary_comment(summary, uncommented)
+        body = [summary, uncommented_section(uncommented), Context::SUMMARY_MARKER].compact.join("\n\n")
+        @client.add_comment("#{@owner}/#{@repo}", @pr_number, body)
+      end
+
+      # Issues outside the diff can't be inline comments, so list them in the
+      # summary so the feedback isn't lost.
+      def uncommented_section(issues)
+        return nil if issues.empty?
+
+        rows = issues.map do |issue|
+          line = issue.affected_lines.first&.start_line
+          location = line ? ":#{line}" : ''
+          "- **#{severity_label(issue.severity)}** `#{issue.file}#{location}` — #{issue.title}"
+        end
+        "### Other findings (outside this diff)\n\n#{rows.join("\n")}"
+      end
+
+      def severity_label(severity)
+        SEVERITY_LABELS.fetch(severity, "Severity #{severity}")
       end
 
       def line_in_diff?(file, line)
-        return true unless commentable_lines
+        # When the diff can't be fetched, treat nothing as commentable so the
+        # issue falls back to the summary rather than risking a 422 per line.
+        return false unless commentable_lines
 
         commentable_lines.fetch(file, Set.new).include?(line)
       end
 
-      def file_in_diff?(file)
-        return true unless commentable_lines
-
-        commentable_lines.key?(file)
-      end
-
       # Maps each changed file to the set of new-side line numbers GitHub will
       # accept inline comments on (added and context lines within diff hunks).
-      # Returns nil when the diff can't be fetched, so posting degrades to the
-      # previous best-effort behavior.
+      # Returns nil when the diff can't be fetched.
       def commentable_lines
         return @commentable_lines if defined?(@commentable_lines)
 
@@ -135,11 +133,12 @@ module Rubyrt
       end
 
       def issue_body(issue)
+        tags = "Tags: #{issue.tags.join(', ')}" unless issue.tags.to_a.empty?
         [
           REVIEW_COMMENT_MARKER,
-          "**#{issue.title}**",
+          "**[#{severity_label(issue.severity)}] #{issue.title}**",
           issue.details,
-          "Tags: #{issue.tags.join(', ')}"
+          tags
         ].compact.join("\n\n")
       end
 
