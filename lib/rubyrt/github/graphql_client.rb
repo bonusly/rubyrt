@@ -16,8 +16,9 @@ module Rubyrt
         response = @client.post('/graphql',
                                 query: review_threads_query,
                                 variables: thread_variables(owner, repo, pr_number))
-        data = stringify(response.to_attrs)
-        data.dig('data', 'repository', 'pullRequest', 'reviewThreads', 'nodes') || []
+        body = stringify(to_hash(response))
+        raise_on_errors(body)
+        body.dig('data', 'repository', 'pullRequest', 'reviewThreads', 'nodes') || []
       end
 
       def resolve_thread(thread_id)
@@ -28,12 +29,37 @@ module Rubyrt
 
       private
 
+      # GraphQL returns HTTP 200 even on errors, signalling them via a top-level
+      # `errors` array. Surface them instead of silently reporting no threads.
+      def raise_on_errors(body)
+        errors = Array(body['errors'])
+        return if errors.empty?
+
+        messages = errors.map { |e| e.is_a?(Hash) ? e['message'] || e.to_s : e.to_s }.join('; ')
+        raise "GitHub GraphQL request failed: #{messages}"
+      end
+
       # Octokit parses responses into Sawyer::Resource objects keyed by symbols.
-      # `#to_attrs` recursively converts the resource into a plain Hash; the JSON
-      # round-trip then deep-stringifies the keys so both this method and
+      # `#to_attrs` recursively converts the resource into a plain Hash; tolerate
+      # nil and raw Hash responses (e.g. from stubbed clients in tests).
+      def to_hash(response)
+        return {} if response.nil?
+        return response.to_attrs if response.respond_to?(:to_attrs)
+
+        response
+      end
+
+      # Recursively converts symbol keys to strings so both this client and its
       # downstream consumers can traverse the result with string keys.
-      def stringify(attrs)
-        JSON.parse(JSON.generate(attrs))
+      def stringify(value)
+        case value
+        when Hash
+          value.each_with_object({}) { |(k, v), acc| acc[k.to_s] = stringify(v) }
+        when Array
+          value.map { |element| stringify(element) }
+        else
+          value
+        end
       end
 
       def review_threads_query

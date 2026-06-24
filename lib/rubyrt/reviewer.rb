@@ -3,6 +3,7 @@
 require 'async'
 require 'async/semaphore'
 require 'async/barrier'
+require 'kernel/sync'
 
 module Rubyrt
   # Orchestrates reviewing the changeset: builds prompts, calls the LLM,
@@ -49,7 +50,10 @@ module Rubyrt
       barrier = Async::Barrier.new
       semaphore = Async::Semaphore.new(concurrency, parent: barrier)
 
-      Async do
+      # Sync (not Async) so the block always blocks until the barrier is
+      # drained, even when invoked inside an existing reactor. Async would
+      # return the scheduled task immediately and race ahead to results.
+      Sync do
         files.each_with_index do |file, index|
           semaphore.async(parent: barrier) do
             results[index] = review_file(file)
