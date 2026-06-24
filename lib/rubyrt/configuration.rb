@@ -99,7 +99,8 @@ module Rubyrt
       # Parse and assign explicitly so the user's file always overrides any
       # inherited ENV, without relying on a particular Dotenv overwrite API.
       Dotenv.parse(path).each { |key, value| ENV[key] = value }
-    rescue ArgumentError
+    rescue StandardError
+      # A missing/unreadable/malformed user env file must never be fatal.
       nil
     end
 

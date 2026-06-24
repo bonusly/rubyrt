@@ -50,13 +50,14 @@ module Rubyrt
     def review_in_parallel(files, concurrency) # rubocop:disable Metrics/AbcSize
       results = Array.new(files.size)
       errors = []
-      barrier = Async::Barrier.new
-      semaphore = Async::Semaphore.new(concurrency, parent: barrier)
 
       # Sync (not Async) so the block always blocks until the barrier is
       # drained, even when invoked inside an existing reactor. Async would
       # return the scheduled task immediately and race ahead to results.
+      # Barrier/semaphore are created inside the reactor so they bind to it.
       Sync do
+        barrier = Async::Barrier.new
+        semaphore = Async::Semaphore.new(concurrency, parent: barrier)
         files.each_with_index do |file, index|
           semaphore.async(parent: barrier) do
             results[index] = review_file(file)

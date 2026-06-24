@@ -27,8 +27,12 @@ module Rubyrt
     def initialize(config)
       @config = config
       validate!
-      configure!
+      @llm_context = build_context
     end
+
+    # Per-instance RubyLLM context; configuration never mutates global state, so
+    # multiple clients with different providers/keys can coexist safely.
+    attr_reader :llm_context
 
     def complete(prompt)
       chat.ask(prompt)
@@ -47,21 +51,21 @@ module Rubyrt
             'Missing LLM_API_KEY. Set it as an environment variable or in ~/.rubyrt/.env.'
     end
 
-    def configure!
-      RubyLLM.configure do |ruby_llm_config|
-        apply_provider_config(ruby_llm_config)
-        ruby_llm_config.request_timeout = @config['request_timeout'] if @config['request_timeout']
-        ruby_llm_config.max_retries = @config['retries'] if @config['retries']
-        apply_logging_config(ruby_llm_config)
+    def build_context
+      RubyLLM.context do |llm_config|
+        apply_provider_config(llm_config)
+        llm_config.request_timeout = @config['request_timeout'] if @config['request_timeout']
+        llm_config.max_retries = @config['retries'] if @config['retries']
+        apply_logging_config(llm_config)
       end
     end
 
-    def apply_logging_config(ruby_llm_config)
+    def apply_logging_config(llm_config)
       log_file = @config['log_file']
-      ruby_llm_config.log_file = log_file if log_file && !log_file.to_s.strip.empty?
+      llm_config.log_file = log_file if log_file && !log_file.to_s.strip.empty?
 
       level = parse_log_level(@config['log_level'])
-      ruby_llm_config.log_level = level if level
+      llm_config.log_level = level if level
     end
 
     def parse_log_level(value)
@@ -71,16 +75,16 @@ module Rubyrt
     end
 
     def chat
-      RubyLLM.chat(model: @config['model'], provider: @config['provider'])
+      llm_context.chat(model: @config['model'], provider: @config['provider'])
     end
 
-    def apply_provider_config(config)
+    def apply_provider_config(llm_config)
       provider = @config['provider'].to_s
       mapping = PROVIDER_CONFIG[provider]
       raise ArgumentError, "Unsupported LLM provider: #{provider}" unless mapping
 
-      config.public_send("#{mapping[:key]}=", @config['llm_api_key'])
-      config.public_send("#{mapping[:base]}=", @config['llm_api_base']) if @config['llm_api_base']
+      llm_config.public_send("#{mapping[:key]}=", @config['llm_api_key'])
+      llm_config.public_send("#{mapping[:base]}=", @config['llm_api_base']) if @config['llm_api_base']
     end
   end
 end

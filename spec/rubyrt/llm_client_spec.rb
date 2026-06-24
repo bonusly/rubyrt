@@ -28,13 +28,13 @@ RSpec.describe Rubyrt::LlmClient do
     )
   end
 
-  after do
-    FileUtils.rm_rf(tmp_dir)
-    # RubyLLM is a global singleton; reset its config and logger so per-example
-    # provider, key, timeout, retry, and logging settings don't leak.
-    RubyLLM.instance_variable_set(:@config, nil)
-    RubyLLM.instance_variable_set(:@logger, nil)
+  # The client builds its own RubyLLM context, so inspect that instead of the
+  # global RubyLLM.config singleton.
+  def context_config(client)
+    client.llm_context.config
   end
+
+  after { FileUtils.rm_rf(tmp_dir) }
 
   it 'raises when LLM_API_KEY is missing' do
     expect { described_class.new(config_without_key) }
@@ -61,13 +61,11 @@ RSpec.describe Rubyrt::LlmClient do
     end
 
     it 'configures the openai api key' do
-      described_class.new(config)
-      expect(RubyLLM.config.openai_api_key).to eq('secret')
+      expect(context_config(described_class.new(config)).openai_api_key).to eq('secret')
     end
 
     it 'configures the openai api base' do
-      described_class.new(config)
-      expect(RubyLLM.config.openai_api_base).to eq('https://example.com/v1')
+      expect(context_config(described_class.new(config)).openai_api_base).to eq('https://example.com/v1')
     end
   end
 
@@ -75,13 +73,20 @@ RSpec.describe Rubyrt::LlmClient do
     let(:provider) { 'anthropic' }
 
     it 'configures the anthropic api key' do
-      described_class.new(config)
-      expect(RubyLLM.config.anthropic_api_key).to eq('secret')
+      expect(context_config(described_class.new(config)).anthropic_api_key).to eq('secret')
     end
 
     it 'configures the anthropic api base' do
+      expect(context_config(described_class.new(config)).anthropic_api_base).to eq('https://example.com/v1')
+    end
+  end
+
+  context 'when configured' do
+    let(:provider) { 'openai' }
+
+    it 'does not mutate the global RubyLLM openai_api_key' do
       described_class.new(config)
-      expect(RubyLLM.config.anthropic_api_base).to eq('https://example.com/v1')
+      expect(RubyLLM.config.openai_api_key).not_to eq('secret')
     end
   end
 
@@ -100,18 +105,18 @@ RSpec.describe Rubyrt::LlmClient do
       )
     end
 
-    it 'applies request_timeout and retries to RubyLLM', :aggregate_failures do
-      described_class.new(config)
-      expect(RubyLLM.config.request_timeout).to eq(45)
-      expect(RubyLLM.config.max_retries).to eq(7)
+    it 'applies request_timeout and retries to the context', :aggregate_failures do
+      cfg = context_config(described_class.new(config))
+      expect(cfg.request_timeout).to eq(45)
+      expect(cfg.max_retries).to eq(7)
     end
 
-    it 'passes the configured provider and model to RubyLLM.chat so requests route correctly' do
+    it 'passes the configured provider and model when starting a chat' do
       client = described_class.new(config)
       chat_double = instance_double(RubyLLM::Chat, ask: 'response')
-      allow(RubyLLM).to receive(:chat).and_return(chat_double)
+      allow(client.llm_context).to receive(:chat).and_return(chat_double)
       client.complete('test prompt')
-      expect(RubyLLM).to have_received(:chat).with(model: 'gpt-4o-mini', provider: 'openai')
+      expect(client.llm_context).to have_received(:chat).with(model: 'gpt-4o-mini', provider: 'openai')
     end
   end
 
@@ -129,10 +134,10 @@ RSpec.describe Rubyrt::LlmClient do
       )
     end
 
-    it 'applies log_file and log_level to RubyLLM', :aggregate_failures do
-      described_class.new(config)
-      expect(RubyLLM.config.log_file).to eq(File.join(tmp_dir, 'rubyrt-test.log'))
-      expect(RubyLLM.config.log_level).to eq(Logger::DEBUG)
+    it 'applies log_file and log_level to the context', :aggregate_failures do
+      cfg = context_config(described_class.new(config))
+      expect(cfg.log_file).to eq(File.join(tmp_dir, 'rubyrt-test.log'))
+      expect(cfg.log_level).to eq(Logger::DEBUG)
     end
   end
 
@@ -150,8 +155,7 @@ RSpec.describe Rubyrt::LlmClient do
     end
 
     it 'falls back to info level' do
-      described_class.new(config)
-      expect(RubyLLM.config.log_level).to eq(Logger::INFO)
+      expect(context_config(described_class.new(config)).log_level).to eq(Logger::INFO)
     end
   end
 end

@@ -39,8 +39,8 @@ runs:
         RUBYRT_VERSION: ${{ inputs.rubyrt_version }}
       run: |
         if [ "$RUBYRT_VERSION" = "local" ]; then
-          gem build rubyrt.gemspec
-          gem install ./rubyrt-*.gem
+          gem build rubyrt.gemspec -o rubyrt.gem
+          gem install ./rubyrt.gem
         else
           gem install rubyrt -v "$RUBYRT_VERSION"
         fi
