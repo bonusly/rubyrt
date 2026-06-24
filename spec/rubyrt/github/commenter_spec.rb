@@ -50,7 +50,7 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
     commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 11)]))
 
     expect(client).to have_received(:create_pull_request_comment)
-      .with('o/r', 1, anything, 'commit-sha', 'app.rb', 11, { line: 11 })
+      .with('o/r', 1, anything, 'commit-sha', 'app.rb', nil, { line: 11 })
   end
 
   it 'falls back to a file-level comment when the line is outside the diff hunks' do
@@ -72,6 +72,6 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
     commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 999)]))
 
     expect(client).to have_received(:create_pull_request_comment)
-      .with('o/r', 1, anything, 'commit-sha', 'app.rb', 999, { line: 999 })
+      .with('o/r', 1, anything, 'commit-sha', 'app.rb', nil, { line: 999 })
   end
 end

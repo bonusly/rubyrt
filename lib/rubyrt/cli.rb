@@ -99,7 +99,7 @@ module Rubyrt
     option :gh_repo, type: :string, desc: 'owner/repo'
     option :token, type: :string, desc: 'GitHub token'
     def github_comment
-      context = Rubyrt::GitHub::Context.from_env
+      context = resolve_github_context
       commenter = build_commenter(context)
       summary = File.read(options[:md_report_file] || 'code-review-report.md')
       report = Rubyrt::Report.from_file(json_path_for(options[:md_report_file]))
@@ -161,7 +161,16 @@ module Rubyrt
       def json_path_for(md_path)
         return 'code-review-report.json' unless md_path
 
-        md_path.sub(/\.md\z/, '.json')
+        ext = File.extname(md_path)
+        ext.empty? ? "#{md_path}.json" : md_path.sub(/#{Regexp.escape(ext)}\z/, '.json')
+      end
+
+      # Only read the GitHub Actions environment when the caller hasn't supplied
+      # the repo and PR explicitly, so manual/local runs aren't forced through it.
+      def resolve_github_context
+        return nil if options[:gh_repo] && options[:pr]
+
+        Rubyrt::GitHub::Context.from_env
       end
 
       def build_commenter(context)
@@ -169,7 +178,7 @@ module Rubyrt
           token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
           owner: repo_owner(context),
           repo: repo_name(context),
-          pr_number: options[:pr] || context.pr_number
+          pr_number: options[:pr] || context&.pr_number
         )
       end
     end

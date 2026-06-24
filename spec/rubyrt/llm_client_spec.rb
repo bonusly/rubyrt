@@ -82,11 +82,22 @@ RSpec.describe Rubyrt::LlmClient do
 
   context 'with timeout and retries from config' do
     let(:provider) { 'openai' }
+    let(:config) do
+      Rubyrt::Configuration.new(
+        root: tmp_dir,
+        overrides: {
+          provider: provider,
+          llm_api_key: 'secret',
+          request_timeout: 45,
+          retries: 7
+        }
+      )
+    end
 
     it 'applies request_timeout and retries to RubyLLM', :aggregate_failures do
       described_class.new(config)
-      expect(RubyLLM.config.request_timeout).to eq(120)
-      expect(RubyLLM.config.max_retries).to eq(3)
+      expect(RubyLLM.config.request_timeout).to eq(45)
+      expect(RubyLLM.config.max_retries).to eq(7)
     end
 
     it 'passes the configured provider to RubyLLM.chat so requests route correctly' do
@@ -106,7 +117,7 @@ RSpec.describe Rubyrt::LlmClient do
         overrides: {
           provider: provider,
           llm_api_key: 'secret',
-          log_file: '/tmp/rubyrt-test.log',
+          log_file: File.join(tmp_dir, 'rubyrt-test.log'),
           log_level: 'debug'
         }
       )
@@ -116,7 +127,7 @@ RSpec.describe Rubyrt::LlmClient do
 
     it 'applies log_file and log_level to RubyLLM', :aggregate_failures do
       described_class.new(config)
-      expect(RubyLLM.config.log_file).to eq('/tmp/rubyrt-test.log')
+      expect(RubyLLM.config.log_file).to eq(File.join(tmp_dir, 'rubyrt-test.log'))
       expect(RubyLLM.config.log_level).to eq(Logger::DEBUG)
     end
   end

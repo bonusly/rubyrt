@@ -69,7 +69,7 @@ module Rubyrt
           issue_body(issue),
           commit_id,
           issue.file,
-          line,
+          nil, # legacy diff position — pass nil and use line: for the modern API
           { line: line }
         )
       end

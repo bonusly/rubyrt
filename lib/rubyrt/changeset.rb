@@ -27,10 +27,13 @@ module Rubyrt
     end
 
     def full_content_for(file)
-      blob = @repo.lookup(head_commit.tree.path(file)[:oid])
+      entry = head_commit.tree.path(file)
+      return nil unless entry[:type] == :blob
+
+      blob = @repo.lookup(entry[:oid])
       return nil if blob.nil?
 
-      blob.content.force_encoding('UTF-8')
+      blob.content.dup.force_encoding('UTF-8')
     rescue Rugged::TreeError
       nil
     end
@@ -38,11 +41,11 @@ module Rubyrt
     private
 
     def head_commit
-      @repo.lookup(@repo.rev_parse(@head_ref).oid)
+      @repo.rev_parse(@head_ref)
     end
 
     def base_commit
-      @repo.lookup(@repo.rev_parse(@base_ref).oid)
+      @repo.rev_parse(@base_ref)
     end
 
     def default_base_ref

@@ -9,6 +9,11 @@ RSpec.describe Rubyrt::Configuration do
 
   let(:tmp_dir) { Dir.mktmpdir }
 
+  # Clean up the temp dir so the suite doesn't leak directories, and keep it
+  # hermetic by never reading a developer's real ~/.rubyrt/.env.
+  before { stub_const('Rubyrt::Configuration::USER_ENV_FILE', File.join(tmp_dir, 'no-such.env')) }
+  after { FileUtils.remove_entry(tmp_dir) }
+
   it 'loads bundled defaults', :aggregate_failures do
     expect(config['mention_triggers']).to eq(%w[rubyrt bot ai /check])
     expect(config['collapse_previous_code_review_comments']).to be true

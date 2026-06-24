@@ -1,6 +1,3 @@
-inherit_gem:
-  rubocop-rspec: config/default.yml
-
 plugins:
   - rubocop-rake
   - rubocop-rspec
@@ -18,6 +15,14 @@ Style/Documentation:
 
 Metrics/MethodLength:
   Max: 65
+
+Metrics/ClassLength:
+  Max: 110
+
+# Keyword arguments are self-documenting and don't suffer the positional
+# argument confusion this cop targets.
+Metrics/ParameterLists:
+  CountKeywordArgs: false
 
 Metrics/BlockLength:
   Exclude:

@@ -19,9 +19,9 @@ module Rubyrt
     def to_md
       lines = ['## RubyRT Code Review', Rubyrt::GitHub::Context::SUMMARY_MARKER]
       lines << md_summary_line
-      lines << "\n#{@report.summary}" if @report.summary
+      lines << @report.summary if @report.summary
       lines += @report.issues.map { |issue| md_issue(issue) }
-      lines.join("\n")
+      lines.join("\n\n")
     end
 
     private
@@ -54,9 +54,9 @@ module Rubyrt
     def md_issue(issue)
       location = first_location(issue)
       link = location ? "[#{issue.file}:#{location}](#{issue.file})" : issue.file
-      lines = ["## ##{issue.id} #{issue.title}", "#{link}\n", issue.details]
+      lines = ["## ##{issue.id} #{issue.title}", link, issue.details]
       lines << "**Tags:** #{issue.tags.join(', ')}" unless issue.tags.empty?
-      lines.compact.join("\n")
+      lines.compact.join("\n\n")
     end
 
     def first_location(issue)

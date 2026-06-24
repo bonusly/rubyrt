@@ -22,9 +22,11 @@ module Rubyrt
       end
 
       def resolve_thread(thread_id)
-        @client.post('/graphql',
-                     query: resolve_thread_mutation,
-                     variables: { threadId: thread_id })
+        response = @client.post('/graphql',
+                                query: resolve_thread_mutation,
+                                variables: { threadId: thread_id })
+        raise_on_errors(stringify(to_hash(response)))
+        response
       end
 
       private

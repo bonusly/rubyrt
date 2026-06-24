@@ -42,6 +42,18 @@ runs:
         else
           gem install rubyrt -v "${{ inputs.rubyrt_version }}"
         fi
+    - name: Determine base ref
+      id: base
+      shell: bash
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        if [ -n "$BASE_SHA" ]; then
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" || true
+          echo "ref=$BASE_SHA" >> "$GITHUB_OUTPUT"
+        else
+          echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
+        fi
     - name: Run RubyRT review
       shell: bash
       env:
@@ -49,12 +61,18 @@ runs:
         LLM_API_BASE: ${{ inputs.api_base }}
         LLM_MODEL: ${{ inputs.model }}
         LLM_PROVIDER: ${{ inputs.provider }}
-      run: rubyrt review --output "${{ inputs.output_dir }}" --what HEAD --against ${{ github.event.pull_request.base.sha }}
+      run: rubyrt review --output "${{ inputs.output_dir }}" --what HEAD --against "${{ steps.base.outputs.ref }}"
     - name: Post review to GitHub
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
-      run: rubyrt github-comment --md-report-file "${{ inputs.output_dir }}/code-review-report.md"
+      run: |
+        REPORT="${{ inputs.output_dir }}/code-review-report.md"
+        if [ -f "$REPORT" ]; then
+          rubyrt github-comment --md-report-file "$REPORT"
+        else
+          echo "No report at $REPORT; skipping comment."
+        fi
       if: always()
     - name: Upload reports
       uses: actions/upload-artifact@v4

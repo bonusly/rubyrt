@@ -166,7 +166,7 @@ The review prompt instructs the model to respond only with JSON matching the `Ra
 
 ### RuboCop
 
-The first static-analysis adapter. Rubyrt runs RuboCop programmatically on the changed files and translates offenses into `Issue` objects. Severity mapping:
+The first static-analysis adapter. RubyRT runs RuboCop programmatically on the changed files and translates offenses into `Issue` objects. Severity mapping:
 
 | RuboCop severity | RubyRT severity |
 |---|---|
@@ -177,7 +177,7 @@ The first static-analysis adapter. Rubyrt runs RuboCop programmatically on the c
 
 ### MCP servers
 
-Rubyrt consumes MCP servers using the `mcp` gem. Each configured server is connected, its tools listed, and those tools are registered with the LLM through `ruby_llm` tool calling. This lets teams plug in custom code-search, test, or documentation tools.
+RubyRT consumes MCP servers using the `mcp` gem. Each configured server is connected, its tools listed, and those tools are registered with the LLM through `ruby_llm` tool calling. This lets teams plug in custom code-search, test, or documentation tools.
 
 ## GitHub integration
 
@@ -186,7 +186,7 @@ Rubyrt consumes MCP servers using the `mcp` gem. Each configured server is conne
 - A summary comment is posted to the PR conversation.
 - Previous bot comments are collapsed automatically using the GitHub issue comment update API.
 
-## testing strategy
+## Testing strategy
 
 - Unit tests for config merging, prompt assembly, and issue schema parsing.
 - Fixture-based tests for RuboCop adapter output normalization.

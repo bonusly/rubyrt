@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require 'logger'
 require 'ruby_llm'
+require_relative 'errors'
 
 module Rubyrt
   # Thin wrapper around ruby_llm for code review prompts.

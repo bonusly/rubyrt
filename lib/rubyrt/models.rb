@@ -51,12 +51,14 @@ module Rubyrt
     attr_reader :file, :title, :details, :severity, :confidence, :tags, :affected_lines
 
     def self.from_hash(hash)
+      hash = hash.transform_keys(&:to_s)
       ranges = parse_affected_lines(hash['affected_lines'])
       build_from_hash(hash, ranges)
     end
 
     def self.parse_affected_lines(lines)
       Array(lines).map do |line|
+        line = line.transform_keys(&:to_s) if line.respond_to?(:transform_keys)
         AffectedRange.new(
           start_line: line['start_line'],
           end_line: line['end_line'] || line['start_line'],
@@ -97,7 +99,7 @@ module Rubyrt
         'severity' => @severity,
         'confidence' => @confidence,
         'tags' => @tags,
-        'affected_lines' => @affected_lines.map(&:to_h)
+        'affected_lines' => @affected_lines.map { |range| range.to_h.transform_keys(&:to_s) }
       }
     end
   end
@@ -112,8 +114,13 @@ module Rubyrt
       from_hash(data)
     end
 
+    def self.target_from_hash(data)
+      target_data = (data['target'] || {}).transform_keys(&:to_s)
+      ReviewTarget.new(**ReviewTarget.members.to_h { |m| [m, target_data[m.to_s]] })
+    end
+
     def self.from_hash(data)
-      target = ReviewTarget.new(**ReviewTarget.members.to_h { |m| [m, data.dig('target', m.to_s)] })
+      target = target_from_hash(data)
       issues = Array(data['issues']).map { |issue| Issue.from_hash(issue) }
       new(
         target: target,
@@ -142,7 +149,7 @@ module Rubyrt
 
     def to_h
       {
-        'target' => @target.to_h,
+        'target' => @target.to_h.transform_keys(&:to_s),
         'model' => @model,
         'summary' => @summary,
         'issues' => @issues.map(&:to_h),

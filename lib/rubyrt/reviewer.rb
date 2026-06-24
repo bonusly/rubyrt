@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'json'
 require 'async'
 require 'async/semaphore'
 require 'async/barrier'
@@ -21,7 +22,7 @@ module Rubyrt
 
     def review
       issues = gather_llm_issues + gather_adapter_issues
-      filtered = PostProcessor.new(@config.dig('post_process', 'filter')).call(issues)
+      filtered = PostProcessor.new(@config['post_process']).call(issues)
       CodeEnricher.new(@changeset).call(filtered)
       sorted = filtered.sort_by { |issue| issue.severity || Float::INFINITY }
       assign_issue_ids(sorted)
@@ -61,8 +62,9 @@ module Rubyrt
             errors << [file, e]
           end
         end
+        barrier.wait # drain on normal path; wait can raise and mask errors in ensure
       ensure
-        barrier.wait
+        barrier.stop
       end
 
       if errors.any?

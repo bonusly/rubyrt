@@ -19,8 +19,8 @@ module Rubyrt
     def review(diff:, file_lines: nil)
       render_template(REVIEW_TEMPLATE, 'input' => diff, 'file_lines' => file_lines,
                                        'aux_files' => aux_file_contents,
-                                       'severity_scale' => format_scale(@config['severity_scale']),
-                                       'confidence_scale' => format_scale(@config['confidence_scale']))
+                                       'severity_scale' => format_scale(@config.severity_scale),
+                                       'confidence_scale' => format_scale(@config.confidence_scale))
     end
 
     def summary(diff:, issues:)
@@ -66,7 +66,7 @@ module Rubyrt
     end
 
     def relative_path(path)
-      path.sub(%r{#{@config.root}/}, '')
+      path.delete_prefix("#{@config.root}/")
     end
 
     def format_scale(scale)
