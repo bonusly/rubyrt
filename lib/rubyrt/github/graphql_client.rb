@@ -36,6 +36,9 @@ module Rubyrt
                   nodes {
                     id
                     isResolved
+                    isOutdated
+                    line
+                    path
                     comments(first: 1) {
                       nodes {
                         author { login }

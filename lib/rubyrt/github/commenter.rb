@@ -7,7 +7,7 @@ module Rubyrt
     # Posts RubyRT review results to a GitHub pull request. Resolves stale
     # RubyRT review threads and collapses previous summary comments before
     # posting new feedback.
-    class Commenter
+    class Commenter # rubocop:disable Metrics/ClassLength
       REVIEW_COMMENT_MARKER = '<!-- rubyrt-review-comment -->'
 
       def initialize(token:, owner:, repo:, pr_number:)
@@ -20,7 +20,7 @@ module Rubyrt
       def post_review(summary:, report:)
         pr = @client.pull_request("#{@owner}/#{@repo}", @pr_number)
         commit_id = pr.head.sha
-        resolve_previous_threads
+        resolve_previous_threads(report.issues)
         collapse_previous_summaries
         post_summary_comment(summary) if report.issues.empty?
         post_file_comments(report.issues, commit_id)
@@ -70,13 +70,23 @@ module Rubyrt
         ].compact.join("\n\n")
       end
 
-      def resolve_previous_threads
+      def resolve_previous_threads(current_issues)
         bot_login = bot_login_from_token
         return unless bot_login
 
+        current_lines = current_issue_lines(current_issues)
         threads = fetch_review_threads
         threads.each do |thread|
-          resolve_thread(thread, bot_login)
+          resolve_thread(thread, bot_login, current_lines)
+        end
+      end
+
+      def current_issue_lines(issues)
+        issues.each_with_object({}) do |issue, hash|
+          hash[issue.file] ||= []
+          issue.affected_lines.each do |range|
+            hash[issue.file] << range.start_line if range.start_line
+          end
         end
       end
 
@@ -96,15 +106,29 @@ module Rubyrt
         )
       end
 
-      def resolve_thread(thread, bot_login)
+      def resolve_thread(thread, bot_login, current_lines)
         return if thread['isResolved']
-
-        first_comment = thread.dig('comments', 'nodes', 0)
-        return unless first_comment
-        return unless first_comment.dig('author', 'login') == bot_login
-        return unless first_comment['body'].include?(REVIEW_COMMENT_MARKER)
+        return unless rubyrt_thread?(thread, bot_login)
+        return if line_still_reported?(thread, current_lines)
 
         GraphqlClient.new(@client).resolve_thread(thread['id'])
+      end
+
+      def rubyrt_thread?(thread, bot_login)
+        first_comment = thread.dig('comments', 'nodes', 0)
+        first_comment &&
+          first_comment.dig('author', 'login') == bot_login &&
+          first_comment['body'].include?(REVIEW_COMMENT_MARKER)
+      end
+
+      def line_still_reported?(thread, current_lines)
+        return false if thread['isOutdated']
+
+        path = thread['path']
+        line = thread['line']
+        return false if path.nil? || line.nil?
+
+        (current_lines[path] || []).include?(line)
       end
 
       def collapse_previous_summaries
