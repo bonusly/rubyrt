@@ -9,12 +9,14 @@ module Rubyrt
   class Changeset
     attr_reader :base_ref, :head_ref
 
-    def initialize(repo_path: Dir.pwd, base_ref: nil, head_ref: 'HEAD', all: false, filters: nil, merge_base: true)
+    def initialize(repo_path: Dir.pwd, base_ref: nil, head_ref: 'HEAD', all: false, filters: nil, exclude_files: nil,
+                   merge_base: true)
       @repo = Rugged::Repository.discover(repo_path)
       @head_ref = head_ref || 'HEAD'
       @base_ref = base_ref || default_base_ref
       @all = all
       @filters = Array(filters)
+      @exclude_files = Array(exclude_files)
       @merge_base = merge_base
     end
 
@@ -25,22 +27,31 @@ module Rubyrt
     def diff_text_for(file)
       return full_content_for(file) if @all
 
-      patch_for(file)&.to_s&.force_encoding('UTF-8')
+      patch = patch_for(file)
+      return nil if patch.nil? || patch.delta.binary
+
+      patch.to_s.force_encoding('UTF-8')
     end
 
     def full_content_for(file)
-      entry = head_commit.tree.path(file)
-      return nil unless entry[:type] == :blob
-
-      blob = @repo.lookup(entry[:oid])
-      return nil if blob.nil?
+      blob = blob_at(file)
+      return nil if blob.nil? || blob.binary?
 
       blob.content.dup.force_encoding('UTF-8')
-    rescue Rugged::TreeError
-      nil
     end
 
     private
+
+    # Look up the blob for a path in the head commit's tree. Returns nil when
+    # the path is absent or not a blob (e.g. a submodule or tree entry).
+    def blob_at(file)
+      entry = head_commit.tree.path(file)
+      return nil unless entry[:type] == :blob
+
+      @repo.lookup(entry[:oid])
+    rescue Rugged::TreeError
+      nil
+    end
 
     def head_commit
       @head_commit ||= peel_to_commit(@repo.rev_parse(@head_ref))
@@ -97,8 +108,23 @@ module Rubyrt
     end
 
     def build_files
-      files = @all ? all_tracked_files : patches.map { |patch| patch.delta.new_file[:path] }.compact.uniq
-      apply_filters(files)
+      files = @all ? all_tracked_files : changed_file_paths
+      apply_filters(apply_excludes(files))
+    end
+
+    # Paths changed between base and head, with binary file deltas removed.
+    # Rugged marks a delta as binary when the underlying blob contains NUL
+    # bytes, so text files in non-UTF-8 encodings are still reviewed.
+    def changed_file_paths
+      patches.reject { |patch| patch.delta.binary }
+             .map { |patch| patch.delta.new_file[:path] }
+             .compact.uniq
+    end
+
+    def apply_excludes(files)
+      return files if @exclude_files.empty?
+
+      files.reject { |file| @exclude_files.any? { |pattern| File.fnmatch?(pattern, file, File::FNM_PATHNAME | File::FNM_EXTGLOB) } }
     end
 
     def apply_filters(files)
@@ -111,11 +137,17 @@ module Rubyrt
       files = []
       head_commit.tree.walk(:preorder) do |root, entry|
         next unless entry[:type] == :blob
+        next if binary_blob?(entry[:oid])
 
         path = root.empty? ? entry[:name] : "#{root}#{entry[:name]}"
         files << path
       end
       files.uniq
+    end
+
+    def binary_blob?(oid)
+      blob = @repo.lookup(oid)
+      blob.respond_to?(:binary?) ? blob.binary? : false
     end
   end
 end

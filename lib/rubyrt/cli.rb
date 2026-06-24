@@ -123,10 +123,18 @@ module Rubyrt
           base_ref: options[:against],
           all: options[:all] || false,
           filters: options[:filters]&.split(','),
+          exclude_files: config_exclude_files,
           # Thor's options hash isn't indifferent for #fetch, so read via [] (it
           # always has a value because the option declares default: true).
           merge_base: options[:merge_base]
         )
+      end
+
+      # Reads exclude_files from configuration so the same patterns apply to
+      # both `review` and `files` without each command needing to pass them.
+      def config_exclude_files
+        config = Rubyrt::Configuration.new
+        config['exclude_files']
       end
 
       def build_reviewer(config, changeset)
