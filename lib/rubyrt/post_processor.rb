@@ -9,7 +9,10 @@ module Rubyrt
   # expression, which avoided arbitrary code execution at the config boundary.
   class PostProcessor
     def initialize(settings)
-      @settings = (settings || {}).transform_keys(&:to_s)
+      settings = (settings || {}).transform_keys(&:to_s)
+      # Parse thresholds once; an absent/invalid value means "no limit".
+      @max_confidence = Integer(settings['max_confidence'], exception: false)
+      @max_severity = Integer(settings['max_severity'], exception: false)
     end
 
     def call(issues)
@@ -19,16 +22,14 @@ module Rubyrt
     private
 
     def keep?(issue)
-      within?(issue.confidence, @settings['max_confidence']) &&
-        within?(issue.severity, @settings['max_severity'])
+      within?(issue.confidence, @max_confidence) && within?(issue.severity, @max_severity)
     end
 
     def within?(value, max)
-      max_int = Integer(max, exception: false) if max
-      return true if max_int.nil? # no/invalid threshold means no filtering
+      return true if max.nil?
 
       value_int = Integer(value, exception: false)
-      value_int.nil? || value_int <= max_int
+      value_int.nil? || value_int <= max
     end
   end
 end

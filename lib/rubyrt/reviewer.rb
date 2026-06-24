@@ -42,8 +42,8 @@ module Rubyrt
     def gather_llm_issues
       files = @changeset.files
       concurrency = [@config['max_concurrent_tasks'] || 10, 1].max
-      return files.flat_map { |f| review_file(f) } if concurrency == 1
-
+      # Always go through the parallel path (a concurrency of 1 runs serially)
+      # so error aggregation is identical regardless of concurrency.
       review_in_parallel(files, concurrency)
     end
 
