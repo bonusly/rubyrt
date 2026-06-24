@@ -26,4 +26,3 @@ jobs:
           model: ${{ vars.LLM_MODEL }}
           provider: ${{ vars.LLM_PROVIDER }}
           rubyrt_version: local
-          max_concurrent_tasks: 10
