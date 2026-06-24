@@ -100,8 +100,12 @@ module Rubyrt
         nil
       end
 
+      def graphql_client
+        @graphql_client ||= GraphqlClient.new(@client)
+      end
+
       def fetch_review_threads
-        GraphqlClient.new(@client).review_threads(
+        graphql_client.review_threads(
           owner: @owner,
           repo: @repo,
           pr_number: @pr_number
@@ -113,7 +117,7 @@ module Rubyrt
         return unless rubyrt_thread?(thread, bot_login)
         return if line_still_reported?(thread, current_lines)
 
-        GraphqlClient.new(@client).resolve_thread(thread['id'])
+        graphql_client.resolve_thread(thread['id'])
       end
 
       def rubyrt_thread?(thread, bot_login)
