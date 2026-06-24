@@ -216,11 +216,10 @@ module Rubyrt
         comments.each do |comment|
           next unless comment.body.include?(Context::SUMMARY_MARKER)
 
-          @client.update_comment(
-            "#{@owner}/#{@repo}",
-            comment.id,
-            outdated_body(comment.body)
-          )
+          @client.update_comment("#{@owner}/#{@repo}", comment.id, outdated_body(comment.body))
+        rescue Octokit::Forbidden => e
+          # Only the comment's author (our bot) can edit it; skip others.
+          warn "Could not collapse previous summary ##{comment.id} — #{e.message}"
         end
       end
 
