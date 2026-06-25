@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'octokit'
+require_relative 'commenter' # SEVERITY_BY_LABEL is built from Commenter::SEVERITY_LABELS at load time
+require_relative 'graphql_client'
 
 module Rubyrt
   module GitHub
