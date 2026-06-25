@@ -42,12 +42,11 @@ inputs:
     default: "rubyrt"
   github_token:
     description: >-
-      Token used to post review comments. Defaults to the workflow GITHUB_TOKEN
-      (comments appear as "github-actions"). Pass a GitHub App installation
-      token (e.g. from actions/create-github-app-token) to post under the app's
-      name and avatar instead. Needs pull-requests write.
+      Token used to post review comments. Falls back to the workflow
+      GITHUB_TOKEN when unset (comments appear as "github-actions"). Pass a
+      GitHub App installation token (e.g. from actions/create-github-app-token)
+      to post under the app's name and avatar instead. Needs pull-requests write.
     required: false
-    default: ${{ github.token }}
   resolve_token:
     description: >-
       Personal access token used to resolve stale review threads (GraphQL
@@ -105,7 +104,7 @@ runs:
     - name: Post review to GitHub
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GITHUB_TOKEN: ${{ inputs.github_token || github.token }}
         RUBYRT_RESOLVE_TOKEN: ${{ inputs.resolve_token }}
         OUTPUT_DIR: ${{ inputs.output_dir }}
         RUBYRT_CMD: ${{ inputs.rubyrt_command }}
