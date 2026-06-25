@@ -61,6 +61,7 @@ runs:
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ inputs.ruby_version }}
+        bundler-cache: true
     - name: Install RubyRT
       shell: bash
       env:
@@ -82,7 +83,16 @@ runs:
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
       run: |
         if [ -n "$BASE_SHA" ]; then
-          git fetch --no-tags --depth=1 origin "$BASE_SHA" || true
+          # Unshallow so merge-base(base, head) is computable. With a depth=1
+          # fetch there's no common ancestor, so RubyRT falls back to diffing
+          # the raw base SHA and reviews files that only diverged on the base
+          # branch (not in this PR).
+          # ponytail: unshallow is O(repo history); swap for a bounded
+          # --deepen loop if fetch time becomes a problem on huge repos.
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --no-tags --unshallow origin || true
+          fi
+          git fetch --no-tags origin "$BASE_SHA" || true
           echo "ref=$BASE_SHA" >> "$GITHUB_OUTPUT"
         else
           # Non-PR run: ensure HEAD~1 exists even on a shallow checkout.

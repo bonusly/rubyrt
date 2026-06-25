@@ -81,12 +81,28 @@ module Rubyrt
     def review_file(file)
       diff = @changeset.diff_text_for(file)
       full = @changeset.full_content_for(file)
-      prompt = @prompt_builder.review(diff: diff, file_lines: full)
+      prompt = @prompt_builder.review(diff: diff, file_lines: full, symbol_lookup: @tools.any?)
       response = @llm_client.complete_with_schema(prompt, Schemas::ISSUE_SCHEMA, tools: @tools)
-      parse_response(response, file)
+      only_changed_lines(parse_response(response, file), file)
     rescue JSON::ParserError => e
       @warnings << "Could not parse LLM response for #{file}: #{e.message}"
       []
+    end
+
+    # The full file is sent to the LLM as context, so it can flag issues on
+    # unchanged lines. Drop those: keep only findings touching a changed line,
+    # so they don't become off-diff noise in the report and PR comment.
+    def only_changed_lines(issues, file)
+      changed = @changeset.changed_lines_for(file)
+      return issues if changed.nil? # nil = whole-file review (--all), don't filter
+
+      issues.select do |issue|
+        issue.affected_lines.any? do |range|
+          next false unless range.start_line
+
+          (range.start_line..(range.end_line || range.start_line)).any? { |line| changed.include?(line) }
+        end
+      end
     end
 
     def parse_response(response, file)

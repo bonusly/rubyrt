@@ -16,8 +16,9 @@ module Rubyrt
       @config = config
     end
 
-    def review(diff:, file_lines: nil)
+    def review(diff:, file_lines: nil, symbol_lookup: false)
       render_template(REVIEW_TEMPLATE, 'input' => diff, 'file_lines' => file_lines,
+                                       'symbol_lookup' => symbol_lookup,
                                        'aux_files' => aux_file_contents,
                                        'severity_scale' => format_scale(@config.severity_scale),
                                        'confidence_scale' => format_scale(@config.confidence_scale))

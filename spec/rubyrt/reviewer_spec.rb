@@ -21,6 +21,7 @@ RSpec.describe Rubyrt::Reviewer do
                     files: ['app.rb'],
                     diff_text_for: "+ def hello\n",
                     full_content_for: "def hello\nend\n",
+                    changed_lines_for: Set.new([1]),
                     base_ref: 'main',
                     head_ref: 'HEAD')
   end
@@ -42,6 +43,22 @@ RSpec.describe Rubyrt::Reviewer do
     expect(report.issues.first.title).to eq('Missing return')
     expect(report.issues.first.id).to eq(1)
     expect(report.number_of_processed_files).to eq(1)
+  end
+
+  context 'when an issue falls on an unchanged line' do
+    let(:fake_changeset) do
+      instance_double(Rubyrt::Changeset,
+                      files: ['app.rb'],
+                      diff_text_for: "+ def hello\n",
+                      full_content_for: "def hello\nend\n",
+                      changed_lines_for: Set.new([5]), # issue is on line 1, not changed
+                      base_ref: 'main',
+                      head_ref: 'HEAD')
+    end
+
+    it 'drops findings outside the changed lines' do
+      expect(reviewer.review.total_issues).to eq(0)
+    end
   end
 
   context 'when the LLM client raises a connection error' do

@@ -19,14 +19,22 @@ issues which are relevant to any code context.
 {{/ aux_files }}
 
 ----TASK GUIDELINES----
+- Only report issues on lines added or modified in the diff above. The full
+  file is provided solely as context; do not raise issues about unchanged lines.
 - Only report issues you are 100% confident are relevant to any context.
 - Never report issues related to software versions, model names, or similar
   details that you believe have not yet been released.
-- Only include issues that are significantly valuable to the maintainers (e.g.,
+- Only include issues that are significantly valuable to the maintainers (e.g., clearly expressed in the requirements below,
   bugs, security flaws, or clear maintainability concerns).
 - Do not report vague, theoretical, or overly generic advice.
-- Do not report anything with medium or lower confidence.
-- Typographical errors have highest severity.
+{{# symbol_lookup }}
+- Before reporting that a method, class, or constant is undefined, misspelled,
+  or that a third-party library API is used incorrectly, confirm it with the
+  symbol lookup tool. Do not assert an API is wrong from memory alone.
+- Treat a "No definition found" result as inconclusive, not proof of absence:
+  C-extension and other native gem methods often have no indexable definition.
+  When you cannot verify a third-party API, do not report it.
+{{/ symbol_lookup }}
 {{{ requirements }}}
 {{{ json_requirements }}}
 
