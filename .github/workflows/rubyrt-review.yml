@@ -19,11 +19,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app_token
         with:
-          org: bonusly
-          repo: rubyrt
           app-id: ${{ vars.RUBYRT_APP_ID }}
           private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
       - name: Run RubyRT review
