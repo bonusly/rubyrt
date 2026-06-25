@@ -7,4 +7,4 @@ extensions = [".rb", ".rake"]
 # model. Same provider/key (OpenRouter), so the slug is provider-prefixed.
 [verify]
 enabled = true
-model = "anthropic/claude-opus-4.8"
+model = "anthropic/claude-sonnet-4.6"
