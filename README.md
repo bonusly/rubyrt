@@ -212,6 +212,7 @@ dry_run = false            # evaluate and log the decision without approving/dis
 A PR is approved only when **all** of these hold:
 
 - It isn't a draft and doesn't carry the `skip_label`.
+- It doesn't modify `.rubyrt/config.toml` — a PR can't weaken the approval rules and wave itself through.
 - Total changes are within `max_changes` (this check is skipped when the size is unknown).
 - This run produced no findings at or above `max_severity`.
 - No RubyRT findings at or above `max_severity` are still unresolved.

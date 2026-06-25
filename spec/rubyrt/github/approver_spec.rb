@@ -24,6 +24,7 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     allow(client).to receive_messages(
       pull_request: pr,
       pull_request_commits: [],
+      pull_request_files: [],
       pull_request_reviews: [],
       user: double('me', login: 'rubyrt-bot'), # rubocop:disable RSpec/VerifiedDoubles
       post: threads_response([])
@@ -90,6 +91,14 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     approver.run(report_for([]))
 
     expect(client).to have_received(:create_pull_request_review)
+  end
+
+  it 'blocks when the PR changes the RubyRT config' do
+    allow(client).to receive(:pull_request_files)
+      .and_return([double('file', filename: '.rubyrt/config.toml')]) # rubocop:disable RSpec/VerifiedDoubles
+    approver.run(report_for([]))
+
+    expect(client).not_to have_received(:create_pull_request_review)
   end
 
   it 'blocks when the current run has a qualifying finding' do

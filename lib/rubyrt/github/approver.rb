@@ -13,6 +13,9 @@ module Rubyrt
     # falls back to the resolve-token user (PAT) when that attempt errors.
     class Approver # rubocop:disable Metrics/ClassLength
       APPROVAL_MARKER = '<!-- rubyrt-approval -->'
+      # Never auto-approve a PR that edits RubyRT's own config — that's how
+      # someone would weaken the approval rules to wave their change through.
+      CONFIG_PATH = '.rubyrt/config.toml'
       DEFAULT_MAX_CHANGES = 500
       DEFAULT_MAX_SEVERITY = 3
       DEFAULT_SKIP_LABEL = 'rubyrt-skip-approve'
@@ -82,6 +85,7 @@ module Rubyrt
       def block_reasons(pr, report)
         threads = rubyrt_threads
         reasons = []
+        reasons << "#{CONFIG_PATH} was changed in this PR" if config_changed?
         reasons << "PR has #{change_count(pr)} changes (max #{max_changes})" if too_many_changes?(pr)
         reasons << 'new findings at or above the approval severity threshold' if current_issues?(report)
         reasons << 'unresolved RubyRT findings remain' if unresolved?(threads)
@@ -121,6 +125,10 @@ module Rubyrt
         @client.user.login
       rescue Octokit::Error
         nil
+      end
+
+      def config_changed?
+        @client.pull_request_files(slug, @pr_number).any? { |file| file.filename == CONFIG_PATH }
       end
 
       def too_many_changes?(pr)
