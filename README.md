@@ -108,8 +108,8 @@ When RubyRT re-reviews a PR, it can mark its earlier threads as resolved once th
 To enable auto-resolving, create a PAT and pass it via the `resolve_token` action input (or the `RUBYRT_RESOLVE_TOKEN` env var / `--resolve-token` flag for the `github-comment` CLI). If you don't set one, RubyRT skips resolving and still posts the new review.
 
 1. Create a token as a user with write access to the repo:
-   - **Fine-grained PAT** (recommended): **Settings → Developer settings → Personal access tokens → Fine-grained tokens**, scope it to the repo, and grant **Repository permissions → Pull requests: Read and write**; or
-   - **Classic PAT** with the `repo` scope.
+   - **Classic PAT** with the `repo` scope (**recommended** — reliably works for `resolveReviewThread`). **Settings → Developer settings → Personal access tokens → Tokens (classic)**. If your org enforces SSO, click **Configure SSO** on the token and authorize it for the org.
+   - **Fine-grained PATs are not recommended here.** Even with **Pull requests: Read and write** they often fail `resolveReviewThread` with `Resource not accessible by personal access token` — and for an **org** repo the write permission stays **read-only until an org owner approves it**, so the fetch succeeds but resolving fails. If you must use one, get it org-approved and expect to troubleshoot.
 2. Store it as a repository (or org) secret, e.g. `secrets.RUBYRT_RESOLVE_TOKEN`.
 3. Pass it to the action:
 
