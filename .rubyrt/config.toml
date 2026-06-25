@@ -14,5 +14,5 @@ model = "anthropic/claude-sonnet-4.6"
 [approve]
 enabled = true
 dry_run = false
-max_changes = 250
+max_changes = 500
 max_severity = 3
