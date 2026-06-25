@@ -86,6 +86,7 @@ module Rubyrt
         threads = rubyrt_threads
         reasons = []
         reasons << "#{CONFIG_PATH} was changed in this PR" if config_changed?
+        reasons << 'a protected path was changed in this PR' if protected_path_changed?
         reasons << "PR has #{change_count(pr)} changes (max #{max_changes})" if too_many_changes?(pr)
         reasons << 'new findings at or above the approval severity threshold' if current_issues?(report)
         reasons << 'unresolved RubyRT findings remain' if unresolved?(threads)
@@ -128,7 +129,22 @@ module Rubyrt
       end
 
       def config_changed?
-        @client.pull_request_files(slug, @pr_number).any? { |file| file.filename == CONFIG_PATH }
+        changed_files.include?(CONFIG_PATH)
+      end
+
+      # Block when any changed file matches a configured protected glob (e.g.
+      # billing code, sensitive config) — same matching as exclude_files.
+      def protected_path_changed?
+        patterns = Array(@config['protected_paths'])
+        return false if patterns.empty?
+
+        changed_files.any? do |file|
+          patterns.any? { |pattern| File.fnmatch?(pattern, file, File::FNM_PATHNAME | File::FNM_EXTGLOB) }
+        end
+      end
+
+      def changed_files
+        @changed_files ||= @client.pull_request_files(slug, @pr_number).map(&:filename)
       end
 
       def too_many_changes?(pr)

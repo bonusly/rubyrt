@@ -149,5 +149,9 @@ max_severity = 3
 # neither the PR author nor a contributor resolved it; otherwise approval is
 # blocked. Add this label to a PR to skip auto-approval entirely.
 skip_label = "rubyrt-skip-approve"
+# Glob patterns (matched like exclude_files) that block auto-approval when any
+# changed file matches — e.g. billing code or sensitive config that always
+# wants human eyes. Changes to .rubyrt/config.toml are always blocked.
+protected_paths = []
 # Evaluate the rules and log the decision without approving or dismissing.
 dry_run = false

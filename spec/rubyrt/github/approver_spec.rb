@@ -101,6 +101,24 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     expect(client).not_to have_received(:create_pull_request_review)
   end
 
+  it 'blocks when a changed file matches a protected glob' do
+    config['protected_paths'] = ['app/billing/**']
+    allow(client).to receive(:pull_request_files)
+      .and_return([double('file', filename: 'app/billing/charge.rb')]) # rubocop:disable RSpec/VerifiedDoubles
+    approver.run(report_for([]))
+
+    expect(client).not_to have_received(:create_pull_request_review)
+  end
+
+  it 'approves when changed files do not match any protected glob' do
+    config['protected_paths'] = ['app/billing/**']
+    allow(client).to receive(:pull_request_files)
+      .and_return([double('file', filename: 'app/models/user.rb')]) # rubocop:disable RSpec/VerifiedDoubles
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+  end
+
   it 'blocks when the current run has a qualifying finding' do
     approver.run(report_for([build_issue(2)]))
 

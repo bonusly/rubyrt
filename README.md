@@ -206,6 +206,7 @@ enabled = true
 max_changes = 500          # additions + deletions ceiling; skipped if GitHub doesn't report the size
 max_severity = 3           # issues at/below this severity number (1=Critical) block approval
 skip_label = "rubyrt-skip-approve"
+protected_paths = ["app/billing/**", "config/secrets.yml"]  # globs that block approval when changed
 dry_run = false            # evaluate and log the decision without approving/dismissing
 ```
 
@@ -213,6 +214,7 @@ A PR is approved only when **all** of these hold:
 
 - It isn't a draft and doesn't carry the `skip_label`.
 - It doesn't modify `.rubyrt/config.toml` — a PR can't weaken the approval rules and wave itself through.
+- No changed file matches a `protected_paths` glob — e.g. billing code or sensitive config you always want a human to review.
 - Total changes are within `max_changes` (this check is skipped when the size is unknown).
 - This run produced no findings at or above `max_severity`.
 - No RubyRT findings at or above `max_severity` are still unresolved.
@@ -257,6 +259,7 @@ Key settings:
 | Auto-approve change limit | `500` | `approve.max_changes` | — | — |
 | Auto-approve severity gate | `3` | `approve.max_severity` | — | — |
 | Auto-approve skip label | `rubyrt-skip-approve` | `approve.skip_label` | — | — |
+| Auto-approve protected paths | `[]` | `approve.protected_paths` | — | — |
 | Auto-approve dry run | `false` | `approve.dry_run` | — | — |
 | Skill directories | `.agents`, `.claude`, `.cursor` | `skill_directories` | — | — |
 | Auxiliary files | `[]` | `aux_files` | — | — |
