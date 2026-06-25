@@ -108,5 +108,34 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
       expect(client).to have_received(:post)
         .with('/graphql', a_string_including('resolveReviewThread'))
     end
+
+    context 'with a dedicated resolve token' do
+      subject(:commenter) do
+        described_class.new(token: 'token', owner: 'o', repo: 'r', pr_number: 1, resolve_token: 'pat')
+      end
+
+      let(:resolve_client) { instance_double(Octokit::Client) }
+
+      before do
+        # The resolve token must build its own client; route that one to a
+        # distinct double and feed the stale thread through it.
+        allow(Octokit::Client).to receive(:new).with(hash_including(access_token: 'pat')).and_return(resolve_client)
+        allow(resolve_client).to receive(:post) do |_path, body|
+          if JSON.parse(body)['query'].include?('reviewThreads')
+            { 'data' => { 'repository' => { 'pullRequest' => { 'reviewThreads' => { 'nodes' => [stale_thread] } } } } }
+          else
+            {}
+          end
+        end
+      end
+
+      it 'uses the resolve-token client for GraphQL, not the main client', :aggregate_failures do
+        commenter.post_review(summary: 'S', report: report_for([build_issue('app.rb', 11)]))
+
+        expect(Octokit::Client).to have_received(:new).with(hash_including(access_token: 'pat'))
+        expect(resolve_client).to have_received(:post).with('/graphql', a_string_including('resolveReviewThread'))
+        expect(client).not_to have_received(:post)
+      end
+    end
   end
 end

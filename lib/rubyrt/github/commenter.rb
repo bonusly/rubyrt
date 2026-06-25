@@ -20,10 +20,12 @@ module Rubyrt
         # first page when validating diff lines or collapsing old summaries.
         @client = Octokit::Client.new(access_token: token, auto_paginate: true)
         # Resolving review threads (GraphQL resolveReviewThread) needs a
-        # user-to-server token; the default Actions GITHUB_TOKEN can't and
-        # returns "Resource not accessible by integration". Use a dedicated
-        # resolve token when supplied, otherwise reuse the main token.
-        @resolve_token = resolve_token
+        # user-to-server token (a PAT). The Actions GITHUB_TOKEN and GitHub App
+        # *installation* tokens can't and return "Resource not accessible by
+        # integration". Use the resolve token when supplied, else the main token.
+        # Treat blank as unset so an empty env var doesn't build an
+        # unauthenticated client.
+        @resolve_token = resolve_token.to_s.strip.empty? ? nil : resolve_token
         @owner = owner
         @repo = repo
         @pr_number = pr_number
@@ -163,9 +165,13 @@ module Rubyrt
       # login).
       def resolve_previous_threads(current_issues)
         current_lines = current_issue_lines(current_issues)
-        # Count per-thread failures rather than aborting the batch on the first
-        # one, so a single unresolvable thread doesn't strand the rest.
-        unresolved = fetch_review_threads.count { |thread| !resolve_thread(thread, current_lines) }
+        # Resolve each thread independently so one failure doesn't strand the
+        # rest; tally failures with an explicit loop (not #count) to keep the
+        # API side effects out of a query method.
+        unresolved = 0
+        fetch_review_threads.each do |thread|
+          unresolved += 1 unless resolve_thread(thread, current_lines)
+        end
         warn_thread_resolution_failure(unresolved) if unresolved.positive?
       rescue StandardError => e
         warn "Could not fetch previous review threads — #{e.message}"
@@ -176,8 +182,9 @@ module Rubyrt
         warn "Could not resolve #{count} previous review thread(s) — #{message}"
         return unless message.to_s.include?('not accessible by integration')
 
-        warn 'The default GITHUB_TOKEN cannot resolve review threads; provide a ' \
-             'PAT or GitHub App token via --resolve-token or RUBYRT_RESOLVE_TOKEN.'
+        warn 'Resolving threads needs a user token (a PAT). GITHUB_TOKEN and ' \
+             'GitHub App installation tokens cannot. Set --resolve-token / ' \
+             'RUBYRT_RESOLVE_TOKEN to a PAT with pull-requests write.'
       end
 
       def current_issue_lines(issues)

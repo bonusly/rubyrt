@@ -49,21 +49,17 @@ jobs:
 
 ### Resolving stale review threads
 
-When RubyRT re-reviews a PR, it can mark its earlier threads as resolved once the issue is fixed or the line is outdated. This uses the GraphQL `resolveReviewThread` mutation, which the default `GITHUB_TOKEN` **cannot** call — it returns `Resource not accessible by integration` even with `pull-requests: write`, because it is a server-to-server token and that mutation requires a user-to-server token.
+When RubyRT re-reviews a PR, it can mark its earlier threads as resolved once the issue is fixed or the line is outdated. This uses the GraphQL `resolveReviewThread` mutation, which **requires a user-to-server token (a personal access token).**
 
-To enable auto-resolving, pass a token that can — via the `resolve_token` action input (or the `RUBYRT_RESOLVE_TOKEN` env var / `--resolve-token` flag for the `github-comment` CLI). If you don't set one, RubyRT simply skips resolving and still posts the new review.
+> **The default `GITHUB_TOKEN` cannot do this, and neither can a GitHub App.** Both are *server-to-server* tokens, and `resolveReviewThread` returns `Resource not accessible by integration` for them even with `pull-requests: write` — including the installation token from `actions/create-github-app-token`. Only a user PAT works.
 
-A **GitHub App** is the recommended source for this token (scoped, org-manageable, and not tied to a personal account):
+To enable auto-resolving, create a PAT and pass it via the `resolve_token` action input (or the `RUBYRT_RESOLVE_TOKEN` env var / `--resolve-token` flag for the `github-comment` CLI). If you don't set one, RubyRT skips resolving and still posts the new review.
 
-1. Create the app: **Settings → Developer settings → GitHub Apps → New GitHub App** (under your org or account).
-   - **Repository permissions → Pull requests: Read and write.** No other permissions are needed.
-   - Uncheck **Active** under Webhook (RubyRT doesn't receive events).
-2. After creating it, **generate a private key** (bottom of the app's settings page) and note the **App ID** (top of the page).
-3. **Install the app** on the repositories that run RubyRT (**Install App** in the app's sidebar).
-4. Store the credentials on the repo/org:
-   - App ID as a variable, e.g. `vars.RUBYRT_APP_ID`.
-   - Private key (the full `.pem` contents) as a secret, e.g. `secrets.RUBYRT_APP_PRIVATE_KEY`.
-5. Mint a token in the workflow with [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token) and hand it to RubyRT as `resolve_token`:
+1. Create a token as a user with write access to the repo:
+   - **Fine-grained PAT** (recommended): **Settings → Developer settings → Personal access tokens → Fine-grained tokens**, scope it to the repo, and grant **Repository permissions → Pull requests: Read and write**; or
+   - **Classic PAT** with the `repo` scope.
+2. Store it as a repository (or org) secret, e.g. `secrets.RUBYRT_RESOLVE_TOKEN`.
+3. Pass it to the action:
 
 ```yaml
 jobs:
@@ -73,23 +69,18 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-      - uses: actions/create-github-app-token@v2
-        id: app_token
-        with:
-          app-id: ${{ vars.RUBYRT_APP_ID }}
-          private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
+          fetch-depth: 0
       - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
           provider: openrouter
           model: moonshotai/kimi-k2.6
-          resolve_token: ${{ steps.app_token.outputs.token }}
+          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}
 ```
 
-**Simpler alternative — a Personal Access Token.** If you don't want an app, create a fine-grained PAT scoped to the repo with **Pull requests: Read and write** (or a classic PAT with the `repo` scope), store it as `secrets.RUBYRT_RESOLVE_TOKEN`, and pass `resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}`. Threads will then be resolved as that user rather than the app.
+Threads are resolved as whichever user owns the PAT. (A machine/bot user account is a good fit if you don't want resolutions attributed to a person.)
 
 ### Configuration options
 

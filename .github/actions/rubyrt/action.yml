@@ -28,9 +28,10 @@ inputs:
     default: ">= 0"
   resolve_token:
     description: >-
-      Token used to resolve stale review threads (GraphQL resolveReviewThread).
-      The default GITHUB_TOKEN cannot do this, so supply a PAT or GitHub App
-      token with pull-requests write to enable auto-resolving. Optional.
+      Personal access token used to resolve stale review threads (GraphQL
+      resolveReviewThread). Must be a user PAT with pull-requests write —
+      GITHUB_TOKEN and GitHub App installation tokens cannot call this mutation.
+      Optional; resolving is skipped when unset.
     required: false
 runs:
   using: "composite"

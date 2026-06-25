@@ -19,11 +19,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: actions/create-github-app-token@v3
-        id: app_token
-        with:
-          client-id: ${{ vars.RUBYRT_APP_ID }}
-          private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
       - name: Run RubyRT review
         uses: ./.github/actions/rubyrt
         env:
@@ -33,6 +28,7 @@ jobs:
           model: ${{ vars.LLM_MODEL }}
           provider: ${{ vars.LLM_PROVIDER }}
           rubyrt_version: local
-          # Optional: a PAT/App token so stale review threads can be auto-resolved
-          # (the default GITHUB_TOKEN cannot). Resolution is skipped if unset.
-          resolve_token: ${{ steps.app_token.outputs.token }}
+          # PAT (user token) with pull-requests write so stale review threads can
+          # be auto-resolved. GITHUB_TOKEN and GitHub App installation tokens
+          # cannot call resolveReviewThread. Resolution is skipped if unset.
+          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}
