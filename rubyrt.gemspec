@@ -36,9 +36,6 @@ Gem::Specification.new do |spec|
   # LLM abstraction
   spec.add_dependency 'ruby_llm', '~> 1.16'
 
-  # Model Context Protocol client
-  spec.add_dependency 'mcp', '~> 0.20'
-
   # Git access
   spec.add_dependency 'rugged', '~> 1.9'
 
