@@ -29,8 +29,11 @@ module Rubyrt
       'error' => Logger::ERROR, 'fatal' => Logger::FATAL
     }.freeze
 
-    def initialize(config)
+    # `model` overrides config['model'] (same provider/keys) — used to run the
+    # critic pass on a stronger model than the review.
+    def initialize(config, model: nil)
       @config = config
+      @model = model || config['model']
       validate!
       @llm_context = build_context
     end
@@ -83,7 +86,7 @@ module Rubyrt
     end
 
     def chat
-      llm_context.chat(model: @config['model'], provider: provider)
+      llm_context.chat(model: @model, provider: provider)
     end
 
     def provider

@@ -8,6 +8,7 @@ module Rubyrt
   # with configuration values and discovered skill fragments.
   class PromptBuilder
     REVIEW_TEMPLATE = File.expand_path('prompts/review.mustache', __dir__)
+    VERIFY_TEMPLATE = File.expand_path('prompts/verify.mustache', __dir__)
     SUMMARY_TEMPLATE = File.expand_path('prompts/summary.mustache', __dir__)
 
     attr_reader :config
@@ -22,6 +23,13 @@ module Rubyrt
                                        'aux_files' => aux_file_contents,
                                        'severity_scale' => format_scale(@config.severity_scale),
                                        'confidence_scale' => format_scale(@config.confidence_scale))
+    end
+
+    def verify(issue:, diff:, file_lines: nil, symbol_lookup: false)
+      render_template(VERIFY_TEMPLATE, 'input' => diff, 'file_lines' => file_lines,
+                                       'symbol_lookup' => symbol_lookup,
+                                       'aux_files' => aux_file_contents,
+                                       'finding' => format_finding(issue))
     end
 
     def summary(diff:, issues:)
@@ -77,6 +85,19 @@ module Rubyrt
 
     def relative_path(path)
       path.to_s.delete_prefix("#{@config.root.to_s.chomp('/')}/")
+    end
+
+    # Render a single issue for the critic prompt: title, details, and each
+    # affected range with the actual code (set by CodeEnricher before verify).
+    def format_finding(issue)
+      ranges = issue.affected_lines.map do |range|
+        loc = "lines #{range.start_line}-#{range.end_line || range.start_line}"
+        code = range.affected_code ? "\n#{range.affected_code}" : ''
+        "#{loc}:#{code}"
+      end.join("\n")
+      tags = Array(issue.tags).join(', ')
+      "File: #{issue.file}\nTitle: #{issue.title}\nTags: #{tags}\n" \
+        "Details: #{issue.details}\nAffected code:\n#{ranges}"
     end
 
     def format_scale(scale)

@@ -120,3 +120,14 @@ json_requirements = """
 # and severity are at or below these maximums.
 max_confidence = 1
 max_severity = 3
+
+[verify]
+# Critic / challenge pass: after filtering, re-examine each surviving finding
+# with a fresh, adversarially-framed LLM call that must ground the issue in the
+# actual code (or drop it). Cuts false positives and hallucinations. It only
+# runs on findings that passed the thresholds above, so cost scales with finding
+# count, not file size. Fail-open: a finding is kept if the critic can't run.
+enabled = true
+# Optional: run the critic on a stronger model than the review (same provider
+# and API key). Leave empty to reuse the review model.
+# model = "claude-opus-4.8"
