@@ -116,6 +116,7 @@ module Rubyrt
       summary = File.read(options[:md_report_file] || 'code-review-report.md')
       report = Rubyrt::Report.from_file(json_path_for(options[:md_report_file]))
       commenter.post_review(summary: summary, report: report)
+      maybe_approve(context, report)
     rescue StandardError => e
       warn "GitHub comment failed: #{e.message}"
       exit 1
@@ -217,6 +218,26 @@ module Rubyrt
           owner: repo_owner(context),
           repo: repo_name(context),
           pr_number: options[:pr] || context&.pr_number
+        )
+      end
+
+      # Auto-approve the PR when the [approve] config block is enabled. Loads
+      # config here because github-comment otherwise runs without it.
+      def maybe_approve(context, report)
+        approve = Rubyrt::Configuration.new['approve']
+        return unless approve.is_a?(Hash) && approve['enabled']
+
+        build_approver(context, approve).run(report)
+      end
+
+      def build_approver(context, approve_config)
+        Rubyrt::GitHub::Approver.new(
+          token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
+          resolve_token: options[:resolve_token] || ENV.fetch('RUBYRT_RESOLVE_TOKEN', nil),
+          owner: repo_owner(context),
+          repo: repo_name(context),
+          pr_number: options[:pr] || context&.pr_number,
+          config: approve_config
         )
       end
     end

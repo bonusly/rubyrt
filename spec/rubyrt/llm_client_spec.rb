@@ -126,7 +126,7 @@ RSpec.describe Rubyrt::LlmClient do
       Rubyrt::Configuration.new(root: tmp_dir, overrides: { provider: 'openai', llm_api_key: 'secret' })
     end
 
-    it 'attaches tools before applying the schema when tools are given', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'attaches tools before applying the schema when tools are given', :aggregate_failures do
       client = described_class.new(config)
       chat_double = instance_double(RubyLLM::Chat)
       schema_double = instance_double(RubyLLM::Chat, ask: 'response')
@@ -141,7 +141,7 @@ RSpec.describe Rubyrt::LlmClient do
       expect(chat_double).to have_received(:with_schema).with({ type: 'object' })
     end
 
-    it 'skips with_tools when no tools are given' do # rubocop:disable RSpec/ExampleLength
+    it 'skips with_tools when no tools are given' do
       client = described_class.new(config)
       chat_double = instance_double(RubyLLM::Chat, with_schema: instance_double(RubyLLM::Chat, ask: 'r'))
       allow(chat_double).to receive(:with_tools)

@@ -36,7 +36,7 @@ RSpec.describe Rubyrt::Reviewer do
     FileUtils.rm_rf(tmp_dir)
   end
 
-  it 'returns a report with parsed issues', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+  it 'returns a report with parsed issues', :aggregate_failures do
     report = reviewer.review
     expect(report).to be_a(Rubyrt::Report)
     expect(report.total_issues).to eq(1)
