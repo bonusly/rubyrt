@@ -2,6 +2,7 @@
 
 require 'rugged'
 require 'fileutils'
+require 'set' # rubocop:disable Lint/RedundantRequireStatement -- explicit for Ruby < 3.2
 
 module Rubyrt
   # Represents a set of changed files between two git refs, or all tracked
@@ -37,6 +38,22 @@ module Rubyrt
     # (e.g. a language server) against the code being reviewed.
     def workdir
       @repo.workdir
+    end
+
+    # New-side line numbers added in this file's diff — the lines actually
+    # changed by the changeset. Returns nil in `all` mode, where there's no
+    # diff and the whole file is under review (so nothing is filtered out).
+    def changed_lines_for(file)
+      return nil if @all
+
+      patch = patch_for(file)
+      return Set.new if patch.nil? || patch.delta.binary
+
+      lines = Set.new
+      patch.each_hunk do |hunk|
+        hunk.each_line { |line| lines << line.new_lineno if line.addition? }
+      end
+      lines
     end
 
     def full_content_for(file)
