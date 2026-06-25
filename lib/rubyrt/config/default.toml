@@ -23,6 +23,8 @@ exclude_files = [
   "yarn.lock",
   "package-lock.json",
   "tmp/*"
+  "node_modules/*"
+  "log/*"
 ]
 
 # Number of retries for transient LLM failures.
