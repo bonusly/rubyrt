@@ -41,6 +41,21 @@ jobs:
           model: moonshotai/kimi-k2.6
 ```
 
+### Ruby version and run command
+
+- **`ruby_version`** — Ruby the action installs to run RubyRT. Defaults to `3.4`.
+- **`rubyrt_command`** — how the CLI is invoked. Defaults to `rubyrt`. Set it to `bundle exec rubyrt`, `direnv exec . rubyrt`, etc. when your environment needs it.
+- **`rubyrt_version`** — gem version to install (`local` builds from the checked-out repo). Set to `skip` to install nothing when `rubyrt_command` already provides RubyRT (e.g. it's in your Gemfile).
+
+```yaml
+      - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+        with:
+          api_key: ${{ secrets.LLM_API_KEY }}
+          ruby_version: "3.3"
+          rubyrt_command: bundle exec rubyrt
+          rubyrt_version: skip   # rubyrt comes from the project's Gemfile
+```
+
 ### Required secrets and permissions
 
 - `secrets.LLM_API_KEY`: Your LLM provider API key.
