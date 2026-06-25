@@ -180,11 +180,15 @@ module Rubyrt
       def warn_thread_resolution_failure(count)
         message = @resolve_error&.message
         warn "Could not resolve #{count} previous review thread(s) — #{message}"
-        return unless message.to_s.include?('not accessible by integration')
+        return unless message.to_s.include?('not accessible')
 
-        warn 'Resolving threads needs a user token (a PAT). GITHUB_TOKEN and ' \
-             'GitHub App installation tokens cannot. Set --resolve-token / ' \
-             'RUBYRT_RESOLVE_TOKEN to a PAT with pull-requests write.'
+        # Covers both "by integration" (GITHUB_TOKEN / App installation token)
+        # and "by personal access token" (fine-grained PAT lacking access).
+        warn 'resolveReviewThread needs a user token with write access. ' \
+             'GITHUB_TOKEN and GitHub App installation tokens cannot; ' \
+             'fine-grained PATs are unreliable and need org approval for write. ' \
+             'Use a classic PAT with the `repo` scope (SSO-authorized if your ' \
+             'org requires it) in --resolve-token / RUBYRT_RESOLVE_TOKEN.'
       end
 
       def current_issue_lines(issues)

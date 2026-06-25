@@ -41,11 +41,63 @@ jobs:
           model: moonshotai/kimi-k2.6
 ```
 
+### Ruby version and run command
+
+- **`ruby_version`** — Ruby the action installs to run RubyRT. Defaults to `3.4`.
+- **`rubyrt_command`** — how the CLI is invoked. Defaults to `rubyrt`. Set it to `bundle exec rubyrt`, `direnv exec . rubyrt`, etc. when your environment needs it.
+- **`rubyrt_version`** — gem version to install (`local` builds from the checked-out repo). Set to `skip` to install nothing when `rubyrt_command` already provides RubyRT (e.g. it's in your Gemfile).
+
+```yaml
+      - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+        with:
+          api_key: ${{ secrets.LLM_API_KEY }}
+          ruby_version: "4.0"
+          rubyrt_command: bundle exec rubyrt
+          rubyrt_version: skip   # rubyrt comes from the project's Gemfile
+```
+
 ### Required secrets and permissions
 
 - `secrets.LLM_API_KEY`: Your LLM provider API key.
 - `secrets.GITHUB_TOKEN` is provided automatically by GitHub Actions. It must have at least `pull-requests: write` permission (set in the workflow `permissions` block) so RubyRT can post review comments.
-- Resolving stale review threads needs an **extra** token — see below. The default `GITHUB_TOKEN` cannot do it.
+- Want comments to post under a custom name and avatar instead of "github-actions"? See **Posting as a GitHub App** below.
+- Resolving stale review threads needs an **extra** token — see **Resolving stale review threads** below. The default `GITHUB_TOKEN` cannot do it.
+
+### Posting as a GitHub App (custom name and avatar)
+
+By default RubyRT posts as **github-actions[bot]** (the workflow `GITHUB_TOKEN`). To post under your own bot name and avatar, authenticate with a **GitHub App installation token** and pass it as the action's `github_token` input — review comments then appear as **YourApp[bot]**.
+
+1. Create the app: **Settings → Developer settings → GitHub Apps → New GitHub App** (under your org or account). Give it the name and avatar you want to see on comments.
+   - **Repository permissions → Pull requests: Read and write.** (No webhook needed — uncheck **Active**.)
+2. **Generate a private key** and note the **App ID**.
+3. **Install the app** on the repositories that run RubyRT.
+4. Store the **App ID** as a variable (e.g. `vars.RUBYRT_APP_ID`) and the private key as a secret (e.g. `secrets.RUBYRT_APP_PRIVATE_KEY`).
+5. Mint an installation token with [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token) and pass it as `github_token`:
+
+```yaml
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/create-github-app-token@v2
+        id: app_token
+        with:
+          app-id: ${{ vars.RUBYRT_APP_ID }}
+          private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
+      - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+        with:
+          api_key: ${{ secrets.LLM_API_KEY }}
+          github_token: ${{ steps.app_token.outputs.token }}   # post as the app
+          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}    # resolve threads (PAT — see below)
+```
+
+> The app installation token posts comments fine, but **cannot resolve review threads** (`resolveReviewThread` rejects server-to-server tokens). If you also want stale threads auto-resolved, pair it with a user PAT in `resolve_token` as shown — see the next section.
 
 ### Resolving stale review threads
 
@@ -56,8 +108,8 @@ When RubyRT re-reviews a PR, it can mark its earlier threads as resolved once th
 To enable auto-resolving, create a PAT and pass it via the `resolve_token` action input (or the `RUBYRT_RESOLVE_TOKEN` env var / `--resolve-token` flag for the `github-comment` CLI). If you don't set one, RubyRT skips resolving and still posts the new review.
 
 1. Create a token as a user with write access to the repo:
-   - **Fine-grained PAT** (recommended): **Settings → Developer settings → Personal access tokens → Fine-grained tokens**, scope it to the repo, and grant **Repository permissions → Pull requests: Read and write**; or
-   - **Classic PAT** with the `repo` scope.
+   - **Classic PAT** with the `repo` scope (**recommended** — reliably works for `resolveReviewThread`). **Settings → Developer settings → Personal access tokens → Tokens (classic)**. If your org enforces SSO, click **Configure SSO** on the token and authorize it for the org.
+   - **Fine-grained PATs are not recommended here.** Even with **Pull requests: Read and write** they often fail `resolveReviewThread` with `Resource not accessible by personal access token` — and for an **org** repo the write permission stays **read-only until an org owner approves it**, so the fetch succeeds but resolving fails. If you must use one, get it org-approved and expect to troubleshoot.
 2. Store it as a repository (or org) secret, e.g. `secrets.RUBYRT_RESOLVE_TOKEN`.
 3. Pass it to the action:
 
