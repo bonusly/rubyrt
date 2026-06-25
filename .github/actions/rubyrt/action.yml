@@ -26,6 +26,14 @@ inputs:
     description: "RubyRT gem version to install (use 'local' to build and install from the checked-out repo)"
     required: false
     default: ">= 0"
+  github_token:
+    description: >-
+      Token used to post review comments. Defaults to the workflow GITHUB_TOKEN
+      (comments appear as "github-actions"). Pass a GitHub App installation
+      token (e.g. from actions/create-github-app-token) to post under the app's
+      name and avatar instead. Needs pull-requests write.
+    required: false
+    default: ${{ github.token }}
   resolve_token:
     description: >-
       Personal access token used to resolve stale review threads (GraphQL
@@ -78,7 +86,7 @@ runs:
     - name: Post review to GitHub
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
         RUBYRT_RESOLVE_TOKEN: ${{ inputs.resolve_token }}
         OUTPUT_DIR: ${{ inputs.output_dir }}
       run: |

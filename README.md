@@ -45,7 +45,44 @@ jobs:
 
 - `secrets.LLM_API_KEY`: Your LLM provider API key.
 - `secrets.GITHUB_TOKEN` is provided automatically by GitHub Actions. It must have at least `pull-requests: write` permission (set in the workflow `permissions` block) so RubyRT can post review comments.
-- Resolving stale review threads needs an **extra** token — see below. The default `GITHUB_TOKEN` cannot do it.
+- Want comments to post under a custom name and avatar instead of "github-actions"? See **Posting as a GitHub App** below.
+- Resolving stale review threads needs an **extra** token — see **Resolving stale review threads** below. The default `GITHUB_TOKEN` cannot do it.
+
+### Posting as a GitHub App (custom name and avatar)
+
+By default RubyRT posts as **github-actions[bot]** (the workflow `GITHUB_TOKEN`). To post under your own bot name and avatar, authenticate with a **GitHub App installation token** and pass it as the action's `github_token` input — review comments then appear as **YourApp[bot]**.
+
+1. Create the app: **Settings → Developer settings → GitHub Apps → New GitHub App** (under your org or account). Give it the name and avatar you want to see on comments.
+   - **Repository permissions → Pull requests: Read and write.** (No webhook needed — uncheck **Active**.)
+2. **Generate a private key** and note the **App ID**.
+3. **Install the app** on the repositories that run RubyRT.
+4. Store the **App ID** as a variable (e.g. `vars.RUBYRT_APP_ID`) and the private key as a secret (e.g. `secrets.RUBYRT_APP_PRIVATE_KEY`).
+5. Mint an installation token with [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token) and pass it as `github_token`:
+
+```yaml
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/create-github-app-token@v2
+        id: app_token
+        with:
+          app-id: ${{ vars.RUBYRT_APP_ID }}
+          private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
+      - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+        with:
+          api_key: ${{ secrets.LLM_API_KEY }}
+          github_token: ${{ steps.app_token.outputs.token }}   # post as the app
+          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}    # resolve threads (PAT — see below)
+```
+
+> The app installation token posts comments fine, but **cannot resolve review threads** (`resolveReviewThread` rejects server-to-server tokens). If you also want stale threads auto-resolved, pair it with a user PAT in `resolve_token` as shown — see the next section.
 
 ### Resolving stale review threads
 
