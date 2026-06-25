@@ -30,6 +30,11 @@ RSpec.describe Rubyrt::PromptBuilder do
       expect(prompt).to include('RESPOND ONLY WITH VALID JSON')
     end
 
+    it 'adds symbol-lookup guidance only when a lookup tool is available', :aggregate_failures do
+      expect(builder.review(diff: '')).not_to include('symbol lookup tool')
+      expect(builder.review(diff: '', symbol_lookup: true)).to include('symbol lookup tool')
+    end
+
     context 'with skill fragments' do
       before do
         FileUtils.mkdir_p(File.join(tmp_dir, '.cursor'))

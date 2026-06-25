@@ -81,7 +81,7 @@ module Rubyrt
     def review_file(file)
       diff = @changeset.diff_text_for(file)
       full = @changeset.full_content_for(file)
-      prompt = @prompt_builder.review(diff: diff, file_lines: full)
+      prompt = @prompt_builder.review(diff: diff, file_lines: full, symbol_lookup: @tools.any?)
       response = @llm_client.complete_with_schema(prompt, Schemas::ISSUE_SCHEMA, tools: @tools)
       only_changed_lines(parse_response(response, file), file)
     rescue JSON::ParserError => e
