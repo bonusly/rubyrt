@@ -22,7 +22,7 @@ jobs:
       - uses: actions/create-github-app-token@v3
         id: app_token
         with:
-          app-id: ${{ vars.RUBYRT_APP_ID }}
+          client-id: ${{ vars.RUBYRT_APP_ID }}
           private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
       - name: Run RubyRT review
         uses: ./.github/actions/rubyrt
