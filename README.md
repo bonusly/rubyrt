@@ -51,7 +51,7 @@ jobs:
       - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
-          ruby_version: "3.3"
+          ruby_version: "4.0"
           rubyrt_command: bundle exec rubyrt
           rubyrt_version: skip   # rubyrt comes from the project's Gemfile
 ```
