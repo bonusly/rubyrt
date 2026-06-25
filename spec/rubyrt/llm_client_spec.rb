@@ -119,6 +119,12 @@ RSpec.describe Rubyrt::LlmClient do
       client.complete('test prompt')
       expect(client.llm_context).to have_received(:chat).with(model: 'gpt-4o-mini', provider: 'openai')
     end
+  end
+
+  context 'when completing with a schema and tools' do
+    let(:config) do
+      Rubyrt::Configuration.new(root: tmp_dir, overrides: { provider: 'openai', llm_api_key: 'secret' })
+    end
 
     it 'attaches tools before applying the schema when tools are given', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       client = described_class.new(config)
