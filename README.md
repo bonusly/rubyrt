@@ -73,9 +73,9 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/create-github-app-token@v2
         id: app_token
         with:
