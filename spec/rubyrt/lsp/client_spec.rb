@@ -13,7 +13,10 @@ RSpec.describe Rubyrt::Lsp::Client do
   # correlation without depending on a real language server.
   let(:fake_server) do
     path = File.join(tmp_dir, 'fake_lsp.rb')
-    File.write(path, <<~RUBY)
+    # Single-quoted heredoc: the body is written verbatim, so #{...} and regex
+    # escapes belong to the generated script, not this spec.
+    File.write(path, <<~'RUBY')
+      require 'json'
       $stdin.binmode
       $stdout.binmode
       def read_message
@@ -21,16 +24,15 @@ RSpec.describe Rubyrt::Lsp::Client do
         while (line = $stdin.gets)
           line = line.strip
           break if line.empty?
-          len = $1.to_i if line =~ /Content-Length:\\s*(\\d+)/i
+          len = $1.to_i if line =~ /Content-Length:\s*(\d+)/i
         end
         len && JSON.parse($stdin.read(len))
       end
       def send_msg(obj)
         body = JSON.generate(obj)
-        $stdout.write("Content-Length: \#{body.bytesize}\\r\\n\\r\\n\#{body}")
+        $stdout.write("Content-Length: #{body.bytesize}\r\n\r\n#{body}")
         $stdout.flush
       end
-      require 'json'
       loop do
         msg = read_message or break
         case msg['method']
@@ -42,13 +44,6 @@ RSpec.describe Rubyrt::Lsp::Client do
             { 'name' => msg.dig('params', 'query'),
               'location' => { 'uri' => 'file:///x.rb', 'range' => { 'start' => { 'line' => 0 } } } }
           ])
-        when 'textDocument/didOpen'
-          uri = msg.dig('params', 'textDocument', 'uri')
-          send_msg(jsonrpc: '2.0', method: 'textDocument/publishDiagnostics', params: {
-                     uri: uri,
-                     diagnostics: [{ 'code' => 'Fake/Cop', 'message' => 'Fake/Cop: bad',
-                                     'severity' => 2, 'range' => { 'start' => { 'line' => 3 } } }]
-                   })
         when 'shutdown' then send_msg(jsonrpc: '2.0', id: msg['id'], result: nil)
         when 'exit' then break
         end
@@ -65,14 +60,6 @@ RSpec.describe Rubyrt::Lsp::Client do
                             { 'name' => 'Widget',
                               'location' => { 'uri' => 'file:///x.rb', 'range' => { 'start' => { 'line' => 0 } } } }
                           ])
-  ensure
-    client.shutdown
-  end
-
-  it 'opens a document and returns the pushed diagnostics' do
-    diagnostics = client.diagnostics(uri: 'file:///a.rb', text: "x=1\n")
-    expect(diagnostics).to eq([{ 'code' => 'Fake/Cop', 'message' => 'Fake/Cop: bad',
-                                 'severity' => 2, 'range' => { 'start' => { 'line' => 3 } } }])
   ensure
     client.shutdown
   end

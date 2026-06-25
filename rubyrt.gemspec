@@ -10,8 +10,8 @@ Gem::Specification.new do |spec|
 
   spec.summary = 'RubyRT: Ruby (but mostly Rails) Review Thing'
   spec.description = 'An opinionated, flexible AI code review tool for Ruby and Rails projects. ' \
-                     'Inspired by Gito, rubyrt reviews pull requests using LLMs and Ruby-specific ' \
-                     'tools like RuboCop, posting feedback directly on changed lines.'
+                     'Inspired by Gito, rubyrt reviews pull requests using LLMs, pulling extra ' \
+                     'context from language servers (LSP) and posting feedback on changed lines.'
   spec.homepage = 'https://github.com/Bonusly/rubyrt'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 3.4.0'

@@ -9,11 +9,10 @@ module Rubyrt
   module Lsp
     # Generic Language Server Protocol client: speaks JSON-RPC over the stdio of
     # a launched LSP process. Configured with a launch command and the workspace
-    # root, so it works for any LSP (ruby-lsp, rubocop --lsp, gopls, etc.) — only
-    # the command changes. The transport (spawn, framing, initialize handshake,
-    # request/notify, server-request acks) is shared; capability methods on top:
-    #   - #lookup     → workspace/symbol (ruby-lsp: code context)
-    #   - #diagnostics → didOpen + publishDiagnostics (rubocop: lint offenses)
+    # root, so it works for any LSP (ruby-lsp, gopls, etc.) — only the command
+    # changes. The transport (spawn, framing, initialize handshake, request/
+    # notify, server-request acks) is generic; #lookup adds the one capability we
+    # use today: workspace/symbol for code context.
     class Client # rubocop:disable Metrics/ClassLength
       INIT_TIMEOUT = 60 # ruby-lsp indexes the project at boot; allow time for it.
       REQUEST_TIMEOUT = 15
@@ -43,18 +42,6 @@ module Rubyrt
         end
       end
 
-      # Open a document and return the diagnostics the server pushes for it
-      # (LSP Diagnostic hashes: "range", "severity", "code", "message"). Returns
-      # [] if none arrive in time. Used for lint-style servers like rubocop --lsp.
-      def diagnostics(uri:, text:, language_id: 'ruby')
-        @mutex.synchronize do
-          start unless @started
-          notify('textDocument/didOpen',
-                 textDocument: { uri: uri, languageId: language_id, version: 1, text: text })
-          wait_for_diagnostics(uri)
-        end
-      end
-
       def shutdown
         @mutex.synchronize do
           return unless @started
@@ -72,12 +59,17 @@ module Rubyrt
 
       def start
         @stdin, @stdout, @stderr, @wait = Open3.popen3(*@command, chdir: @root)
-        @started = true
         request('initialize', initialize_params, timeout: REQUEST_TIMEOUT)
         notify('initialized', {})
+        # Mark started only after a successful handshake, so a failed init leaves
+        # @started false (callers can retry) rather than trapped half-open.
+        @started = true
       rescue Errno::ENOENT => e
         close
         raise LspError, "LSP command not found: #{@command.join(' ')} (#{e.message})"
+      rescue StandardError
+        close # don't leak the spawned process when init fails or times out
+        raise
       end
 
       # workspace/symbol needs the project index; wait for it once, lazily, so
@@ -119,24 +111,6 @@ module Rubyrt
         message.dig('params', 'value', 'kind')
       end
 
-      # Read until the server pushes publishDiagnostics for `uri` (lint servers
-      # respond to didOpen with one such notification), or the timeout elapses.
-      def wait_for_diagnostics(uri)
-        deadline = now + REQUEST_TIMEOUT
-        while (remaining = deadline - now).positive?
-          break unless @stdout.wait_readable(remaining)
-
-          message = read_message
-          break if message.nil?
-
-          answer_server_request(message)
-          next unless message['method'] == 'textDocument/publishDiagnostics' && message.dig('params', 'uri') == uri
-
-          return Array(message.dig('params', 'diagnostics'))
-        end
-        []
-      end
-
       def now
         Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
@@ -145,10 +119,7 @@ module Rubyrt
         {
           processId: Process.pid,
           rootUri: "file://#{@root}",
-          capabilities: {
-            workspace: { symbol: {} },
-            textDocument: { synchronization: {}, publishDiagnostics: {} }
-          }
+          capabilities: { workspace: { symbol: {} } }
         }
       end
 
@@ -217,11 +188,25 @@ module Rubyrt
 
       def close
         [@stdin, @stdout, @stderr].compact.each { |io| io.close unless io.closed? }
-        @wait.value if @wait&.alive?
+        reap
       rescue StandardError
         nil
       ensure
         @started = false
+      end
+
+      # Closing the pipes makes a well-behaved server exit; escalate to TERM then
+      # KILL so a hung server can never block the caller indefinitely.
+      def reap
+        return unless @wait&.alive?
+        return if @wait.join(1)
+
+        Process.kill('TERM', @wait.pid)
+        return if @wait.join(2)
+
+        Process.kill('KILL', @wait.pid)
+      rescue StandardError
+        nil
       end
     end
   end

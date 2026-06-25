@@ -166,7 +166,7 @@ The review prompt instructs the model to respond only with JSON matching the `Ra
 
 ### Language servers (LSP)
 
-`Lsp::Client` is a generic JSON-RPC-over-stdio client configured with a launch command + workspace root, so it works with any language server. `Lsp::SymbolTool` wraps it as a `ruby_llm` tool: during review the model can look a class/module/method up by name (via `workspace/symbol`) and get its definition source for extra context. Configure servers under the `[lsp]` table (opt-in, empty by default); ruby-lsp is the first supported. RubyRT does **not** run static analysers like RuboCop itself — run those as a separate step if you want them.
+`Lsp::Client` is a generic JSON-RPC-over-stdio client configured with a launch command + workspace root, so it works with any language server. `Lsp::SymbolTool` wraps it as a `ruby_llm` tool: during review the model can look up a class/module/method by name (via `workspace/symbol`) and get its definition source for extra context. Configure servers under the `[lsp]` table (opt-in, empty by default); ruby-lsp is the first supported. RubyRT does **not** run static analyzers like RuboCop itself — run those as a separate step if you want them.
 
 ### MCP servers
 

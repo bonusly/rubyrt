@@ -32,7 +32,7 @@ module Rubyrt
 
       def execute(query:)
         term = base_name(query)
-        symbols = rank(@client.lookup(term), term).first(MAX_RESULTS)
+        symbols = rank(Array(@client.lookup(term)), term).first(MAX_RESULTS)
         return "No definition found for `#{query}`." if symbols.empty?
 
         symbols.map { |symbol| render(symbol) }.compact.join("\n\n")
