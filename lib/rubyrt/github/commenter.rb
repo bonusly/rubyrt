@@ -15,10 +15,15 @@ module Rubyrt
       # for human-facing labels in comments.
       SEVERITY_LABELS = { 1 => 'Critical', 2 => 'High', 3 => 'Medium', 4 => 'Low' }.freeze
 
-      def initialize(token:, owner:, repo:, pr_number:)
+      def initialize(token:, owner:, repo:, pr_number:, resolve_token: nil)
         # auto_paginate so PRs with many files/comments aren't truncated to the
         # first page when validating diff lines or collapsing old summaries.
         @client = Octokit::Client.new(access_token: token, auto_paginate: true)
+        # Resolving review threads (GraphQL resolveReviewThread) needs a
+        # user-to-server token; the default Actions GITHUB_TOKEN can't and
+        # returns "Resource not accessible by integration". Use a dedicated
+        # resolve token when supplied, otherwise reuse the main token.
+        @resolve_token = resolve_token
         @owner = owner
         @repo = repo
         @pr_number = pr_number
@@ -158,11 +163,21 @@ module Rubyrt
       # login).
       def resolve_previous_threads(current_issues)
         current_lines = current_issue_lines(current_issues)
-        fetch_review_threads.each do |thread|
-          resolve_thread(thread, current_lines)
-        end
+        # Count per-thread failures rather than aborting the batch on the first
+        # one, so a single unresolvable thread doesn't strand the rest.
+        unresolved = fetch_review_threads.count { |thread| !resolve_thread(thread, current_lines) }
+        warn_thread_resolution_failure(unresolved) if unresolved.positive?
       rescue StandardError => e
-        warn "Could not resolve previous review threads — #{e.message}"
+        warn "Could not fetch previous review threads — #{e.message}"
+      end
+
+      def warn_thread_resolution_failure(count)
+        message = @resolve_error&.message
+        warn "Could not resolve #{count} previous review thread(s) — #{message}"
+        return unless message.to_s.include?('not accessible by integration')
+
+        warn 'The default GITHUB_TOKEN cannot resolve review threads; provide a ' \
+             'PAT or GitHub App token via --resolve-token or RUBYRT_RESOLVE_TOKEN.'
       end
 
       def current_issue_lines(issues)
@@ -177,7 +192,15 @@ module Rubyrt
       end
 
       def graphql_client
-        @graphql_client ||= GraphqlClient.new(@client)
+        @graphql_client ||= GraphqlClient.new(resolve_client)
+      end
+
+      # A separate Octokit client for GraphQL thread resolution when a resolve
+      # token is configured; otherwise the main client.
+      def resolve_client
+        return @client unless @resolve_token
+
+        Octokit::Client.new(access_token: @resolve_token, auto_paginate: true)
       end
 
       def fetch_review_threads
@@ -188,12 +211,18 @@ module Rubyrt
         )
       end
 
+      # Returns true when the thread needs no action or was resolved; false (and
+      # records the error) when the resolve call itself failed.
       def resolve_thread(thread, current_lines)
-        return if thread['isResolved']
-        return unless rubyrt_thread?(thread)
-        return if line_still_reported?(thread, current_lines)
+        return true if thread['isResolved']
+        return true unless rubyrt_thread?(thread)
+        return true if line_still_reported?(thread, current_lines)
 
         graphql_client.resolve_thread(thread['id'])
+        true
+      rescue StandardError => e
+        @resolve_error = e
+        false
       end
 
       def rubyrt_thread?(thread)

@@ -108,6 +108,8 @@ module Rubyrt
     option :pr, type: :numeric, desc: 'Pull Request number'
     option :gh_repo, type: :string, desc: 'owner/repo'
     option :token, type: :string, desc: 'GitHub token'
+    option :resolve_token, type: :string,
+                           desc: 'Token for resolving review threads (PAT/App; GITHUB_TOKEN cannot)'
     def github_comment
       context = resolve_github_context
       commenter = build_commenter(context)
@@ -211,6 +213,7 @@ module Rubyrt
       def build_commenter(context)
         Rubyrt::GitHub::Commenter.new(
           token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
+          resolve_token: options[:resolve_token] || ENV.fetch('RUBYRT_RESOLVE_TOKEN', nil),
           owner: repo_owner(context),
           repo: repo_name(context),
           pr_number: options[:pr] || context&.pr_number

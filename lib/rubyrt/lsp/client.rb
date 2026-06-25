@@ -3,6 +3,7 @@
 require 'json'
 require 'open3'
 require 'timeout'
+require 'io/wait' # IO#wait_readable
 require_relative '../errors'
 
 module Rubyrt

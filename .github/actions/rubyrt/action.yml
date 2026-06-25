@@ -26,6 +26,12 @@ inputs:
     description: "RubyRT gem version to install (use 'local' to build and install from the checked-out repo)"
     required: false
     default: ">= 0"
+  resolve_token:
+    description: >-
+      Token used to resolve stale review threads (GraphQL resolveReviewThread).
+      The default GITHUB_TOKEN cannot do this, so supply a PAT or GitHub App
+      token with pull-requests write to enable auto-resolving. Optional.
+    required: false
 runs:
   using: "composite"
   steps:
@@ -72,6 +78,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        RUBYRT_RESOLVE_TOKEN: ${{ inputs.resolve_token }}
         OUTPUT_DIR: ${{ inputs.output_dir }}
       run: |
         REPORT="$OUTPUT_DIR/code-review-report.md"

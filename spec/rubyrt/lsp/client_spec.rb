@@ -52,16 +52,19 @@ RSpec.describe Rubyrt::Lsp::Client do
     path
   end
 
-  after { FileUtils.rm_rf(tmp_dir) }
+  # Teardown (not an it-level ensure) so a shutdown error can't mask an
+  # assertion failure; shutdown is a no-op when the client never started.
+  after do
+    client.shutdown
+    FileUtils.rm_rf(tmp_dir)
+  end
 
-  it 'initializes and returns workspace/symbol results' do # rubocop:disable RSpec/ExampleLength
+  it 'initializes and returns workspace/symbol results' do
     results = client.lookup('Widget')
     expect(results).to eq([
                             { 'name' => 'Widget',
                               'location' => { 'uri' => 'file:///x.rb', 'range' => { 'start' => { 'line' => 0 } } } }
                           ])
-  ensure
-    client.shutdown
   end
 
   it 'raises LspError when the command does not exist' do

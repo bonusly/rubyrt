@@ -28,3 +28,6 @@ jobs:
           model: ${{ vars.LLM_MODEL }}
           provider: ${{ vars.LLM_PROVIDER }}
           rubyrt_version: local
+          # Optional: a PAT/App token so stale review threads can be auto-resolved
+          # (the default GITHUB_TOKEN cannot). Resolution is skipped if unset.
+          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'ruby_llm'
+require 'uri'
 require_relative '../errors'
 
 module Rubyrt
@@ -80,10 +81,14 @@ module Rubyrt
         (range.dig('start', 'line') || 0) + 1
       end
 
+      # LSP file URIs are percent-encoded (RFC 3986), so a workspace path with a
+      # space arrives as %20. Decode it back to a real filesystem path.
       def path_from_uri(uri)
         return nil unless uri
 
-        uri.delete_prefix('file://')
+        URI::DEFAULT_PARSER.unescape(URI.parse(uri).path)
+      rescue URI::InvalidURIError
+        URI::DEFAULT_PARSER.unescape(uri.delete_prefix('file://'))
       end
 
       def relative(path)
