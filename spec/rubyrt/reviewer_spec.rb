@@ -10,8 +10,7 @@ RSpec.describe Rubyrt::Reviewer do
       config: config,
       changeset: fake_changeset,
       prompt_builder: Rubyrt::PromptBuilder.new(config),
-      llm_client: fake_llm_client,
-      adapters: []
+      llm_client: fake_llm_client
     )
   end
 

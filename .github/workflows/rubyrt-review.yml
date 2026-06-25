@@ -28,3 +28,7 @@ jobs:
           model: ${{ vars.LLM_MODEL }}
           provider: ${{ vars.LLM_PROVIDER }}
           rubyrt_version: local
+          # PAT (user token) with pull-requests write so stale review threads can
+          # be auto-resolved. GITHUB_TOKEN and GitHub App installation tokens
+          # cannot call resolveReviewThread. Resolution is skipped if unset.
+          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}

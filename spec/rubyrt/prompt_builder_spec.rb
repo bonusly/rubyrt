@@ -22,7 +22,7 @@ RSpec.describe Rubyrt::PromptBuilder do
 
     it 'includes prompt_vars requirements' do
       prompt = builder.review(diff: '')
-      expect(prompt).to include('Treat unclear or incorrect English')
+      expect(prompt).to include('Lack of DRY principle enforcement')
     end
 
     it 'includes the JSON response requirement' do
@@ -85,7 +85,9 @@ RSpec.describe Rubyrt::PromptBuilder do
         expect(prompt).to include('- 2 — Needs Fix')
         expect(prompt).to include('- 1 — Sure')
         expect(prompt).to include('- 2 — Guess')
-        expect(prompt).not_to include('Critical')
+        # The default severity label must not render in the scale list (it can
+        # still appear elsewhere, e.g. the requirements headings).
+        expect(prompt).not_to include('- 1 — Critical')
       end
     end
   end

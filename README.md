@@ -1,6 +1,6 @@
 # RubyRT: Ruby (but mostly Rails) Review Thing
 
-RubyRT is an opinionated but helpful and flexible AI code review tool for Ruby and Rails projects. It is heavily inspired by [Gito](https://github.com/Nayjest/Gito) and brings the same LLM-driven review workflow to Ruby codebases, with extra knowledge of Ruby-specific tooling such as RuboCop, Brakeman, Solargraph, and the Ruby LSP.
+RubyRT is an opinionated but helpful and flexible AI code review tool for Ruby and Rails projects. It is heavily inspired by [Gito](https://github.com/Nayjest/Gito) and brings the same LLM-driven review workflow to Ruby codebases, with extra context pulled from the Ruby LSP.
 
 ## Features
 
@@ -9,9 +9,9 @@ RubyRT is an opinionated but helpful and flexible AI code review tool for Ruby a
 - Reads project skills and rules from configurable directories (defaults to `.agents`, `.claude`, and `.cursor`).
 - Supports auxiliary files (`aux_files`) for injecting individual files as extra context into review prompts.
 - Configurable request timeouts, retries, and logging to fail fast on unreachable providers.
-- Integrates static analysis tools starting with RuboCop, with room for Brakeman, Solargraph, and the Ruby LSP.
+- Pulls extra context from language servers (LSP) during review — ruby-lsp first, any LSP via config. (Run static analyzers like RuboCop as a separate step.)
 - Consumes MCP servers to extend review capabilities with custom tools.
-- Runs as a GitHub Action composite action, posting feedback as precise PR comments and resolving stale comments automatically.
+- Runs as a GitHub Action composite action, posting feedback as precise PR comments and (with a suitable token) resolving stale review threads automatically.
 
 ## Quickstart (after release)
 
@@ -44,8 +44,43 @@ jobs:
 ### Required secrets and permissions
 
 - `secrets.LLM_API_KEY`: Your LLM provider API key.
-- `secrets.GITHUB_TOKEN` is provided automatically by GitHub Actions. It must have at least `pull-requests: write` permission (set in the workflow `permissions` block) so RubyRT can post review comments and resolve stale threads.
-- If you want RubyRT to resolve its own stale review threads, the token also needs read access to the authenticated user. The default `GITHUB_TOKEN` in a PR workflow from the same repository has this access. In forks or heavily restricted environments, `GITHUB_TOKEN` may not be able to call `GET /user`; RubyRT will skip resolving stale threads and continue posting the new review.
+- `secrets.GITHUB_TOKEN` is provided automatically by GitHub Actions. It must have at least `pull-requests: write` permission (set in the workflow `permissions` block) so RubyRT can post review comments.
+- Resolving stale review threads needs an **extra** token — see below. The default `GITHUB_TOKEN` cannot do it.
+
+### Resolving stale review threads
+
+When RubyRT re-reviews a PR, it can mark its earlier threads as resolved once the issue is fixed or the line is outdated. This uses the GraphQL `resolveReviewThread` mutation, which **requires a user-to-server token (a personal access token).**
+
+> **The default `GITHUB_TOKEN` cannot do this, and neither can a GitHub App.** Both are *server-to-server* tokens, and `resolveReviewThread` returns `Resource not accessible by integration` for them even with `pull-requests: write` — including the installation token from `actions/create-github-app-token`. Only a user PAT works.
+
+To enable auto-resolving, create a PAT and pass it via the `resolve_token` action input (or the `RUBYRT_RESOLVE_TOKEN` env var / `--resolve-token` flag for the `github-comment` CLI). If you don't set one, RubyRT skips resolving and still posts the new review.
+
+1. Create a token as a user with write access to the repo:
+   - **Fine-grained PAT** (recommended): **Settings → Developer settings → Personal access tokens → Fine-grained tokens**, scope it to the repo, and grant **Repository permissions → Pull requests: Read and write**; or
+   - **Classic PAT** with the `repo` scope.
+2. Store it as a repository (or org) secret, e.g. `secrets.RUBYRT_RESOLVE_TOKEN`.
+3. Pass it to the action:
+
+```yaml
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+        with:
+          api_key: ${{ secrets.LLM_API_KEY }}
+          provider: openrouter
+          model: moonshotai/kimi-k2.6
+          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}
+```
+
+Threads are resolved as whichever user owns the PAT. (A machine/bot user account is a good fit if you don't want resolutions attributed to a person.)
 
 ### Configuration options
 

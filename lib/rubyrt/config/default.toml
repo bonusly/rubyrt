@@ -22,7 +22,9 @@ exclude_files = [
   "Gemfile.lock",
   "yarn.lock",
   "package-lock.json",
-  "tmp/*"
+  "tmp/*",
+  "node_modules/*",
+  "log/*"
 ]
 
 # Number of retries for transient LLM failures.
@@ -51,6 +53,15 @@ model = "gpt-5.4-nano"
 # perplexity, xai, azure, bedrock, vertexai, gpustack).
 provider = "openai"
 
+# Language servers the LLM can consult for extra context (definitions of
+# classes/methods referenced in the diff) during review. Disabled unless at
+# least one server is configured below. Each entry's `command` is launched in
+# the reviewed project's root, so use that project's own LSP binary. Uncomment
+# to enable Ruby (requires ruby-lsp in the reviewed project):
+#   [lsp.ruby]
+#   command = ["ruby-lsp"]
+#   extensions = [".rb", ".rake"]
+
 # Issue severity scale shown to the LLM in the review prompt.
 # Keys are numeric levels (as strings), values are labels.
 [severity_scale]
@@ -75,8 +86,23 @@ software engineer with deep Ruby and Rails knowledge.
 """
 
 requirements = """
-- Treat unclear or incorrect English in user-facing strings as a critical defect.
-- Enforce consistency in terminology, tense, and naming across the codebase.
+Issues are labeled by their severity
+
+# Critical
+
+- Inconsistency in module, class or method naming.
+- Lack of DRY principle enforcement
+- Lack of tests for new features
+
+# High
+
+- Lack of updated documentation or inconsistent documentation
+- Lack of updated tests for updated features
+
+# Medium
+
+- Consistency in terminology, tense, and naming across the codebase.
+- Unclear or incorrect English in documentation
 """
 
 summary_requirements = ""

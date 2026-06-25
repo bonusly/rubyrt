@@ -59,16 +59,20 @@ module Rubyrt
     option :model, type: :string, aliases: '-m', desc: 'LLM model to use for the review'
     option :provider, type: :string, aliases: '-p', desc: 'LLM provider to use (e.g. openai, anthropic)'
     option :debug, type: :boolean, default: false, desc: 'Print error backtraces for debugging'
-    def review(*) # rubocop:disable Metrics/AbcSize
+    def review(*) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       # Thor passes positional args we don't use; accept and ignore them.
       config = Rubyrt::Configuration.new(overrides: { model: options[:model], provider: options[:provider] }.compact)
       changeset = build_changeset(config)
-      report = build_reviewer(config, changeset).review
+      clients = build_lsp_clients(config, changeset)
+      tools = clients.map { |client| Rubyrt::Lsp::SymbolTool.new(client: client, root: changeset.workdir) }
+      report = build_reviewer(config, changeset, tools).review
       render_report(report, config)
     rescue StandardError => e
       warn "Review failed: #{e.class}: #{e.message}"
       warn e.backtrace&.first(5)&.join("\n") if ENV['RUBYRT_DEBUG'] || options[:debug]
       exit 1
+    ensure
+      clients&.each(&:shutdown)
     end
 
     desc 'files', 'List files in the changeset'
@@ -104,6 +108,8 @@ module Rubyrt
     option :pr, type: :numeric, desc: 'Pull Request number'
     option :gh_repo, type: :string, desc: 'owner/repo'
     option :token, type: :string, desc: 'GitHub token'
+    option :resolve_token, type: :string,
+                           desc: 'Token for resolving review threads (PAT/App; GITHUB_TOKEN cannot)'
     def github_comment
       context = resolve_github_context
       commenter = build_commenter(context)
@@ -136,14 +142,28 @@ module Rubyrt
         Rubyrt::Configuration.new
       end
 
-      def build_reviewer(config, changeset)
+      def build_reviewer(config, changeset, tools = [])
         Rubyrt::Reviewer.new(
           config: config,
           changeset: changeset,
           prompt_builder: Rubyrt::PromptBuilder.new(config),
           llm_client: Rubyrt::LlmClient.new(config),
-          adapters: [Rubyrt::Adapters::RuboCopAdapter.new]
+          tools: tools
         )
+      end
+
+      # One LSP client per configured language whose extensions match a changed
+      # file, so we don't spawn a server the review won't use.
+      def build_lsp_clients(config, changeset)
+        servers = config['lsp']
+        return [] unless servers.is_a?(Hash) && !servers.empty?
+
+        changed_exts = changeset.files.map { |f| File.extname(f) }
+        servers.values.filter_map do |server|
+          next unless Array(server['extensions']).intersect?(changed_exts)
+
+          Rubyrt::Lsp::Client.new(command: server['command'], root: changeset.workdir)
+        end
       end
 
       def render_report(report, config)
@@ -193,6 +213,7 @@ module Rubyrt
       def build_commenter(context)
         Rubyrt::GitHub::Commenter.new(
           token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
+          resolve_token: options[:resolve_token] || ENV.fetch('RUBYRT_RESOLVE_TOKEN', nil),
           owner: repo_owner(context),
           repo: repo_name(context),
           pr_number: options[:pr] || context&.pr_number

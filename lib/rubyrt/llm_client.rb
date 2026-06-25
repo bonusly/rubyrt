@@ -43,8 +43,10 @@ module Rubyrt
       chat.ask(prompt)
     end
 
-    def complete_with_schema(prompt, schema)
-      chat.with_schema(schema).ask(prompt)
+    def complete_with_schema(prompt, schema, tools: [])
+      c = chat
+      c = c.with_tools(*tools) unless tools.empty?
+      c.with_schema(schema).ask(prompt)
     end
 
     private
