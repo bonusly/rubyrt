@@ -16,4 +16,3 @@ enabled = true
 dry_run = false
 max_changes = 250
 max_severity = 3
-skip_label = "no-auto-approve"
