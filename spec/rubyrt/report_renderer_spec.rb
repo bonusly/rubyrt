@@ -35,6 +35,7 @@ RSpec.describe Rubyrt::ReportRenderer do
     expect(output).to include('1 issue(s) found')
     expect(output).to include('Unused variable')
     expect(output).to include('app.rb')
+    expect(output).to include('[High]')
   end
 
   it 'renders Markdown output', :aggregate_failures do
@@ -42,6 +43,7 @@ RSpec.describe Rubyrt::ReportRenderer do
     expect(output).to include('RubyRT Code Review')
     expect(output).to include('Unused variable')
     expect(output).to include('app.rb')
+    expect(output).to include('[High]')
   end
 
   context 'with no issues but processed files' do

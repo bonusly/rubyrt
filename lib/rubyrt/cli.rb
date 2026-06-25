@@ -62,9 +62,9 @@ module Rubyrt
     def review(*) # rubocop:disable Metrics/AbcSize
       # Thor passes positional args we don't use; accept and ignore them.
       config = Rubyrt::Configuration.new(overrides: { model: options[:model], provider: options[:provider] }.compact)
-      changeset = build_changeset
+      changeset = build_changeset(config)
       report = build_reviewer(config, changeset).review
-      render_report(report)
+      render_report(report, config)
     rescue StandardError => e
       warn "Review failed: #{e.class}: #{e.message}"
       warn e.backtrace&.first(5)&.join("\n") if ENV['RUBYRT_DEBUG'] || options[:debug]
@@ -92,10 +92,10 @@ module Rubyrt
     def report
       source = options[:source] || 'code-review-report.json'
       report = Rubyrt::Report.from_file(source)
-      renderer = Rubyrt::ReportRenderer.new(report)
+      renderer = Rubyrt::ReportRenderer.new(report, severity_scale: config_for_report.severity_scale)
       puts options[:format] == 'md' ? renderer.to_md : renderer.to_cli
     rescue StandardError => e
-      warn "Could not render report: #{e.class}: #{e.message}"
+      warn "Could not render report: #{e.message}"
       exit 1
     end
 
@@ -117,16 +117,23 @@ module Rubyrt
 
     # rubocop:disable Metrics/BlockLength
     no_commands do
-      def build_changeset
+      def build_changeset(config = Rubyrt::Configuration.new)
         Rubyrt::Changeset.new(
           head_ref: options[:what],
           base_ref: options[:against],
           all: options[:all] || false,
           filters: options[:filters]&.split(','),
+          exclude_files: config['exclude_files'],
           # Thor's options hash isn't indifferent for #fetch, so read via [] (it
           # always has a value because the option declares default: true).
           merge_base: options[:merge_base]
         )
+      end
+
+      # `report` command has no config overrides of its own; load defaults so
+      # the severity scale matches what was used at review time.
+      def config_for_report
+        Rubyrt::Configuration.new
       end
 
       def build_reviewer(config, changeset)
@@ -139,9 +146,9 @@ module Rubyrt
         )
       end
 
-      def render_report(report)
+      def render_report(report, config)
         output = options[:output] || '.'
-        renderer = Rubyrt::ReportRenderer.new(report)
+        renderer = Rubyrt::ReportRenderer.new(report, severity_scale: config.severity_scale)
         report.save(output)
         File.write(File.join(output, 'code-review-report.md'), renderer.to_md)
         puts renderer.to_cli
