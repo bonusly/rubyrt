@@ -10,7 +10,7 @@ RubyRT is an opinionated but helpful and flexible AI code review tool for Ruby a
 - Supports auxiliary files (`aux_files`) for injecting individual files as extra context into review prompts.
 - Configurable request timeouts, retries, and logging to fail fast on unreachable providers.
 - Pulls extra context from language servers (LSP) during review — ruby-lsp first, any LSP via config. (Run static analyzers like RuboCop as a separate step.)
-- Consumes MCP servers to extend review capabilities with custom tools.
+- Cuts false positives with a **critic pass** (`[verify]`): every surviving finding is re-checked by a fresh, skeptical LLM call before it's reported.
 - Runs as a GitHub Action composite action, posting feedback as precise PR comments and (with a suitable token) resolving stale review threads automatically.
 
 ## Quickstart (after release)
@@ -55,6 +55,68 @@ jobs:
           rubyrt_command: bundle exec rubyrt
           rubyrt_version: skip   # rubyrt comes from the project's Gemfile
 ```
+
+### Full working example (the workflow this repo runs)
+
+RubyRT reviews its own pull requests. Below is the actual
+`.github/workflows/rubyrt-review.yml` from this repo — copy it as a known-good
+starting point. It mints a GitHub App token when one is configured (so comments
+post under the app's name) and otherwise falls back to the default token.
+
+```yaml
+# .github/workflows/rubyrt-review.yml
+name: "RubyRT Review"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull Request number"
+        required: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      # Mint an app installation token so review comments post under the app's
+      # name/avatar. Skipped (falls back to GITHUB_TOKEN) when the app isn't set up.
+      - uses: actions/create-github-app-token@v3
+        id: app_token
+        if: ${{ vars.RUBYRT_APP_ID != '' }}
+        with:
+          client-id: ${{ vars.RUBYRT_APP_ID }}
+          private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
+      - name: Run RubyRT review
+        uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+        with:
+          api_key: ${{ secrets.LLM_API_KEY }}
+          model: ${{ vars.LLM_MODEL }}
+          provider: ${{ vars.LLM_PROVIDER }}
+          # Post as the app when configured, otherwise as github-actions.
+          github_token: ${{ steps.app_token.outputs.token || github.token }}
+          # PAT (user token) with pull-requests write so stale review threads can
+          # be auto-resolved — GITHUB_TOKEN and App tokens cannot. Skipped if unset.
+          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}
+```
+
+Model and provider come from repo **variables** (`vars.LLM_MODEL`,
+`vars.LLM_PROVIDER`) so you can change them without editing the workflow. This
+repo runs the review on OpenRouter and re-checks findings with a stronger model
+in the critic pass — see [The critic pass](#the-critic-pass-reducing-false-positives).
+
+The action referenced above is the composite action at
+[`.github/actions/rubyrt/action.yml`](.github/actions/rubyrt/action.yml); it
+installs Ruby, installs RubyRT, computes the base ref (unshallowing as needed so
+merge-base is correct), runs the review, posts the comment, and uploads the JSON
+and Markdown reports as artifacts.
 
 ### Required secrets and permissions
 
@@ -156,16 +218,22 @@ Key settings:
 | Retries | `3` | `retries` | `LLM_RETRIES` | — |
 | Log file | stdout | `log_file` | `RUBYRT_LOG_FILE` | — |
 | Log level | `info` | `log_level` | `RUBYRT_LOG_LEVEL` | — |
+| Max concurrent file reviews | `10` | `max_concurrent_tasks` | `MAX_CONCURRENT_TASKS` | — |
+| Confidence threshold (keep if ≤) | `1` | `post_process.max_confidence` | — | — |
+| Severity threshold (keep if ≤) | `3` | `post_process.max_severity` | — | — |
+| Critic pass enabled | `true` | `verify.enabled` | — | — |
+| Critic pass model | review model | `verify.model` | — | — |
 | Skill directories | `.agents`, `.claude`, `.cursor` | `skill_directories` | — | — |
 | Auxiliary files | `[]` | `aux_files` | — | — |
+| Language servers | none | `lsp.<name>` | — | — |
 
 Supported providers match whatever RubyLLM supports, including `openai`, `anthropic`, `gemini`, `ollama`, `deepseek`, `openrouter`, `mistral`, `perplexity`, `xai`, `azure`, `bedrock`, `vertexai`, and `gpustack`.
 
 Example `.rubyrt/config.toml`:
 
 ```toml
-provider = "anthropic"
-model = "claude-sonnet-4"
+provider = "openrouter"
+model = "moonshotai/kimi-k2.6"
 request_timeout = 60
 log_file = "log/rubyrt.log"
 log_level = "debug"
@@ -175,6 +243,21 @@ aux_files = ["docs/conventions.md", ".rubyrt/style-guide.md"]
 
 # Customize which directories are scanned for skill fragments
 skill_directories = [".agents", ".github"]
+
+# Only keep the most-confident findings (1) up to medium severity (3).
+[post_process]
+max_confidence = 1
+max_severity = 3
+
+# Re-check every surviving finding with a stronger model before reporting it.
+[verify]
+enabled = true
+model = "anthropic/claude-opus-4.8"
+
+# Give the LLM access to a language server for extra code context.
+[lsp.ruby]
+command = ["ruby-lsp"]
+extensions = [".rb", ".rake"]
 ```
 
 ### Skills and auxiliary files
@@ -186,6 +269,75 @@ For individual files (rather than whole directories), use `aux_files` to list pa
 ```toml
 aux_files = ["docs/coding-standards.md", "docs/security-rules.md"]
 ```
+
+### The critic pass (reducing false positives)
+
+The biggest source of noise in AI review is confident-but-wrong findings —
+claims that simply aren't true about the code. Tightening the confidence and
+severity thresholds only filters by the model's *self-reported* confidence,
+which it routinely over-states.
+
+The `[verify]` critic pass attacks this directly. After the normal review and
+threshold filtering, each surviving finding gets a second, **fresh** LLM call
+framed adversarially: *"try to refute this; uphold it only if you can point to
+the lines that make it true; when uncertain, reject."* The critic has the diff,
+the full file, and (if configured) the LSP symbol tool, so it can confirm API
+and method claims instead of trusting them. Findings it can't uphold are
+dropped.
+
+```toml
+[verify]
+enabled = true                      # on by default; set false to skip the pass
+model = "anthropic/claude-opus-4.8" # optional: re-check on a stronger model
+```
+
+- **`verify.enabled`** — turn the critic pass on or off. Default `true`.
+- **`verify.model`** — run the critic on a different (usually stronger) model
+  than the review, using the **same provider and API key**. Leave it unset to
+  reuse the review model. With OpenRouter the model slug is provider-prefixed
+  (e.g. `anthropic/claude-opus-4.8`), so one key covers both the cheap review
+  model and the strong critic.
+
+Because the critic runs only on findings that survived filtering — not on every
+file — its cost scales with the number of findings, not the size of the diff. It
+also **fails open**: if a critic call errors or returns an unparseable verdict,
+the finding is kept and a processing warning is recorded, so a broken critic
+never silently swallows a real bug.
+
+### Filtering findings (`post_process`)
+
+The model scores every finding on a 1–4 **severity** scale (1 = Critical) and a
+1–4 **confidence** scale (1 = highest). `post_process` drops anything above your
+thresholds *before* the critic pass runs:
+
+```toml
+[post_process]
+max_confidence = 1   # keep only the model's highest-confidence findings
+max_severity = 3     # keep Critical/High/Medium, drop Low
+```
+
+Lower numbers are stricter. An omitted threshold means "no limit". This is a
+cheap first filter; the critic pass is the precision filter on top of it.
+
+### Language servers (LSP)
+
+When you configure a language server, RubyRT exposes a symbol-lookup tool to the
+LLM during both review and verification. The model uses it to confirm that a
+class, method, or constant actually exists (and how a third-party API is shaped)
+before reporting an "undefined" or "misused API" issue — a major source of
+hallucinated findings.
+
+```toml
+# Each [lsp.<name>] entry is launched in the reviewed project's root, so use
+# that project's own LSP binary. Add more languages with more entries.
+[lsp.ruby]
+command = ["ruby-lsp"]
+extensions = [".rb", ".rake"]
+```
+
+A server is only started when the changeset contains a file whose extension
+matches one of its `extensions`, so unrelated reviews don't pay the startup
+cost. LSP is disabled entirely when no `[lsp.*]` entry is configured.
 
 ### Logging
 
