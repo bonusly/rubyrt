@@ -22,7 +22,7 @@ jobs:
       - uses: actions/create-github-app-token@v2
         id: app_token
         with:
-          owner: bonusly
+          org: bonusly
           repo: rubyrt
           app-id: ${{ vars.RUBYRT_APP_ID }}
           private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
