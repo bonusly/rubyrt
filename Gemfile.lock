@@ -7,7 +7,6 @@ PATH
       mcp (~> 0.20)
       mustache (~> 1.0)
       octokit (~> 9.0)
-      rubocop (~> 1.75)
       ruby_llm (~> 1.16)
       rugged (~> 1.9)
       thor (~> 1.3)

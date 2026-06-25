@@ -22,8 +22,8 @@ exclude_files = [
   "Gemfile.lock",
   "yarn.lock",
   "package-lock.json",
-  "tmp/*"
-  "node_modules/*"
+  "tmp/*",
+  "node_modules/*",
   "log/*"
 ]
 
@@ -52,6 +52,16 @@ model = "gpt-5.4-nano"
 # (e.g. openai, anthropic, gemini, ollama, deepseek, openrouter, mistral,
 # perplexity, xai, azure, bedrock, vertexai, gpustack).
 provider = "openai"
+
+# Language servers the LLM can consult for extra context (definitions of
+# classes/methods referenced in the diff) during review. Empty = disabled.
+# Each entry's `command` is launched in the reviewed project's root, so use that
+# project's own LSP binary. Uncomment to enable Ruby (requires ruby-lsp in the
+# reviewed project):
+#   [lsp.ruby]
+#   command = ["ruby-lsp"]
+#   extensions = [".rb", ".rake"]
+[lsp]
 
 # Issue severity scale shown to the LLM in the review prompt.
 # Keys are numeric levels (as strings), values are labels.

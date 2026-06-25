@@ -1,6 +1,6 @@
 # RubyRT: Ruby (but mostly Rails) Review Thing
 
-RubyRT is an opinionated but helpful and flexible AI code review tool for Ruby and Rails projects. It is heavily inspired by [Gito](https://github.com/Nayjest/Gito) and brings the same LLM-driven review workflow to Ruby codebases, with extra knowledge of Ruby-specific tooling such as RuboCop, Brakeman, Solargraph, and the Ruby LSP.
+RubyRT is an opinionated but helpful and flexible AI code review tool for Ruby and Rails projects. It is heavily inspired by [Gito](https://github.com/Nayjest/Gito) and brings the same LLM-driven review workflow to Ruby codebases, with extra context pulled from the Ruby LSP.
 
 ## Features
 
@@ -9,7 +9,7 @@ RubyRT is an opinionated but helpful and flexible AI code review tool for Ruby a
 - Reads project skills and rules from configurable directories (defaults to `.agents`, `.claude`, and `.cursor`).
 - Supports auxiliary files (`aux_files`) for injecting individual files as extra context into review prompts.
 - Configurable request timeouts, retries, and logging to fail fast on unreachable providers.
-- Integrates static analysis tools starting with RuboCop, with room for Brakeman, Solargraph, and the Ruby LSP.
+- Pulls extra context from language servers (LSP) during review — ruby-lsp first, any LSP via config. (Run static analysers like RuboCop as a separate step.)
 - Consumes MCP servers to extend review capabilities with custom tools.
 - Runs as a GitHub Action composite action, posting feedback as precise PR comments and resolving stale comments automatically.
 

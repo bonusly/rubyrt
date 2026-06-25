@@ -52,7 +52,4 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'dotenv', '~> 3.1'
   spec.add_dependency 'mustache', '~> 1.0'
   spec.add_dependency 'tomlrb', '~> 2.0'
-
-  # Static analysis adapters
-  spec.add_dependency 'rubocop', '~> 1.75'
 end

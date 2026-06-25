@@ -8,22 +8,21 @@ require 'kernel/sync'
 
 module Rubyrt
   # Orchestrates reviewing the changeset: builds prompts, calls the LLM,
-  # integrates static analysis adapters, post-processes issues, and builds a
-  # Report.
+  # post-processes issues, and builds a Report.
   class Reviewer
-    def initialize(config:, changeset:, prompt_builder:, llm_client:, adapters: [])
+    def initialize(config:, changeset:, prompt_builder:, llm_client:, tools: [])
       @config = config
       @changeset = changeset
       @prompt_builder = prompt_builder
       @llm_client = llm_client
-      @adapters = adapters
+      @tools = tools
       # Plain array: Async runs fibers cooperatively on a single thread, so
       # appends between scheduler yields do not race. No lock needed.
       @warnings = []
     end
 
     def review
-      issues = gather_llm_issues + gather_adapter_issues
+      issues = gather_llm_issues
       filtered = PostProcessor.new(@config['post_process']).call(issues)
       enriched = CodeEnricher.new(@changeset).call(filtered)
       sorted = enriched.sort_by { |issue| issue.severity || Float::INFINITY }
@@ -83,7 +82,7 @@ module Rubyrt
       diff = @changeset.diff_text_for(file)
       full = @changeset.full_content_for(file)
       prompt = @prompt_builder.review(diff: diff, file_lines: full)
-      response = @llm_client.complete_with_schema(prompt, Schemas::ISSUE_SCHEMA)
+      response = @llm_client.complete_with_schema(prompt, Schemas::ISSUE_SCHEMA, tools: @tools)
       parse_response(response, file)
     rescue JSON::ParserError => e
       @warnings << "Could not parse LLM response for #{file}: #{e.message}"
@@ -109,19 +108,6 @@ module Rubyrt
       return parsed['issues'] || parsed[:issues] || [] if parsed.is_a?(Hash)
 
       []
-    end
-
-    def gather_adapter_issues
-      return [] if @adapters.empty?
-
-      @adapters.flat_map { |adapter| adapter.call(@changeset.files) }.map do |file, raw|
-        Issue.new(
-          id: nil,
-          file: file,
-          raw_issue: raw,
-          affected_lines: raw.affected_lines
-        )
-      end
     end
 
     def assign_issue_ids(issues)

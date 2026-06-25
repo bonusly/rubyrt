@@ -33,6 +33,12 @@ module Rubyrt
       patch.to_s.force_encoding('UTF-8')
     end
 
+    # Absolute path to the repository working directory, used to launch tools
+    # (e.g. a language server) against the code being reviewed.
+    def workdir
+      @repo.workdir
+    end
+
     def full_content_for(file)
       blob = blob_at(file)
       return nil if blob.nil? || blob.binary?

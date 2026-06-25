@@ -43,8 +43,8 @@ review command
  for each changed file:
       assemble context ........... diff + whole file snapshot
       prompt LLM ................. ruby_llm with system prompt + JSON schema
+                                   (model may call LSP tools for extra context)
       parse JSON issues .......... validate against Issue schema
-      run RuboCop adapter ........ merge offenses as issues
       |
       v
  post-process .................. default filter: confidence == 1, severity <= 3
@@ -164,16 +164,9 @@ The review prompt instructs the model to respond only with JSON matching the `Ra
 
 ## Tool integration
 
-### RuboCop
+### Language servers (LSP)
 
-The first static-analysis adapter. RubyRT runs RuboCop programmatically on the changed files and translates offenses into `Issue` objects. Severity mapping:
-
-| RuboCop severity | RubyRT severity |
-|---|---|
-| fatal / error | 1 (Critical) |
-| warning | 2 (Major) |
-| convention / refactor | 3 (Minor) |
-| info | 4 (Trivial) |
+`Lsp::Client` is a generic JSON-RPC-over-stdio client configured with a launch command + workspace root, so it works with any language server. `Lsp::SymbolTool` wraps it as a `ruby_llm` tool: during review the model can look a class/module/method up by name (via `workspace/symbol`) and get its definition source for extra context. Configure servers under the `[lsp]` table (opt-in, empty by default); ruby-lsp is the first supported. RubyRT does **not** run static analysers like RuboCop itself — run those as a separate step if you want them.
 
 ### MCP servers
 
@@ -189,6 +182,6 @@ RubyRT consumes MCP servers using the `mcp` gem. Each configured server is conne
 ## Testing strategy
 
 - Unit tests for config merging, prompt assembly, and issue schema parsing.
-- Fixture-based tests for RuboCop adapter output normalization.
+- Fake-LSP-server tests for the `Lsp::Client` transport and `Lsp::SymbolTool` output.
 - Integration tests for the CLI commands using Thor's test helpers.
 - Mock LLM responses so CI runs without real API keys.
