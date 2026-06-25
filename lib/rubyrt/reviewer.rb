@@ -25,7 +25,8 @@ module Rubyrt
       issues = gather_llm_issues
       filtered = PostProcessor.new(@config['post_process']).call(issues)
       enriched = CodeEnricher.new(@changeset).call(filtered)
-      sorted = enriched.sort_by { |issue| issue.severity || Float::INFINITY }
+      verified = verify(enriched)
+      sorted = verified.sort_by { |issue| issue.severity || Float::INFINITY }
       assign_issue_ids(sorted)
       Report.new(
         target: build_target,
@@ -37,6 +38,16 @@ module Rubyrt
     end
 
     private
+
+    def verify(issues)
+      verifier = Verifier.new(
+        config: @config, changeset: @changeset, prompt_builder: @prompt_builder,
+        llm_client: @llm_client, tools: @tools
+      )
+      kept = verifier.call(issues)
+      @warnings.concat(verifier.warnings)
+      kept
+    end
 
     def gather_llm_issues
       files = @changeset.files
