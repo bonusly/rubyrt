@@ -8,3 +8,12 @@ extensions = [".rb", ".rake"]
 [verify]
 enabled = true
 model = "anthropic/claude-sonnet-4.6"
+
+# Auto-Approving PRs
+
+[approve]
+enabled = true
+dry_run = true
+max_changed = 250
+max_severity = 3
+skip_label = "no-auto-approve"
