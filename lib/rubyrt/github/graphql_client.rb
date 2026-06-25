@@ -84,6 +84,7 @@ module Rubyrt
                     isOutdated
                     line
                     path
+                    resolvedBy { login }
                     comments(first: 1) {
                       nodes {
                         author { login }

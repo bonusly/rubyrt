@@ -56,5 +56,12 @@ RSpec.describe Rubyrt::GitHub::GraphqlClient do # rubocop:disable RSpec/SpecFile
         expect(JSON.parse(body)).to include('query' => a_string_including('reviewThreads'))
       end
     end
+
+    # Auto-approval needs to know who resolved each RubyRT thread.
+    it 'requests the resolvedBy login for each thread' do
+      stub_post(nodes_response([]))
+      review_threads
+      expect(client).to have_received(:post).with('/graphql', a_string_including('resolvedBy { login }'))
+    end
   end
 end

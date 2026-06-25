@@ -84,7 +84,7 @@ RSpec.describe Rubyrt::PromptBuilder do
         )
       end
 
-      it 'renders the custom scales in the prompt', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'renders the custom scales in the prompt', :aggregate_failures do
         prompt = builder.review(diff: '')
         expect(prompt).to include('- 1 — Blocker')
         expect(prompt).to include('- 2 — Needs Fix')

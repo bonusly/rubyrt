@@ -196,6 +196,38 @@ jobs:
 
 Threads are resolved as whichever user owns the PAT. (A machine/bot user account is a good fit if you don't want resolutions attributed to a person.)
 
+### Auto-approving PRs
+
+RubyRT can submit an **Approve** review when a PR is clean enough. It's **off by default** — enable it under `[approve]` in `.rubyrt/config.toml`:
+
+```toml
+[approve]
+enabled = true
+max_changes = 500          # additions + deletions ceiling; skipped if GitHub doesn't report the size
+max_severity = 3           # issues at/below this severity number (1=Critical) block approval
+skip_label = "rubyrt-skip-approve"
+protected_paths = ["app/billing/**", "config/secrets.yml"]  # globs that block approval when changed
+dry_run = false            # evaluate and log the decision without approving/dismissing
+```
+
+A PR is approved only when **all** of these hold:
+
+- It isn't a draft and doesn't carry the `skip_label`.
+- It doesn't modify `.rubyrt/config.toml` — a PR can't weaken the approval rules and wave itself through.
+- No changed file matches a `protected_paths` glob — e.g. billing code or sensitive config you always want a human to review.
+- Total changes are within `max_changes` (this check is skipped when the size is unknown).
+- This run produced no findings at or above `max_severity`.
+- No RubyRT findings at or above `max_severity` are still unresolved.
+- Every resolved RubyRT finding at or above `max_severity` was resolved by someone who is **neither the PR author nor a contributor** to the PR — an author can't clear their own findings to earn an approval.
+
+Re-runs are idempotent: RubyRT won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. With `dry_run = true` it logs the decision and reasons but takes no action — useful for rollout.
+
+The approval needs the workflow's `pull-requests: write` permission (already required for comments). RubyRT tries the approval with the main `github_token` first, then falls back to the `resolve_token` PAT if that attempt fails.
+
+> **Heads up on which token approves.** An approval submitted by `GITHUB_TOKEN` (or a GitHub App installation token) does **not** count toward branch-protection "required approvals", and the fallback only triggers when the first attempt *errors* — a non-counting approval from `GITHUB_TOKEN` succeeds and won't fall through to the PAT. If you need the approval to satisfy required reviewers, run RubyRT with the PAT as its main `github_token` (or as a bot user) so the counting identity is the one that approves.
+
+> **Limitation.** "Contributor" is determined from commit author/committer GitHub logins, so a `Co-authored-by:` trailer doesn't count as having committed. If a thread's resolver can't be determined (e.g. a deleted account), RubyRT fails safe and does not approve.
+
 ### Configuration options
 
 RubyRT reads configuration from layers (later layers override earlier ones):
@@ -223,6 +255,12 @@ Key settings:
 | Severity threshold (keep if ≤) | `3` | `post_process.max_severity` | — | — |
 | Critic pass enabled | `true` | `verify.enabled` | — | — |
 | Critic pass model | review model | `verify.model` | — | — |
+| Auto-approve PRs | `false` | `approve.enabled` | — | — |
+| Auto-approve change limit | `500` | `approve.max_changes` | — | — |
+| Auto-approve severity gate | `3` | `approve.max_severity` | — | — |
+| Auto-approve skip label | `rubyrt-skip-approve` | `approve.skip_label` | — | — |
+| Auto-approve protected paths | `[]` | `approve.protected_paths` | — | — |
+| Auto-approve dry run | `false` | `approve.dry_run` | — | — |
 | Skill directories | `.agents`, `.claude`, `.cursor` | `skill_directories` | — | — |
 | Auxiliary files | `[]` | `aux_files` | — | — |
 | Language servers | none | `lsp.<name>` | — | — |

@@ -13,6 +13,27 @@ AllCops:
 Style/Documentation:
   Enabled: true
 
+# `pr` is idiomatic for a pull request throughout the GitHub integration.
+# The rest are RuboCop's defaults, which an AllowedNames override would drop.
+Naming/MethodParameterName:
+  AllowedNames:
+    - as
+    - at
+    - by
+    - cc
+    - db
+    - id
+    - if
+    - in
+    - io
+    - ip
+    - of
+    - "on"
+    - os
+    - pr
+    - to
+    - up
+
 Metrics/MethodLength:
   Max: 65
 
@@ -31,3 +52,9 @@ Metrics/BlockLength:
 
 Layout/LineLength:
   Max: 120
+
+RSpec/ExampleLength:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: false
