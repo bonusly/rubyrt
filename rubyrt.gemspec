@@ -43,7 +43,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'async', '~> 2.40'
 
   # GitHub API
-  spec.add_dependency 'octokit', '~> 9.0'
+  spec.add_dependency 'octokit', '~> 10.0'
 
   # Configuration / templating
   spec.add_dependency 'dotenv', '~> 3.1'
