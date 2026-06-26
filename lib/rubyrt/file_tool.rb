@@ -24,7 +24,9 @@ module Rubyrt
 
     def initialize(root:)
       super()
-      @root = File.expand_path(root)
+      # Canonicalize the root so symlinked prefixes (e.g. /tmp -> /private/tmp
+      # on macOS) match the realpath'd candidates compared against it.
+      @root = File.realpath(root)
     end
 
     def execute(path:)
@@ -46,23 +48,34 @@ module Rubyrt
 
     private
 
-    # Expand `path` relative to the working directory and confirm the result is
-    # still inside it. `File.expand_path` collapses `..`, so a resolved path that
-    # does not start with the root prefix (or be the root itself) is a traversal
-    # attempt and is rejected. Symlinks are resolved with realpath so a link that
-    # points outside the tree is caught the same way.
+    # Expand `path` relative to the working directory, collapse every symlink in
+    # the resulting path with `File.realpath`, and confirm the fully-resolved
+    # target still sits inside the working directory. Resolving the whole path
+    # (not just the final component) closes a traversal gap where a symlinked
+    # intermediate directory points outside the root, and using the resolved path
+    # for all subsequent reads avoids a Time-of-Check to Time-of-Use race.
     def resolve(path)
       candidate = File.expand_path(path, @root)
-      return nil unless inside?(candidate)
+      resolved = realpath(candidate)
+      return nil unless resolved
 
-      return candidate unless File.symlink?(candidate)
+      inside?(resolved) ? resolved : nil
+    end
 
-      begin
-        target = File.realpath(candidate)
-      rescue StandardError
-        return nil
-      end
-      inside?(target) ? candidate : nil
+    # `File.realpath` raises ENOENT for a non-existent leaf, so when the file
+    # itself doesn't exist yet we resolve its parent directory (which must exist)
+    # and reappend the basename. This still collapses symlinked intermediate
+    # directories so a path like `link/missing.rb` is checked against the link's
+    # real target rather than its on-disk name.
+    def realpath(candidate)
+      File.realpath(candidate)
+    rescue Errno::ENOENT
+      parent = File.dirname(candidate)
+      return candidate if parent == candidate # reached filesystem root
+
+      File.join(File.realpath(parent), File.basename(candidate))
+    rescue StandardError
+      nil
     end
 
     def inside?(path)

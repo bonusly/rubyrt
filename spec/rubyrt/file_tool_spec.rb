@@ -36,14 +36,36 @@ RSpec.describe Rubyrt::FileTool do
   end
 
   it 'rejects paths that escape the working directory via ..' do
-    parent = File.expand_path('..', tmp_dir)
-    sibling = File.join(parent, 'sibling.txt')
-    File.write(sibling, 'secret') unless File.exist?(sibling)
+    expect(tool.execute(path: '../sibling.txt')).to eq('Path `../sibling.txt` is outside the working directory.')
+  end
+
+  it 'rejects paths that escape via a symlinked intermediate directory' do
+    outside = Dir.mktmpdir
+    secret = File.join(outside, 'secret.txt')
+    File.write(secret, 'leaked')
+    link = File.join(tmp_dir, 'link')
+    File.symlink(outside, link)
 
     begin
-      expect(tool.execute(path: '../sibling.txt')).to eq('Path `../sibling.txt` is outside the working directory.')
+      expect(tool.execute(path: 'link/secret.txt')).to eq('Path `link/secret.txt` is outside the working directory.')
     ensure
-      FileUtils.rm_f(sibling)
+      FileUtils.rm_f(link)
+      FileUtils.rm_rf(outside)
+    end
+  end
+
+  it 'rejects a symlink whose target points outside the working directory' do
+    outside = Dir.mktmpdir
+    secret = File.join(outside, 'secret.txt')
+    File.write(secret, 'leaked')
+    link = File.join(tmp_dir, 'secret.lnk')
+    File.symlink(secret, link)
+
+    begin
+      expect(tool.execute(path: 'secret.lnk')).to eq('Path `secret.lnk` is outside the working directory.')
+    ensure
+      FileUtils.rm_f(link)
+      FileUtils.rm_rf(outside)
     end
   end
 
