@@ -31,6 +31,10 @@ RSpec.describe Rubyrt::FileTool do
     expect(tool.execute(path: 'lib/missing.rb')).to eq('Path `lib/missing.rb` does not exist.')
   end
 
+  it 'reports does-not-exist when multiple intermediate directories are missing' do
+    expect(tool.execute(path: 'a/b/c/missing.rb')).to eq('Path `a/b/c/missing.rb` does not exist.')
+  end
+
   it 'reports when the path is a directory' do
     expect(tool.execute(path: 'lib')).to eq('Path `lib` is a directory.')
   end

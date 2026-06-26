@@ -62,18 +62,19 @@ module Rubyrt
       inside?(resolved) ? resolved : nil
     end
 
-    # `File.realpath` raises ENOENT for a non-existent leaf, so when the file
-    # itself doesn't exist yet we resolve its parent directory (which must exist)
-    # and reappend the basename. This still collapses symlinked intermediate
-    # directories so a path like `link/missing.rb` is checked against the link's
-    # real target rather than its on-disk name.
+    # `File.realpath` raises ENOENT for a non-existent path component, so walk up
+    # the tree until an existing ancestor is resolved, then reappend the missing
+    # tail components. Recursion (rather than a single `realpath(parent)` call)
+    # handles paths where several intermediate directories don't exist yet; an
+    # exception raised inside a rescue block isn't caught by sibling rescue
+    # clauses, so a non-recursive call would escape as an unhelpful error.
     def realpath(candidate)
       File.realpath(candidate)
     rescue Errno::ENOENT
       parent = File.dirname(candidate)
       return candidate if parent == candidate # reached filesystem root
 
-      File.join(File.realpath(parent), File.basename(candidate))
+      File.join(realpath(parent), File.basename(candidate))
     rescue StandardError
       nil
     end
