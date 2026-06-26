@@ -59,7 +59,7 @@ module Rubyrt
     option :model, type: :string, aliases: '-m', desc: 'LLM model to use for the review'
     option :provider, type: :string, aliases: '-p', desc: 'LLM provider to use (e.g. openai, anthropic)'
     option :debug, type: :boolean, default: false, desc: 'Print error backtraces for debugging'
-    def review(*) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def review(*) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
       # Thor passes positional args we don't use; accept and ignore them.
       config = Rubyrt::Configuration.new(overrides: { model: options[:model], provider: options[:provider] }.compact)
       changeset = build_changeset(config)
@@ -69,7 +69,7 @@ module Rubyrt
       render_report(report, config)
     rescue StandardError => e
       warn "Review failed: #{e.class}: #{e.message}"
-      warn e.backtrace&.first(5)&.join("\n") if ENV['RUBYRT_DEBUG'] || options[:debug]
+      warn e.backtrace&.first(5)&.join("\n") if debug_enabled?
       exit 1
     ensure
       clients&.each(&:shutdown)
@@ -115,6 +115,7 @@ module Rubyrt
       commenter = build_commenter(context)
       summary = File.read(options[:md_report_file] || 'code-review-report.md')
       report = Rubyrt::Report.from_file(json_path_for(options[:md_report_file]))
+      debug_approve_state
       commenter.post_review(summary: summary, report: report)
       maybe_approve(context, report)
     rescue StandardError => e
@@ -149,7 +150,8 @@ module Rubyrt
           changeset: changeset,
           prompt_builder: Rubyrt::PromptBuilder.new(config),
           llm_client: Rubyrt::LlmClient.new(config),
-          tools: tools
+          tools: tools,
+          debug: debug_enabled?
         )
       end
 
@@ -239,6 +241,23 @@ module Rubyrt
           pr_number: options[:pr] || context&.pr_number,
           config: approve_config
         )
+      end
+
+      # Debug is on when --debug is passed OR the RUBYRT_DEBUG env var is set.
+      # Kept as a helper so the Reviewer and the CLI's own backtrace printing
+      # agree on a single source of truth.
+      def debug_enabled?
+        ENV['RUBYRT_DEBUG'] || options[:debug]
+      end
+
+      # Mirror maybe_approve's config load so the debug banner reports the same
+      # approve state that will actually be evaluated.
+      def debug_approve_state
+        return unless debug_enabled?
+
+        approve = Rubyrt::Configuration.new['approve']
+        enabled = approve.is_a?(Hash) ? approve['enabled'] : false
+        warn "[DEBUG] Approve enabled: #{enabled ? 'yes' : 'no'}"
       end
     end
     # rubocop:enable Metrics/BlockLength

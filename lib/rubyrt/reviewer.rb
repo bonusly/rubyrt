@@ -10,7 +10,7 @@ module Rubyrt
   # Orchestrates reviewing the changeset: builds prompts, calls the LLM,
   # post-processes issues, and builds a Report.
   class Reviewer
-    def initialize(config:, changeset:, prompt_builder:, llm_client:, tools: [])
+    def initialize(config:, changeset:, prompt_builder:, llm_client:, tools: [], debug: false)
       @config = config
       @changeset = changeset
       @prompt_builder = prompt_builder
@@ -19,25 +19,32 @@ module Rubyrt
       # Plain array: Async runs fibers cooperatively on a single thread, so
       # appends between scheduler yields do not race. No lock needed.
       @warnings = []
+      @debug_output = DebugOutput.new(config: config, changeset: changeset, enabled: debug)
     end
 
-    def review
+    def review # rubocop:disable Metrics/AbcSize
+      @debug_output.banner
       issues = gather_llm_issues
       filtered = PostProcessor.new(@config['post_process']).call(issues)
       enriched = CodeEnricher.new(@changeset).call(filtered)
+      @debug_output.first_pass(enriched)
       verified = verify(enriched)
       sorted = verified.sort_by { |issue| issue.severity || Float::INFINITY }
-      assign_issue_ids(sorted)
+      sorted.each_with_index { |issue, index| issue.id = index + 1 }
+      build_report(sorted)
+    end
+
+    private
+
+    def build_report(issues)
       Report.new(
         target: build_target,
         model: @config['model'],
-        issues: sorted,
+        issues: issues,
         processing_warnings: @warnings,
         number_of_processed_files: @changeset.files.size
       )
     end
-
-    private
 
     def verify(issues)
       verifier = Verifier.new(
@@ -46,6 +53,7 @@ module Rubyrt
       )
       kept = verifier.call(issues)
       @warnings.concat(verifier.warnings)
+      @debug_output.critic(issues, kept)
       kept
     end
 
@@ -135,12 +143,6 @@ module Rubyrt
       return parsed['issues'] || parsed[:issues] || [] if parsed.is_a?(Hash)
 
       []
-    end
-
-    def assign_issue_ids(issues)
-      issues.each_with_index do |issue, index|
-        issue.id = index + 1
-      end
     end
 
     def build_target
