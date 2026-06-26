@@ -65,6 +65,7 @@ module Rubyrt
       changeset = build_changeset(config)
       clients = build_lsp_clients(config, changeset)
       tools = clients.map { |client| Rubyrt::Lsp::SymbolTool.new(client: client, root: changeset.workdir) }
+      tools << Rubyrt::FileTool.new(root: changeset.workdir)
       report = build_reviewer(config, changeset, tools).review
       render_report(report, config)
     rescue StandardError => e
