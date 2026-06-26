@@ -16,3 +16,9 @@ enabled = true
 dry_run = false
 max_changes = 500
 max_severity = 3
+protected_paths = [
+  ".github/*",
+  "Gemfile",
+  "Gemfile.lock",
+  "rubyrt.gemspec"
+]
