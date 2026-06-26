@@ -104,4 +104,71 @@ RSpec.describe Rubyrt::Reviewer do
       expect(report.issues.first.title).to eq('Bug')
     end
   end
+
+  context 'when debug is enabled' do
+    subject(:debug_reviewer) do
+      described_class.new(
+        config: config,
+        changeset: fake_changeset,
+        prompt_builder: Rubyrt::PromptBuilder.new(config),
+        llm_client: fake_llm_client,
+        debug: true
+      )
+    end
+
+    it 'prints the pre-review banner with model, provider, and file list' do
+      pattern = /
+        \[DEBUG\]\ Review\ starting.*\[DEBUG\]\ Model: \ .*Provider: \ .*
+        \[DEBUG\]\ Critic\ model: \ .*\[DEBUG\]\ Files\ \(1\):\ app\.rb
+      /xm
+      expect { debug_reviewer.review }.to output(pattern).to_stderr
+    end
+
+    it 'prints the first-pass summary with finding counts and severity distribution' do
+      pattern = /
+        \[DEBUG\]\ First\ pass:\ 1\ findings.*\[DEBUG\]\ \ \ app\.rb:\ 1.*
+        \[DEBUG\]\ \ \ Severity\ distribution:\ severity=2\ ->\ 1
+      /xm
+      expect { debug_reviewer.review }.to output(pattern).to_stderr
+    end
+
+    context 'when the critic drops a finding' do
+      let(:fake_llm_client) do
+        issues = [
+          { 'title' => 'keep-me', 'details' => 'd', 'severity' => 2,
+            'confidence' => 1, 'tags' => ['bug'], 'affected_lines' => [{ 'start_line' => 1 }] },
+          { 'title' => 'drop-me', 'details' => 'd', 'severity' => 3,
+            'confidence' => 1, 'tags' => ['bug'], 'affected_lines' => [{ 'start_line' => 1 }] }
+        ]
+        review_response = instance_double(RubyLLM::Message, content: { 'issues' => issues })
+        instance_double(Rubyrt::LlmClient).tap do |client|
+          allow(client).to receive(:complete_with_schema) do |prompt, *_|
+            next review_response unless prompt.to_s.include?('FINDING TO CHALLENGE')
+
+            verdict = prompt.to_s.include?('drop-me') ? 'reject' : 'uphold'
+            instance_double(RubyLLM::Message, content: { 'verdict' => verdict, 'reasoning' => 'r' })
+          end
+        end
+      end
+
+      it 'prints the critic summary listing the dropped finding' do
+        pattern = /
+          \[DEBUG\]\ Critic\ pass:\ dropped\ 1\ of\ 2\ findings.*
+          \[DEBUG\]\ \ \ DROPPED:\ 'drop-me'\ \(app\.rb,\ severity=3\)
+        /xm
+        expect { debug_reviewer.review }.to output(pattern).to_stderr
+      end
+    end
+
+    it 'is silent when debug is false' do
+      silent_reviewer = described_class.new(
+        config: config,
+        changeset: fake_changeset,
+        prompt_builder: Rubyrt::PromptBuilder.new(config),
+        llm_client: fake_llm_client,
+        debug: false
+      )
+      expect { silent_reviewer.review }.not_to output.to_stderr
+    end
+  end
 end
