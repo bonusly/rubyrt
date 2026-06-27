@@ -18,12 +18,13 @@ module Rubyrt
   class Verifier
     attr_reader :warnings
 
-    def initialize(config:, changeset:, prompt_builder:, llm_client:, tools: [])
+    def initialize(config:, changeset:, prompt_builder:, llm_client:, tools: [], debug_output: nil)
       @config = config
       @changeset = changeset
       @prompt_builder = prompt_builder
       @tools = tools
       @llm_client = verify_client(config, llm_client)
+      @debug_output = debug_output
       @warnings = []
     end
 
@@ -79,7 +80,10 @@ module Rubyrt
         symbol_lookup: @tools.any?
       )
       response = @llm_client.complete_with_schema(prompt, Schemas::VERDICT_SCHEMA, tools: @tools)
-      verdict_of(response) != 'reject'
+      verdict = verdict_of(response)
+      @debug_output&.critic_call(issue: issue, response: response,
+                                 verdict: verdict.nil? || verdict.empty? ? '(no verdict)' : verdict)
+      verdict != 'reject'
     rescue StandardError => e
       # Fail open: keep the finding, but surface that the critic didn't run.
       @warnings << "Could not verify finding '#{issue.title}' (#{issue.file}): #{e.class}: #{e.message}"
