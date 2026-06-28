@@ -237,7 +237,6 @@ module Rubyrt
 
       def build_approver(context, approve_config)
         Rubyrt::GitHub::Approver.new(
-          workflow_token: ENV.fetch('RUBYRT_WORKFLOW_TOKEN', nil),
           token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
           resolve_token: options[:resolve_token] || ENV.fetch('RUBYRT_RESOLVE_TOKEN', nil),
           owner: repo_owner(context),

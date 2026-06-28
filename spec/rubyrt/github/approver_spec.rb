@@ -203,46 +203,6 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     expect(client).to have_received(:dismiss_pull_request_review).with('o/r', 1, 99, anything)
   end
 
-  context 'when the workflow token is configured and can approve' do
-    subject(:approver) do
-      described_class.new(workflow_token: 'wf', token: 'app', owner: 'o', repo: 'r', pr_number: 1, config: config)
-    end
-
-    let(:workflow_client) { instance_double(Octokit::Client) }
-
-    before do
-      allow(Octokit::Client).to receive(:new).with(hash_including(access_token: 'wf')).and_return(workflow_client)
-      allow(workflow_client).to receive(:create_pull_request_review)
-    end
-
-    it 'uses the workflow token first without falling back', :aggregate_failures do
-      approver.run(report_for([]))
-
-      expect(workflow_client).to have_received(:create_pull_request_review)
-      expect(client).not_to have_received(:create_pull_request_review)
-    end
-  end
-
-  context 'when the workflow token is rejected and the app token succeeds' do
-    subject(:approver) do
-      described_class.new(workflow_token: 'wf', token: 'app', owner: 'o', repo: 'r', pr_number: 1, config: config)
-    end
-
-    let(:workflow_client) { instance_double(Octokit::Client) }
-
-    before do
-      allow(Octokit::Client).to receive(:new).with(hash_including(access_token: 'wf')).and_return(workflow_client)
-      allow(workflow_client).to receive(:create_pull_request_review).and_raise(Octokit::Forbidden)
-    end
-
-    it 'falls back to the app/main token', :aggregate_failures do
-      approver.run(report_for([]))
-
-      expect(workflow_client).to have_received(:create_pull_request_review)
-      expect(client).to have_received(:create_pull_request_review)
-    end
-  end
-
   context 'when the main token cannot approve and a PAT fallback is configured' do
     subject(:approver) do
       described_class.new(token: 'gh', owner: 'o', repo: 'r', pr_number: 1, config: config, resolve_token: 'pat')
