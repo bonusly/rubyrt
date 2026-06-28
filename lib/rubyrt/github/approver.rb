@@ -9,8 +9,8 @@ module Rubyrt
     # Optionally approves a pull request when a configurable set of safety rules
     # all pass. Runs after Commenter#post_review and is disabled unless
     # approve.enabled is set in config. Reads happen on the main token; the
-    # approval (and any dismissal) is attempted with the main token first, then
-    # falls back to the resolve-token user (PAT) when that attempt errors.
+    # approval (and any dismissal) is attempted in order: workflow token
+    # (GITHUB_TOKEN), app/main token, then resolve-token user (PAT).
     class Approver # rubocop:disable Metrics/ClassLength
       APPROVAL_MARKER = '<!-- rubyrt-approval -->'
       # Never auto-approve a PR that edits RubyRT's own config — that's how
@@ -26,10 +26,13 @@ module Rubyrt
 
       Decision = Struct.new(:action, :reasons)
 
-      def initialize(token:, owner:, repo:, pr_number:, config: {}, resolve_token: nil)
-        # Reads and the first approval attempt use the main token; the PAT is the
-        # fallback when that attempt errors. An empty env var is treated as unset.
+      def initialize(token:, owner:, repo:, pr_number:, config: {}, workflow_token: nil, resolve_token: nil)
+        # Reads use the main token. Approvals are tried in order: workflow token
+        # (GITHUB_TOKEN), app/main token, resolve-token PAT. Empty env vars are
+        # treated as unset.
+        workflow_token = nil if workflow_token.to_s.strip.empty?
         resolve_token = nil if resolve_token.to_s.strip.empty?
+        @workflow_client = workflow_token && Octokit::Client.new(access_token: workflow_token, auto_paginate: true)
         @client = Octokit::Client.new(access_token: token, auto_paginate: true)
         @resolve_client = resolve_token && Octokit::Client.new(access_token: resolve_token, auto_paginate: true)
         @owner = owner
@@ -226,8 +229,7 @@ module Rubyrt
       def ensure_approved(pr)
         return if approved_for?(pr.head.sha)
 
-        # Main token first, PAT fallback. The PAT fallback covers the common
-        # case where the main token (GITHUB_TOKEN) lacks approval rights.
+        # Workflow token first, app/main token second, PAT last.
         attempt_with_fallback('approve PR') do |client|
           client.create_pull_request_review(slug, @pr_number, event: 'APPROVE', body: approval_body)
         end
@@ -250,7 +252,7 @@ module Rubyrt
       # fail, warn with the last error rather than failing the run.
       def attempt_with_fallback(action)
         last_error = nil
-        [@client, @resolve_client].compact.each do |client|
+        [@workflow_client, @client, @resolve_client].compact.each do |client|
           return yield(client)
         rescue Octokit::Error => e
           last_error = e

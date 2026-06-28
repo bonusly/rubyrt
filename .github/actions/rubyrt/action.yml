@@ -115,6 +115,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_token || github.token }}
+        RUBYRT_WORKFLOW_TOKEN: ${{ github.token }}
         RUBYRT_RESOLVE_TOKEN: ${{ inputs.resolve_token }}
         OUTPUT_DIR: ${{ inputs.output_dir }}
         RUBYRT_CMD: ${{ inputs.rubyrt_command }}
