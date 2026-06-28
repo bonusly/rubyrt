@@ -46,4 +46,4 @@ jobs:
           # Emit per-call token counts, cost, and tool-call details to the job
           # log. Override by setting the RUBYRT_DEBUG repository variable to
           # 'false' or '0' to silence it.
-          debug: ${{ vars.RUBYRT_DEBUG || 'true' }}
+          debug: ${{ vars.RUBYRT_DEBUG != 'false' && vars.RUBYRT_DEBUG != '0' && 'true' || 'false' }}

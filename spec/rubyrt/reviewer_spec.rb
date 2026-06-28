@@ -97,8 +97,10 @@ RSpec.describe Rubyrt::Reviewer do
     let(:fake_llm_client) do
       json = '[{"title":"Bug","details":"desc","severity":1,"confidence":1,' \
              '"tags":[],"affected_lines":[{"start_line":1}]}]'
+      cost_stub = instance_double(RubyLLM::Cost, total: nil)
       response = instance_double(RubyLLM::Message, content: json,
-                                 input_tokens: 80, output_tokens: 40, tool_calls: {})
+                                 input_tokens: 80, output_tokens: 40, tool_calls: {},
+                                 cache_read_tokens: nil, cache_write_tokens: nil, cost: cost_stub)
       instance_double(Rubyrt::LlmClient, complete_with_schema: response)
     end
 
