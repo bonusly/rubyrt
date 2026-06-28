@@ -70,4 +70,34 @@ RSpec.describe Rubyrt::Verifier do
       expect(verifier.warnings).to include(/Could not verify finding 'keep-me'.*boom/)
     end
   end
+
+  context 'when debug_output is provided' do
+    let(:fake_debug_output) { instance_double(Rubyrt::DebugOutput) }
+
+    subject(:debug_verifier) do
+      described_class.new(
+        config: config,
+        changeset: fake_changeset,
+        prompt_builder: Rubyrt::PromptBuilder.new(Rubyrt::Configuration.new(root: tmp_dir)),
+        llm_client: fake_llm_client,
+        debug_output: fake_debug_output
+      )
+    end
+
+    before { allow(fake_debug_output).to receive(:critic_call) }
+
+    it 'calls critic_call with the issue, response, and verdict for each finding' do
+      debug_verifier.call(issues)
+      expect(fake_debug_output).to have_received(:critic_call)
+        .with(issue: issues[0], response: anything, verdict: 'uphold')
+      expect(fake_debug_output).to have_received(:critic_call)
+        .with(issue: issues[1], response: anything, verdict: 'reject')
+    end
+
+    it 'does not call critic_call when verifier is disabled' do
+      config['verify']['enabled'] = false
+      debug_verifier.call(issues)
+      expect(fake_debug_output).not_to have_received(:critic_call)
+    end
+  end
 end

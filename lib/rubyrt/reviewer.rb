@@ -24,6 +24,7 @@ module Rubyrt
 
     def review # rubocop:disable Metrics/AbcSize
       @debug_output.banner
+      @debug_output.review_section_start
       issues = gather_llm_issues
       filtered = PostProcessor.new(@config['post_process']).call(issues)
       enriched = CodeEnricher.new(@changeset).call(filtered)
@@ -47,9 +48,10 @@ module Rubyrt
     end
 
     def verify(issues)
+      @debug_output.critic_section_start
       verifier = Verifier.new(
         config: @config, changeset: @changeset, prompt_builder: @prompt_builder,
-        llm_client: @llm_client, tools: @tools
+        llm_client: @llm_client, tools: @tools, debug_output: @debug_output
       )
       kept = verifier.call(issues)
       @warnings.concat(verifier.warnings)
@@ -102,7 +104,9 @@ module Rubyrt
       full = @changeset.full_content_for(file)
       prompt = @prompt_builder.review(diff: diff, file_lines: full, symbol_lookup: @tools.any?)
       response = @llm_client.complete_with_schema(prompt, Schemas::ISSUE_SCHEMA, tools: @tools)
-      only_changed_lines(parse_response(response, file), file)
+      issues = parse_response(response, file)
+      @debug_output.review_call(file: file, response: response, issues_found: issues.size)
+      only_changed_lines(issues, file)
     rescue JSON::ParserError => e
       @warnings << "Could not parse LLM response for #{file}: #{e.message}"
       []

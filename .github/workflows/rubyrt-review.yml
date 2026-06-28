@@ -43,3 +43,7 @@ jobs:
           # be auto-resolved. GITHUB_TOKEN and GitHub App installation tokens
           # cannot call resolveReviewThread. Resolution is skipped if unset.
           resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}
+          # Emit per-call token counts, cost, and tool-call details to the job
+          # log. Override by setting the RUBYRT_DEBUG repository variable to
+          # 'false' or '0' to silence it.
+          debug: ${{ vars.RUBYRT_DEBUG != 'false' && vars.RUBYRT_DEBUG != '0' && 'true' || 'false' }}
