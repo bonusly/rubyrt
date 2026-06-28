@@ -9,6 +9,9 @@ module Rubyrt
   # review, report, files, github-comment, setup.
   # rubocop:disable Metrics/ClassLength
   class CLI < Thor
+    class_option :debug, type: :boolean, default: false,
+                         desc: 'Enable debug logging (also: RUBYRT_DEBUG env var)'
+
     desc 'version', 'Show rubyrt version'
     def version
       puts Rubyrt::VERSION
@@ -58,7 +61,6 @@ module Rubyrt
     option :all, type: :boolean, default: false, desc: 'Review whole codebase'
     option :model, type: :string, aliases: '-m', desc: 'LLM model to use for the review'
     option :provider, type: :string, aliases: '-p', desc: 'LLM provider to use (e.g. openai, anthropic)'
-    option :debug, type: :boolean, default: false, desc: 'Enable debug logging (also: RUBYRT_DEBUG env var)'
     def review(*) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
       # Thor passes positional args we don't use; accept and ignore them.
       config = Rubyrt::Configuration.new(overrides: { model: options[:model], provider: options[:provider] }.compact)
