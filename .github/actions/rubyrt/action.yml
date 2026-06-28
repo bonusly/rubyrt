@@ -54,6 +54,13 @@ inputs:
       GITHUB_TOKEN and GitHub App installation tokens cannot call this mutation.
       Optional; resolving is skipped when unset.
     required: false
+  debug:
+    description: >-
+      Enable debug logging (sets RUBYRT_DEBUG=1). Emits per-call token counts,
+      cost, tool-call details, and section headers for the initial review pass
+      and critic pass. Useful for diagnosing review behaviour or cost.
+    required: false
+    default: "false"
 runs:
   using: "composite"
   steps:
@@ -109,6 +116,7 @@ runs:
         OUTPUT_DIR: ${{ inputs.output_dir }}
         BASE_REF: ${{ steps.base.outputs.ref }}
         RUBYRT_CMD: ${{ inputs.rubyrt_command }}
+        RUBYRT_DEBUG: ${{ inputs.debug == 'true' && '1' || '' }}
       # Unquoted so multi-word commands (e.g. "bundle exec rubyrt") word-split.
       run: $RUBYRT_CMD review --output "$OUTPUT_DIR" --what HEAD --against "$BASE_REF"
     - name: Post review to GitHub

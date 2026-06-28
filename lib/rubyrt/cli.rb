@@ -58,7 +58,7 @@ module Rubyrt
     option :all, type: :boolean, default: false, desc: 'Review whole codebase'
     option :model, type: :string, aliases: '-m', desc: 'LLM model to use for the review'
     option :provider, type: :string, aliases: '-p', desc: 'LLM provider to use (e.g. openai, anthropic)'
-    option :debug, type: :boolean, default: false, desc: 'Print error backtraces for debugging'
+    option :debug, type: :boolean, default: false, desc: 'Enable debug logging (also: RUBYRT_DEBUG env var)'
     def review(*) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
       # Thor passes positional args we don't use; accept and ignore them.
       config = Rubyrt::Configuration.new(overrides: { model: options[:model], provider: options[:provider] }.compact)
@@ -245,11 +245,13 @@ module Rubyrt
         )
       end
 
-      # Debug is on when --debug is passed OR the RUBYRT_DEBUG env var is set.
-      # Kept as a helper so the Reviewer and the CLI's own backtrace printing
-      # agree on a single source of truth.
+      # Debug is on when --debug is passed OR RUBYRT_DEBUG is set to a non-empty,
+      # non-false value. Empty string is treated as off so GitHub Actions' default
+      # empty-variable expansion doesn't accidentally enable debug on every run.
       def debug_enabled?
-        ENV['RUBYRT_DEBUG'] || options[:debug]
+        env_val = ENV.fetch('RUBYRT_DEBUG', nil)
+        env_on = env_val && !env_val.strip.empty? && !%w[0 false].include?(env_val.strip.downcase)
+        env_on || options[:debug]
       end
 
       # Mirror maybe_approve's config load so the debug banner reports the same
