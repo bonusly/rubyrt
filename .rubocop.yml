@@ -34,8 +34,17 @@ Naming/MethodParameterName:
     - to
     - up
 
+Metrics/AbcSize:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Max: 15
+
 Metrics/MethodLength:
   Max: 65
+
+Metrics/PerceivedComplexity:
+  Max: 15
 
 Metrics/ClassLength:
   Max: 120
@@ -58,3 +67,6 @@ RSpec/ExampleLength:
 
 RSpec/MultipleExpectations:
   Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Max: 20

@@ -19,6 +19,7 @@ RSpec.describe Rubyrt::Configuration do
     expect(config['collapse_previous_code_review_comments']).to be true
     expect(config['retries']).to eq(3)
     expect(config['request_timeout']).to eq(120)
+    expect(config['models_file']).to eq('')
   end
 
   it 'exposes prompt_vars' do
@@ -80,6 +81,20 @@ RSpec.describe Rubyrt::Configuration do
 
     it 'overrides model from environment' do
       expect(config['model']).to eq('gpt-5')
+    end
+  end
+
+  context 'with RUBYRT_MODELS_FILE environment variable' do
+    around do |example|
+      original = ENV.fetch('RUBYRT_MODELS_FILE', nil)
+      ENV['RUBYRT_MODELS_FILE'] = '/tmp/rubyrt-models.json'
+      example.run
+    ensure
+      original ? ENV['RUBYRT_MODELS_FILE'] = original : ENV.delete('RUBYRT_MODELS_FILE')
+    end
+
+    it 'overrides models_file from environment' do
+      expect(config['models_file']).to eq('/tmp/rubyrt-models.json')
     end
   end
 

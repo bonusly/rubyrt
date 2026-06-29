@@ -52,6 +52,12 @@ model = "gpt-5.4-nano"
 # (e.g. openai, anthropic, gemini, ollama, deepseek, openrouter, mistral,
 # perplexity, xai, azure, bedrock, vertexai, gpustack).
 provider = "openai"
+# Path to a local RubyLLM models registry (JSON). When set and the file exists,
+# reviews load model metadata from it instead of the (potentially stale) file
+# shipped with the ruby_llm gem. Run `rubyrt models` to refresh and persist it.
+# Supports `~` and relative paths (resolved against the project root). Leave
+# empty to use the shipped registry.
+models_file = ""
 
 # Language servers the LLM can consult for extra context (definitions of
 # classes/methods referenced in the diff) during review. Disabled unless at

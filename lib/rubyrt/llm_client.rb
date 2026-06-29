@@ -35,6 +35,7 @@ module Rubyrt
       @config = config
       @model = model || config['model']
       validate!
+      load_local_models_registry
       @llm_context = build_context
     end
 
@@ -52,6 +53,19 @@ module Rubyrt
       c.with_schema(schema).ask(prompt)
     end
 
+    # Applies the configured provider's API key/base to a RubyLLM config
+    # object. Accepts either a per-context config (from `RubyLLM.context`) or
+    # the global `RubyLLM.config`, so the `models` command can reuse it to make
+    # provider credentials visible to `RubyLLM.models.refresh!`.
+    def self.apply_provider_config!(llm_config, config)
+      provider = config['provider'].to_s.downcase
+      mapping = PROVIDER_CONFIG[provider]
+      raise ArgumentError, "Unsupported LLM provider: #{provider}" unless mapping
+
+      llm_config.public_send("#{mapping[:key]}=", config['llm_api_key'])
+      llm_config.public_send("#{mapping[:base]}=", config['llm_api_base']) if config['llm_api_base']
+    end
+
     private
 
     def validate!
@@ -59,6 +73,24 @@ module Rubyrt
 
       raise ConfigurationError,
             'Missing LLM_API_KEY. Set it as an environment variable or in ~/.rubyrt/.env.'
+    end
+
+    # When `models_file` is configured and exists, point the process-wide
+    # RubyLLM model registry at it and (re)load it, so reviews use the local
+    # registry instead of the (potentially stale) one shipped with the gem.
+    # RubyLLM's model registry is a process-wide singleton resolved from the
+    # global RubyLLM.config, so this is the one global mutation the client
+    # makes; provider keys/base stay per-context. A missing file is ignored so
+    # reviews fall back to the shipped registry until `rubyrt models` creates it.
+    def load_local_models_registry
+      path = @config['models_file']
+      return unless path && !path.to_s.strip.empty?
+
+      expanded = File.expand_path(path)
+      return unless File.exist?(expanded)
+
+      RubyLLM.config.model_registry_file = expanded
+      RubyLLM.models.load_from_json!(expanded)
     end
 
     def build_context
@@ -94,11 +126,7 @@ module Rubyrt
     end
 
     def apply_provider_config(llm_config)
-      mapping = PROVIDER_CONFIG[provider]
-      raise ArgumentError, "Unsupported LLM provider: #{provider}" unless mapping
-
-      llm_config.public_send("#{mapping[:key]}=", @config['llm_api_key'])
-      llm_config.public_send("#{mapping[:base]}=", @config['llm_api_base']) if @config['llm_api_base']
+      self.class.apply_provider_config!(llm_config, @config)
     end
   end
 end

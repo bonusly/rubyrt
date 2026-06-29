@@ -72,8 +72,6 @@ RSpec.describe Rubyrt::Verifier do
   end
 
   context 'when debug_output is provided' do
-    let(:fake_debug_output) { instance_double(Rubyrt::DebugOutput) }
-
     subject(:debug_verifier) do
       described_class.new(
         config: config,
@@ -83,6 +81,8 @@ RSpec.describe Rubyrt::Verifier do
         debug_output: fake_debug_output
       )
     end
+
+    let(:fake_debug_output) { instance_double(Rubyrt::DebugOutput) }
 
     before { allow(fake_debug_output).to receive(:critic_call) }
 

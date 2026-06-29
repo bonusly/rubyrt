@@ -28,7 +28,8 @@ module Rubyrt
       'llm_api_base' => 'LLM_API_BASE',
       'github_token' => 'GITHUB_TOKEN',
       'log_file' => 'RUBYRT_LOG_FILE',
-      'log_level' => 'RUBYRT_LOG_LEVEL'
+      'log_level' => 'RUBYRT_LOG_LEVEL',
+      'models_file' => 'RUBYRT_MODELS_FILE'
     }.freeze
 
     INTEGER_ENV_OVERRIDES = {

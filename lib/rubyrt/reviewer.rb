@@ -22,7 +22,7 @@ module Rubyrt
       @debug_output = DebugOutput.new(config: config, changeset: changeset, enabled: debug)
     end
 
-    def review # rubocop:disable Metrics/AbcSize
+    def review
       @debug_output.banner
       @debug_output.review_section_start
       issues = gather_llm_issues
@@ -67,7 +67,7 @@ module Rubyrt
       review_in_parallel(files, concurrency)
     end
 
-    def review_in_parallel(files, concurrency) # rubocop:disable Metrics/AbcSize
+    def review_in_parallel(files, concurrency)
       results = Array.new(files.size)
       errors = []
       barrier = nil # declared here so it's in scope for the ensure block below
