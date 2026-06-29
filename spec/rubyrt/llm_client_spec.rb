@@ -191,4 +191,85 @@ RSpec.describe Rubyrt::LlmClient do
       expect(context_config(described_class.new(config)).log_level).to eq(Logger::INFO)
     end
   end
+
+  context 'with a models_file pointing to an existing JSON registry' do
+    def models_path
+      File.join(tmp_dir, 'models.json')
+    end
+
+    def config
+      Rubyrt::Configuration.new(
+        root: tmp_dir,
+        overrides: {
+          'provider' => 'openai',
+          'llm_api_key' => 'secret',
+          'models_file' => models_path
+        }
+      )
+    end
+
+    # Save/restore the global RubyLLM registry the client mutates, and reset the
+    # cached singleton so later specs reload from the original shipped file.
+    around do |example|
+      original_file = RubyLLM.config.model_registry_file
+      example.run
+    ensure
+      RubyLLM.config.model_registry_file = original_file
+      RubyLLM::Models.instance_variable_set(:@instance, nil)
+    end
+
+    before do
+      File.write(models_path, <<~JSON)
+        [
+          {
+            "id": "rubyrt-test-model",
+            "name": "RubyRT Test",
+            "provider": "openai",
+            "type": "chat",
+            "family": "test",
+            "modalities": { "input": ["text"], "output": ["text"] }
+          }
+        ]
+      JSON
+    end
+
+    it 'points the global registry at the configured file', :aggregate_failures do
+      described_class.new(config)
+      expect(RubyLLM.config.model_registry_file).to eq(models_path)
+      expect(RubyLLM.models.any? { |m| m.id == 'rubyrt-test-model' }).to be(true)
+    end
+
+    it 'can resolve a model from the local registry' do
+      described_class.new(config)
+      model = RubyLLM.models.find('rubyrt-test-model', 'openai')
+      expect(model.name).to eq('RubyRT Test')
+    end
+  end
+
+  context 'with a models_file that does not exist' do
+    def config
+      Rubyrt::Configuration.new(
+        root: tmp_dir,
+        overrides: {
+          'provider' => 'openai',
+          'llm_api_key' => 'secret',
+          'models_file' => File.join(tmp_dir, 'missing.json')
+        }
+      )
+    end
+
+    around do |example|
+      original_file = RubyLLM.config.model_registry_file
+      example.run
+    ensure
+      RubyLLM.config.model_registry_file = original_file
+      RubyLLM::Models.instance_variable_set(:@instance, nil)
+    end
+
+    it 'leaves the global registry file untouched' do
+      original = RubyLLM.config.model_registry_file
+      described_class.new(config)
+      expect(RubyLLM.config.model_registry_file).to eq(original)
+    end
+  end
 end

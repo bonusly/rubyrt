@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'thor'
+require 'fileutils'
 require 'rubyrt'
 require 'rubyrt/version'
 
@@ -61,7 +62,7 @@ module Rubyrt
     option :all, type: :boolean, default: false, desc: 'Review whole codebase'
     option :model, type: :string, aliases: '-m', desc: 'LLM model to use for the review'
     option :provider, type: :string, aliases: '-p', desc: 'LLM provider to use (e.g. openai, anthropic)'
-    def review(*) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
+    def review(*)
       # Thor passes positional args we don't use; accept and ignore them.
       config = Rubyrt::Configuration.new(overrides: { model: options[:model], provider: options[:provider] }.compact)
       changeset = build_changeset(config)
@@ -126,8 +127,44 @@ module Rubyrt
       exit 1
     end
 
+    desc 'models', 'Refresh and save the local RubyLLM models registry'
+    option :path, type: :string, aliases: '-p',
+                  desc: 'Where to save the models JSON (defaults to the models_file config)'
+    def models
+      config = Rubyrt::Configuration.new
+      expanded = resolve_models_path(config)
+      FileUtils.mkdir_p(File.dirname(expanded))
+
+      # Point the registry at the target so save_to_json writes there, and so
+      # refresh is consistent with the file reviews will load. Apply provider
+      # credentials to the global config so refresh can fetch provider model
+      # lists in addition to the public models.dev catalog.
+      RubyLLM.config.model_registry_file = expanded
+      Rubyrt::LlmClient.apply_provider_config!(RubyLLM.config, config)
+
+      puts 'Refreshing models from configured providers and models.dev...'
+      RubyLLM.models.refresh!
+      RubyLLM.models.save_to_json(expanded)
+      puts "Saved #{RubyLLM.models.count} models to #{expanded}"
+    rescue StandardError => e
+      warn "Models refresh failed: #{e.class}: #{e.message}"
+      warn e.backtrace&.first(5)&.join("\n") if debug_enabled?
+      exit 1
+    end
+
     # rubocop:disable Metrics/BlockLength
     no_commands do
+      # Resolves the local models JSON path from --path or the models_file
+      # config. Exits with a usage message when neither is set.
+      def resolve_models_path(config)
+        path = options[:path] || config['models_file']
+        unless path && !path.to_s.strip.empty?
+          warn 'No models_file configured. Set models_file in .rubyrt/config.toml or pass --path.'
+          exit 1
+        end
+        File.expand_path(path)
+      end
+
       def build_changeset(config = Rubyrt::Configuration.new)
         Rubyrt::Changeset.new(
           head_ref: options[:what],

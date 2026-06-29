@@ -1,3 +1,5 @@
+models_file = ".rubyrt/models.json"
+
 [lsp.ruby]
 command = ["bundle", "exec", "rake"]
 extensions = [".rb", ".rake"]
@@ -7,7 +9,7 @@ extensions = [".rb", ".rake"]
 # model. Same provider/key (OpenRouter), so the slug is provider-prefixed.
 [verify]
 enabled = true
-model = "z-ai/glm-5.2"
+model = "deepseek/deepseek-v4-pro"
 
 # Auto-Approving PRs
 

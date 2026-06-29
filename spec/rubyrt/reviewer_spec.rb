@@ -30,8 +30,8 @@ RSpec.describe Rubyrt::Reviewer do
                 'confidence' => 1, 'tags' => ['bug'], 'affected_lines' => [{ 'start_line' => 1 }] }]
     cost_stub = instance_double(RubyLLM::Cost, total: 0.000150)
     response = instance_double(RubyLLM::Message, content: { 'issues' => issues },
-                               input_tokens: 100, output_tokens: 50, tool_calls: {},
-                               cache_read_tokens: nil, cache_write_tokens: nil, cost: cost_stub)
+                                                 input_tokens: 100, output_tokens: 50, tool_calls: {},
+                                                 cache_read_tokens: nil, cache_write_tokens: nil, cost: cost_stub)
     instance_double(Rubyrt::LlmClient, complete_with_schema: response)
   end
 
@@ -99,8 +99,8 @@ RSpec.describe Rubyrt::Reviewer do
              '"tags":[],"affected_lines":[{"start_line":1}]}]'
       cost_stub = instance_double(RubyLLM::Cost, total: nil)
       response = instance_double(RubyLLM::Message, content: json,
-                                 input_tokens: 80, output_tokens: 40, tool_calls: {},
-                                 cache_read_tokens: nil, cache_write_tokens: nil, cost: cost_stub)
+                                                   input_tokens: 80, output_tokens: 40, tool_calls: {},
+                                                   cache_read_tokens: nil, cache_write_tokens: nil, cost: cost_stub)
       instance_double(Rubyrt::LlmClient, complete_with_schema: response)
     end
 
@@ -143,7 +143,7 @@ RSpec.describe Rubyrt::Reviewer do
     end
 
     it 'prints per-call review instrumentation with token counts' do
-      pattern = /\[DEBUG\]\[REVIEW\]\ app\.rb:\ 1\ issue\(s\)\ found\ \|\ tokens:\ 100\ in\ \/\ 50\ out/
+      pattern = %r{\[DEBUG\]\[REVIEW\]\ app\.rb:\ 1\ issue\(s\)\ found\ \|\ tokens:\ 100\ in\ /\ 50\ out}
       expect { debug_reviewer.review }.to output(pattern).to_stderr
     end
 
@@ -161,9 +161,9 @@ RSpec.describe Rubyrt::Reviewer do
         ]
         review_cost = instance_double(RubyLLM::Cost, total: 0.000280)
         review_response = instance_double(RubyLLM::Message, content: { 'issues' => issues },
-                                          input_tokens: 200, output_tokens: 80, tool_calls: {},
-                                          cache_read_tokens: nil, cache_write_tokens: nil,
-                                          cost: review_cost)
+                                                            input_tokens: 200, output_tokens: 80, tool_calls: {},
+                                                            cache_read_tokens: nil, cache_write_tokens: nil,
+                                                            cost: review_cost)
         instance_double(Rubyrt::LlmClient).tap do |client|
           allow(client).to receive(:complete_with_schema) do |prompt, *_|
             next review_response unless prompt.to_s.include?('FINDING TO CHALLENGE')
@@ -171,9 +171,9 @@ RSpec.describe Rubyrt::Reviewer do
             verdict = prompt.to_s.include?('drop-me') ? 'reject' : 'uphold'
             verdict_cost = instance_double(RubyLLM::Cost, total: 0.000090)
             instance_double(RubyLLM::Message, content: { 'verdict' => verdict, 'reasoning' => 'r' },
-                            input_tokens: 150, output_tokens: 30, tool_calls: {},
-                            cache_read_tokens: nil, cache_write_tokens: nil,
-                            cost: verdict_cost)
+                                              input_tokens: 150, output_tokens: 30, tool_calls: {},
+                                              cache_read_tokens: nil, cache_write_tokens: nil,
+                                              cost: verdict_cost)
           end
         end
       end
