@@ -39,7 +39,10 @@ module Rubyrt
     private
 
     def settings
-      (@config['verify'] || {}).transform_keys(&:to_s)
+      base = (@config['verify'] || {}).transform_keys(&:to_s)
+      base['enabled'] = %w[true 1].include?(ENV['VERIFY_ENABLED'].to_s.downcase) if ENV.key?('VERIFY_ENABLED')
+      base['model'] = ENV['VERIFY_MODEL'] if ENV.key?('VERIFY_MODEL')
+      base
     end
 
     def enabled?

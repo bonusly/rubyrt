@@ -53,6 +53,21 @@ RSpec.describe Rubyrt::Verifier do
     expect(fake_llm_client).not_to have_received(:complete_with_schema)
   end
 
+  context 'with VERIFY_ENABLED environment variable' do
+    around do |example|
+      old = ENV.fetch('VERIFY_ENABLED', nil)
+      ENV['VERIFY_ENABLED'] = 'false'
+      example.run
+    ensure
+      old.nil? ? ENV.delete('VERIFY_ENABLED') : ENV['VERIFY_ENABLED'] = old
+    end
+
+    it 'disables the critic pass even when config says enabled', :aggregate_failures do
+      expect(verifier.call(issues)).to eq(issues)
+      expect(fake_llm_client).not_to have_received(:complete_with_schema)
+    end
+  end
+
   it 'short-circuits on an empty list' do
     expect(verifier.call([])).to eq([])
   end
