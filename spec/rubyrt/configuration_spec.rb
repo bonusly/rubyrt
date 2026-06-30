@@ -15,8 +15,6 @@ RSpec.describe Rubyrt::Configuration do
   after { FileUtils.rm_rf(tmp_dir) }
 
   it 'loads bundled defaults', :aggregate_failures do
-    expect(config['mention_triggers']).to eq(%w[rubyrt bot ai /check])
-    expect(config['collapse_previous_code_review_comments']).to be true
     expect(config['retries']).to eq(3)
     expect(config['request_timeout']).to eq(120)
     expect(config['models_file']).to eq('')

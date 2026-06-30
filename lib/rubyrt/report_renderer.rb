@@ -21,7 +21,6 @@ module Rubyrt
 
     def to_cli
       output = summary_line
-      output += "Summary: #{@report.summary}\n" if @report.summary
       output += @report.issues.map { |issue| render_issue(issue) }.join
       output
     end
@@ -29,7 +28,6 @@ module Rubyrt
     def to_md
       lines = ['## RubyRT Code Review', Rubyrt::GitHub::Context::SUMMARY_MARKER]
       lines << md_summary_line
-      lines << @report.summary if @report.summary
       lines += @report.issues.map { |issue| md_issue(issue) }
       lines.join("\n\n")
     end

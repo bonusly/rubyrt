@@ -43,10 +43,6 @@ module Rubyrt
     # multiple clients with different providers/keys can coexist safely.
     attr_reader :llm_context
 
-    def complete(prompt)
-      chat.ask(prompt)
-    end
-
     def complete_with_schema(prompt, schema, tools: [])
       c = chat
       c = c.with_tools(*tools) unless tools.empty?

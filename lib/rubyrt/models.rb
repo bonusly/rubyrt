@@ -26,11 +26,7 @@ module Rubyrt
   end
 
   # A code range that an issue refers to, optionally with a proposed fix.
-  AffectedRange = Struct.new(:start_line, :end_line, :proposal, :affected_code, keyword_init: true) do
-    def initialize(start_line:, end_line: start_line, proposal: nil, affected_code: nil)
-      super
-    end
-  end
+  AffectedRange = Struct.new(:start_line, :end_line, :proposal, :affected_code, keyword_init: true)
 
   # Raw issue returned by the LLM before enrichment.
   RawIssue = Data.define(
@@ -109,7 +105,7 @@ module Rubyrt
 
   # Collection of issues and metadata produced by a review run.
   class Report
-    attr_reader :target, :summary, :issues, :processing_warnings, :created_at, :model,
+    attr_reader :target, :issues, :processing_warnings, :created_at, :model,
                 :number_of_processed_files
 
     def self.from_file(path)
@@ -128,18 +124,16 @@ module Rubyrt
       new(
         target: target,
         model: data['model'],
-        summary: data['summary'],
         issues: issues,
         processing_warnings: data['processing_warnings'] || [],
         number_of_processed_files: data['number_of_processed_files']
       )
     end
 
-    def initialize(target:, model:, summary: nil, issues: [], processing_warnings: [],
+    def initialize(target:, model:, issues: [], processing_warnings: [],
                    number_of_processed_files: nil)
       @target = target
       @model = model
-      @summary = summary
       @issues = Array(issues)
       @processing_warnings = Array(processing_warnings)
       @number_of_processed_files = number_of_processed_files || @issues.map(&:file).compact.uniq.size
@@ -154,7 +148,6 @@ module Rubyrt
       {
         'target' => @target.to_h.transform_keys(&:to_s),
         'model' => @model,
-        'summary' => @summary,
         'issues' => @issues.map(&:to_h),
         'number_of_processed_files' => number_of_processed_files,
         'total_issues' => total_issues,

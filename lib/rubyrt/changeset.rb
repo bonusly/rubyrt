@@ -2,7 +2,6 @@
 
 require 'rugged'
 require 'fileutils'
-require 'set' # rubocop:disable Lint/RedundantRequireStatement -- explicit for Ruby < 3.2
 
 module Rubyrt
   # Represents a set of changed files between two git refs, or all tracked

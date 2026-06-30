@@ -96,16 +96,4 @@ RSpec.describe Rubyrt::PromptBuilder do
       end
     end
   end
-
-  describe '#summary' do
-    let(:issues) do
-      [{ 'title' => 'Unused variable', 'severity' => 2 }]
-    end
-
-    it 'renders the summary prompt with issues JSON', :aggregate_failures do
-      prompt = builder.summary(diff: 'diff text', issues: issues)
-      expect(prompt).to include('Summarize the code review in one sentence')
-      expect(prompt).to include('Unused variable')
-    end
-  end
 end

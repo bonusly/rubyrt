@@ -1,22 +1,22 @@
-{{ self_id }}
+<%= self_id %>
 
 ----TASK----
 Review the provided code diff carefully and identify *only* highly confident
 issues which are relevant to any code context.
 
 ----CODEBASE CHANGES TO REVIEW----
-{{{ input }}}
+<%= input %>
 --------
 
-{{# file_lines }}
+<%- unless file_lines.to_s.empty? -%>
 ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
-{{{ file_lines }}}
+<%= file_lines %>
 --------
-{{/ file_lines }}
+<%- end -%>
 
-{{# aux_files }}
-{{{ aux_files }}}
-{{/ aux_files }}
+<%- unless aux_files.to_s.empty? -%>
+<%= aux_files %>
+<%- end -%>
 
 ----TASK GUIDELINES----
 - Only report issues on lines added or modified in the diff above. The full
@@ -27,16 +27,16 @@ issues which are relevant to any code context.
 - Only include issues that are significantly valuable to the maintainers (e.g., clearly expressed in the requirements below,
   bugs, security flaws, or clear maintainability concerns).
 - Do not report vague, theoretical, or overly generic advice.
-{{# symbol_lookup }}
+<%- if symbol_lookup -%>
 - Before reporting that a method, class, or constant is undefined, misspelled,
   or that a third-party library API is used incorrectly, confirm it with the
   symbol lookup tool. Do not assert an API is wrong from memory alone.
 - Treat a "No definition found" result as inconclusive, not proof of absence:
   C-extension and other native gem methods often have no indexable definition.
   When you cannot verify a third-party API, do not report it.
-{{/ symbol_lookup }}
-{{{ requirements }}}
-{{{ json_requirements }}}
+<%- end -%>
+<%= requirements %>
+<%= json_requirements %>
 
 Respond with a JSON object containing an "issues" array following this schema:
 {
@@ -77,9 +77,9 @@ Available issue tags:
 - code-style
 
 Issue severity scale:
-{{{ severity_scale }}}
+<%= severity_scale %>
 
 Confidence scale:
-{{{ confidence_scale }}}
+<%= confidence_scale %>
 
 If no issues are found according to the criteria, respond with an empty list: []

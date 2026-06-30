@@ -227,15 +227,11 @@ module Rubyrt
       end
 
       def repo_owner(context)
-        return context&.owner unless options[:gh_repo]
-
-        options[:gh_repo].split('/').first
+        options[:gh_repo]&.split('/')&.first || context&.owner
       end
 
       def repo_name(context)
-        return context&.repo_name unless options[:gh_repo]
-
-        options[:gh_repo].split('/').last
+        options[:gh_repo]&.split('/')&.last || context&.repo_name
       end
 
       def json_path_for(md_path)

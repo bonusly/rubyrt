@@ -25,7 +25,7 @@ The review pipeline flows through these modules in order:
 2. **`Configuration`** (`configuration.rb`) — 5-layer merge: bundled defaults → `.rubyrt/config.toml` → `~/.rubyrt/.env` → env vars → CLI flags. `prompt_vars` is deep-merged; all other keys override. Skills (markdown fragments from `.agents/`, `.claude/`, `.cursor/`) are lazy-loaded.
 3. **`Changeset`** (`changeset.rb`) — Uses `Rugged` (libgit2) to compute the diff between two refs. Supports merge-base comparison, glob-pattern file filters, and an `--all` mode to review the full codebase.
 4. **`Reviewer`** (`reviewer.rb`) — Orchestrates the pipeline. Runs file reviews concurrently via `Async` fibers (bounded by `max_concurrent_tasks`). Aggregates errors without halting other files.
-5. **`PromptBuilder`** (`prompt_builder.rb`) — Renders Mustache templates (`review.mustache`, `verify.mustache`, `summary.mustache`) with config vars, skills, and aux file content merged in.
+5. **PromptBuilder** (`prompt_builder.rb`) — Renders ERB templates (`review.erb`, `verify.erb`) with config vars, skills, and aux file content merged in.
 6. **`LlmClient`** (`llm_client.rb`) — Wraps `ruby_llm`. Registers LSP/file tools for tool-use, handles retries and per-request timeout, uses structured output (schema → JSON).
 7. **`IssueParser`** (`issue_parser.rb`) — Validates LLM JSON against `IssueSchema` and converts `RawIssue` → `Issue`.
 8. **`PostProcessor`** (`post_processor.rb`) — Filters by `max_confidence` and `max_severity` thresholds before the critic pass.
