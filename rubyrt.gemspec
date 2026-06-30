@@ -47,6 +47,5 @@ Gem::Specification.new do |spec|
 
   # Configuration / templating
   spec.add_dependency 'dotenv', '~> 3.1'
-  spec.add_dependency 'mustache', '~> 1.0'
   spec.add_dependency 'tomlrb', '~> 2.0'
 end

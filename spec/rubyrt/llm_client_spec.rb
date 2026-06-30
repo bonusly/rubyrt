@@ -115,8 +115,9 @@ RSpec.describe Rubyrt::LlmClient do
     it 'passes the configured provider and model when starting a chat' do
       client = described_class.new(config)
       chat_double = instance_double(RubyLLM::Chat, ask: 'response')
+      allow(chat_double).to receive(:with_schema).and_return(chat_double)
       allow(client.llm_context).to receive(:chat).and_return(chat_double)
-      client.complete('test prompt')
+      client.complete_with_schema('test prompt', {})
       expect(client.llm_context).to have_received(:chat).with(model: 'gpt-4o-mini', provider: 'openai')
     end
   end

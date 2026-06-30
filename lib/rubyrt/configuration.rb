@@ -85,10 +85,7 @@ module Rubyrt
       defaults = load_toml(default_config_path)
       project = project_config_path ? load_toml(project_config_path) : {}
 
-      apply_string_overrides(
-        apply_env_overrides(deep_merge(defaults, project)),
-        @overrides
-      )
+      apply_env_overrides(deep_merge(defaults, project)).merge(@overrides)
     end
 
     def load_user_env_file
@@ -151,10 +148,6 @@ module Rubyrt
         value = ENV.fetch(env_key, nil)
         result[key] = value.to_i if value && !value.strip.empty?
       end
-    end
-
-    def apply_string_overrides(config, overrides)
-      config.merge(overrides)
     end
 
     def load_skills_from(dir)

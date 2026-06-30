@@ -37,7 +37,7 @@ RSpec.describe Rubyrt::GitHub::Commenter do # rubocop:disable RSpec/SpecFilePath
 
   def build_issue(file, start_line)
     raw = Rubyrt::RawIssue.new(title: 'T', severity: 1, confidence: 1, details: 'd', tags: ['bug'])
-    range = Rubyrt::AffectedRange.new(start_line: start_line)
+    range = Rubyrt::AffectedRange.new(start_line: start_line, end_line: start_line)
     Rubyrt::Issue.new(id: 1, file: file, raw_issue: raw, affected_lines: [range])
   end
 

@@ -2,13 +2,6 @@
 # Copy this to .rubyrt/config.toml in your project to customize. Project values
 # are merged on top of these defaults; prompt_vars are deep-merged.
 
-# Triggers that cause the bot to respond when mentioned in PR comments.
-mention_triggers = ["rubyrt", "bot", "ai", "/check"]
-
-# Collapse previous RubyRT review comments in the GitHub PR thread before
-# posting new ones.
-collapse_previous_code_review_comments = true
-
 # Auxiliary files to provide as extra context during review (paths relative to
 # the project root).
 aux_files = []
@@ -110,8 +103,6 @@ Issues are labeled by their severity
 - Consistency in terminology, tense, and naming across the codebase.
 - Unclear or incorrect English in documentation
 """
-
-summary_requirements = ""
 
 json_requirements = """
 - IMPORTANT: RESPOND ONLY WITH VALID JSON. Your response will be parsed

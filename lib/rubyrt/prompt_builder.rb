@@ -1,15 +1,14 @@
 # frozen_string_literal: true
 
-require 'mustache'
+require 'erb'
 require 'json'
 
 module Rubyrt
-  # Builds prompts for the review LLM by rendering bundled Mustache templates
+  # Builds prompts for the review LLM by rendering bundled ERB templates
   # with configuration values and discovered skill fragments.
   class PromptBuilder
-    REVIEW_TEMPLATE = File.expand_path('prompts/review.mustache', __dir__)
-    VERIFY_TEMPLATE = File.expand_path('prompts/verify.mustache', __dir__)
-    SUMMARY_TEMPLATE = File.expand_path('prompts/summary.mustache', __dir__)
+    REVIEW_TEMPLATE = File.expand_path('prompts/review.erb', __dir__)
+    VERIFY_TEMPLATE = File.expand_path('prompts/verify.erb', __dir__)
 
     attr_reader :config
 
@@ -32,14 +31,10 @@ module Rubyrt
                                        'finding' => format_finding(issue))
     end
 
-    def summary(diff:, issues:)
-      render_template(SUMMARY_TEMPLATE, 'diff' => diff, 'issues_json' => issues.to_json)
-    end
-
     private
 
     def render_template(path, vars)
-      Mustache.render(template_cache(path), template_vars.merge(vars))
+      ERB.new(template_cache(path), trim_mode: '-').result_with_hash(template_vars.merge(vars))
     end
 
     def template_cache(path)
@@ -51,7 +46,6 @@ module Rubyrt
       prompt_vars.merge(
         'requirements' => all_requirements,
         'json_requirements' => prompt_vars.fetch('json_requirements', ''),
-        'summary_requirements' => prompt_vars.fetch('summary_requirements', ''),
         'self_id' => prompt_vars.fetch('self_id', '')
       )
     end

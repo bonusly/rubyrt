@@ -132,21 +132,11 @@ module Rubyrt
       return [] if response.nil?
 
       content = response.content
-      issues = extract_issues(content)
-      IssueParser.new.parse(issues, file)
-    end
+      return [] if content.is_a?(String) && content.strip.empty?
 
-    def extract_issues(content)
-      return [] if content.nil? || (content.is_a?(String) && content.strip.empty?)
-
-      issues_from(content.is_a?(String) ? JSON.parse(content) : content)
-    end
-
-    def issues_from(parsed)
-      return parsed if parsed.is_a?(Array)
-      return parsed['issues'] || parsed[:issues] || [] if parsed.is_a?(Hash)
-
-      []
+      parsed = content.is_a?(String) ? JSON.parse(content) : content
+      issues = parsed.is_a?(Hash) ? (parsed['issues'] || parsed[:issues] || []) : parsed
+      IssueParser.new.parse(Array(issues), file)
     end
 
     def build_target
