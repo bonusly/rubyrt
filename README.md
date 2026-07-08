@@ -206,6 +206,7 @@ enabled = true
 max_changes = 500          # additions + deletions ceiling; skipped if GitHub doesn't report the size
 max_severity = 3           # issues at/below this severity number (1=Critical) block approval
 skip_label = "rubyrt-skip-approve"
+approval_team = "bonusly/pr-auto-approval"  # only auto-approve PRs whose author is on this GitHub team (needs read:org)
 protected_paths = ["app/billing/**", "config/secrets.yml"]  # globs that block approval when changed
 dry_run = false            # evaluate and log the decision without approving/dismissing
 ```
@@ -213,6 +214,7 @@ dry_run = false            # evaluate and log the decision without approving/dis
 A PR is approved only when **all** of these hold:
 
 - It isn't a draft and doesn't carry the `skip_label`.
+- Its author is a member of `approve.approval_team`, when that option is set (a non-member is skipped, not blocked, so a human's approval is left intact). Reading team membership needs a `read:org` token — set `RUBYRT_RESOLVE_TOKEN` to a PAT with that scope.
 - It doesn't modify `.rubyrt/config.toml` — a PR can't weaken the approval rules and wave itself through.
 - No changed file matches a `protected_paths` glob — e.g. billing code or sensitive config you always want a human to review.
 - Total changes are within `max_changes` (this check is skipped when the size is unknown).
@@ -259,6 +261,7 @@ Key settings:
 | Auto-approve change limit | `500` | `approve.max_changes` | — | — |
 | Auto-approve severity gate | `3` | `approve.max_severity` | — | — |
 | Auto-approve skip label | `rubyrt-skip-approve` | `approve.skip_label` | — | — |
+| Auto-approve team gate | `""` (disabled) | `approve.approval_team` | — | — |
 | Auto-approve protected paths | `[]` | `approve.protected_paths` | — | — |
 | Auto-approve dry run | `false` | `approve.dry_run` | — | — |
 | Skill directories | `.agents`, `.claude`, `.cursor` | `skill_directories` | — | — |

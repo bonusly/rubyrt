@@ -181,6 +181,54 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     expect(client).not_to have_received(:create_pull_request_review)
   end
 
+  context 'with approval_team gating' do
+    let(:membership_path) { '/orgs/bonusly/teams/pr-auto-approval/memberships/author' }
+
+    before { config['approval_team'] = 'bonusly/pr-auto-approval' }
+
+    it 'approves when the PR author is an active team member' do
+      allow(client).to receive(:get).with(membership_path).and_return({ state: 'active' })
+      approver.run(report_for([]))
+
+      expect(client).to have_received(:create_pull_request_review)
+    end
+
+    it 'does not approve when the PR author is not a team member' do
+      allow(client).to receive(:get).with(membership_path).and_raise(Octokit::NotFound)
+      approver.run(report_for([]))
+
+      expect(client).not_to have_received(:create_pull_request_review)
+    end
+
+    it 'does not approve when team membership cannot be determined' do
+      allow(client).to receive(:get).with(membership_path).and_raise(Octokit::Forbidden)
+      approver.run(report_for([]))
+
+      expect(client).not_to have_received(:create_pull_request_review)
+    end
+
+    it 'does not approve when the membership is pending rather than active' do
+      allow(client).to receive(:get).with(membership_path).and_return({ state: 'pending' })
+      approver.run(report_for([]))
+
+      expect(client).not_to have_received(:create_pull_request_review)
+    end
+
+    it 'leaves an existing approval in place for a non-member (skip, not block)' do
+      allow(client).to receive(:get).with(membership_path).and_raise(Octokit::NotFound)
+      stub_existing_approval(commit_id: 'sha1')
+      approver.run(report_for([]))
+
+      expect(client).not_to have_received(:dismiss_pull_request_review)
+    end
+  end
+
+  it 'ignores team gating when approval_team is unset' do
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+  end
+
   it 'does not approve in dry-run mode' do
     config['dry_run'] = true
     approver.run(report_for([]))

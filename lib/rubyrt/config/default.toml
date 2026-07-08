@@ -152,3 +152,12 @@ skip_label = "rubyrt-skip-approve"
 protected_paths = []
 # Evaluate the rules and log the decision without approving or dismissing.
 dry_run = false
+# When set to an "org/team-slug" (e.g. "bonusly/pr-auto-approval"), only
+# auto-approve PRs whose author is a member of that GitHub team — a controlled
+# allowlist managed from GitHub org settings. Empty means any author is eligible
+# (subject to the other rules). A non-member is skipped (not blocked), so an
+# existing human approval is left intact. Reading team membership needs a token
+# with read:org, which the Actions GITHUB_TOKEN usually lacks; set
+# RUBYRT_RESOLVE_TOKEN to a PAT with read:org. Membership that can't be
+# determined fails safe (not eligible).
+approval_team = ""

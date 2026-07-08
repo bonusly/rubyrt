@@ -71,12 +71,19 @@ module Rubyrt
         @config['dry_run'] ? true : false
       end
 
+      # "org/team-slug" the PR author must belong to for auto-approval. Blank
+      # disables team gating.
+      def approval_team
+        @config['approval_team'].to_s.strip
+      end
+
       # Skip (leave existing approvals alone) for intentional non-approvals;
       # block (dismiss any stale approval) when a rule fails.
       def decide(pr, report)
         return skip("skip label '#{skip_label}' present") if labelled_skip?(pr)
         return skip('PR is a draft') if pr.draft
         return skip('approving identity is the PR author') if self_approval?(pr)
+        return skip("PR author is not in the #{approval_team} team") if outside_approval_team?(pr)
 
         reasons = block_reasons(pr, report)
         reasons.empty? ? approve : blocked(reasons)
@@ -117,6 +124,38 @@ module Rubyrt
       def self_approval?(pr)
         me = approving_login
         !me.nil? && pr.user&.login == me
+      end
+
+      # True when team gating is configured and the PR author is not an active
+      # member. Skips (not blocks) so a human's existing approval is left intact.
+      def outside_approval_team?(pr)
+        return false if approval_team.empty?
+
+        !author_on_approval_team?(pr)
+      end
+
+      def author_on_approval_team?(pr)
+        login = pr.user&.login
+        org, team_slug = approval_team.split('/', 2)
+        return false if login.nil? || org.to_s.empty? || team_slug.to_s.empty?
+
+        team_membership_active?(org, team_slug, login)
+      end
+
+      # Reading org team membership needs read:org, which the Actions
+      # GITHUB_TOKEN usually lacks — try the resolve-token PAT first, then the
+      # main token. A 404 is a definitive "not a member"; any other error leaves
+      # membership undetermined, which fails safe (treated as not eligible).
+      def team_membership_active?(org, team_slug, login)
+        path = "/orgs/#{org}/teams/#{team_slug}/memberships/#{login}"
+        [@resolve_client, @client].compact.each do |client|
+          return client.get(path)[:state] == 'active'
+        rescue Octokit::NotFound
+          return false
+        rescue Octokit::Error
+          next
+        end
+        false
       end
 
       # Tokens that can't read /user (Actions GITHUB_TOKEN, App installation
