@@ -203,7 +203,7 @@ RubyRT can submit an **Approve** review when a PR is clean enough. It's **off by
 ```toml
 [approve]
 enabled = true
-max_changes = 500          # additions + deletions ceiling; skipped if GitHub doesn't report the size
+max_changes = 500          # additions + deletions ceiling; blocks approval if GitHub doesn't report the size
 max_severity = 3           # issues at/below this severity number (1=Critical) block approval
 skip_label = "rubyrt-skip-approve"
 protected_paths = ["app/billing/**", "config/secrets.yml"]  # globs that block approval when changed
@@ -215,7 +215,7 @@ A PR is approved only when **all** of these hold:
 - It isn't a draft and doesn't carry the `skip_label`.
 - It doesn't modify `.rubyrt/config.toml` — a PR can't weaken the approval rules and wave itself through.
 - No changed file matches a `protected_paths` glob — e.g. billing code or sensitive config you always want a human to review.
-- Total changes are within `max_changes` (this check is skipped when the size is unknown).
+- Total changes are within `max_changes` (an unknown size fails safe and blocks approval).
 - This run produced no findings at or above `max_severity`.
 - No RubyRT findings at or above `max_severity` are still unresolved.
 - Every resolved RubyRT finding at or above `max_severity` was resolved by someone who is **neither the PR author nor a contributor** to the PR — an author can't clear their own findings to earn an approval.
