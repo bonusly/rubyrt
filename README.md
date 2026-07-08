@@ -226,7 +226,7 @@ The approval needs the workflow's `pull-requests: write` permission (already req
 
 > **Heads up on which token approves.** An approval submitted by `GITHUB_TOKEN` (or a GitHub App installation token) does **not** count toward branch-protection "required approvals", and the fallback only triggers when the first attempt *errors* — a non-counting approval from `GITHUB_TOKEN` succeeds and won't fall through to the PAT. If you need the approval to satisfy required reviewers, run RubyRT with the PAT as its main `github_token` (or as a bot user) so the counting identity is the one that approves.
 
-> **Limitation.** "Contributor" is determined from commit author/committer GitHub logins, so a `Co-authored-by:` trailer doesn't count as having committed. If a thread's resolver can't be determined (e.g. a deleted account), RubyRT fails safe and does not approve.
+> **Limitation.** "Contributor" is determined from commit author/committer GitHub logins, plus any `Co-authored-by:` trailer that uses a GitHub `users.noreply.github.com` address (the login is read out of that address). A co-author trailer with a custom email can't be mapped to a GitHub login and is not counted. If a thread's resolver can't be determined (e.g. a deleted account), RubyRT fails safe and does not approve.
 
 ### Configuration options
 

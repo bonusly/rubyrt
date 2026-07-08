@@ -20,6 +20,13 @@ module Rubyrt
       DEFAULT_MAX_SEVERITY = 3
       DEFAULT_SKIP_LABEL = 'rubyrt-skip-approve'
 
+      # Co-authored-by trailer + the GitHub noreply address it usually carries.
+      # The login is embedded in the noreply address, so a co-author who resolves
+      # their own finding can be counted as an insider even though the trailer is
+      # not a real commit identity. Custom-email co-authors can't be mapped.
+      COAUTHOR_TRAILER = /^co-authored-by:[^<]*<([^>]+)>/i
+      GITHUB_NOREPLY_EMAIL = /\A(?:\d+\+)?([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)@users\.noreply\.github\.com\z/i
+
       # Inverse of Commenter::SEVERITY_LABELS, to read a thread's severity back
       # out of the comment body RubyRT wrote (e.g. "[Critical]").
       SEVERITY_BY_LABEL = Commenter::SEVERITY_LABELS.invert.freeze
@@ -182,15 +189,33 @@ module Rubyrt
         end
       end
 
-      # PR author plus everyone who authored or committed code in the PR. Does
-      # not cover Co-authored-by trailers (not real commit identities).
+      # PR author, everyone who authored or committed code in the PR, and any
+      # Co-authored-by trailer that uses a GitHub noreply address (the login is
+      # read out of that address). Custom-email co-authors can't be mapped to a
+      # login and are not counted.
       def insider_logins(pr)
+        commits = @client.pull_request_commits(slug, @pr_number)
         logins = [pr.user&.login]
-        @client.pull_request_commits(slug, @pr_number).each do |commit|
+        commits.each do |commit|
           logins << commit.author&.login
           logins << commit.committer&.login
         end
+        logins.concat(coauthor_logins(commits))
         logins.compact.uniq
+      end
+
+      def coauthor_logins(commits)
+        commits.flat_map { |commit| coauthors_in(commit_message(commit)) }
+      end
+
+      def commit_message(commit)
+        commit.respond_to?(:commit) ? commit.commit&.message.to_s : ''
+      end
+
+      def coauthors_in(message)
+        message.scan(COAUTHOR_TRAILER).flatten.filter_map do |email|
+          GITHUB_NOREPLY_EMAIL.match(email.strip)&.captures&.first
+        end
       end
 
       # Treat unknown severity as qualifying so an unparseable thread fails safe.

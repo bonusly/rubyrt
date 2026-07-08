@@ -66,6 +66,13 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     allow(client).to receive(:pull_request_commits).and_return(commits)
   end
 
+  def stub_commit_messages(*messages)
+    commits = messages.map do |message|
+      double('c', author: nil, committer: nil, commit: double('gc', message: message)) # rubocop:disable RSpec/VerifiedDoubles
+    end
+    allow(client).to receive(:pull_request_commits).and_return(commits)
+  end
+
   def stub_existing_approval(commit_id:, id: 99)
     review = double('rev', id: id, state: 'APPROVED', commit_id: commit_id, # rubocop:disable RSpec/VerifiedDoubles
                            body: described_class::APPROVAL_MARKER)
@@ -155,6 +162,22 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
 
   it 'approves when a qualifying thread was resolved by an independent reviewer' do
     stub_threads([rubyrt_thread(resolved: true, resolved_by: 'reviewer')])
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+  end
+
+  it 'blocks when a qualifying thread was resolved by a Co-authored-by GitHub noreply co-author' do
+    stub_commit_messages("Add feature\n\nCo-authored-by: Dev <123+dev@users.noreply.github.com>")
+    stub_threads([rubyrt_thread(resolved: true, resolved_by: 'dev')])
+    approver.run(report_for([]))
+
+    expect(client).not_to have_received(:create_pull_request_review)
+  end
+
+  it 'approves when a co-author uses a non-GitHub email that cannot be mapped to a login' do
+    stub_commit_messages("Add feature\n\nCo-authored-by: Dev <dev@example.com>")
+    stub_threads([rubyrt_thread(resolved: true, resolved_by: 'dev')])
     approver.run(report_for([]))
 
     expect(client).to have_received(:create_pull_request_review)
