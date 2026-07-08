@@ -136,8 +136,8 @@ enabled = true
 # Requires the workflow's `pull-requests: write` permission (already needed for
 # comments).
 enabled = false
-# Block approval when additions + deletions exceed this. Skipped when GitHub
-# doesn't report the size.
+# Block approval when additions + deletions exceed this. Also blocks approval
+# when GitHub doesn't report the size (fails safe).
 max_changes = 500
 # Issues at or below this severity number (1=Critical) block approval — both new
 # findings from this run and unresolved/self-resolved findings from prior runs.

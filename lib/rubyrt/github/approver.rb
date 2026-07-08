@@ -87,7 +87,7 @@ module Rubyrt
         reasons = []
         reasons << "#{CONFIG_PATH} was changed in this PR" if config_changed?
         reasons << 'a protected path was changed in this PR' if protected_path_changed?
-        reasons << "PR has #{change_count(pr)} changes (max #{max_changes})" if too_many_changes?(pr)
+        reasons << change_size_reason(pr) if too_many_changes?(pr)
         reasons << 'new findings at or above the approval severity threshold' if current_issues?(report)
         reasons << 'unresolved RubyRT findings remain' if unresolved?(threads)
         reasons << 'RubyRT findings were resolved by the author or a contributor' if self_resolved?(threads, pr)
@@ -147,12 +147,22 @@ module Rubyrt
         @changed_files ||= @client.pull_request_files(slug, @pr_number).map(&:filename)
       end
 
+      # Fail safe: an unknown size (nil) blocks approval so a PR whose size
+      # GitHub doesn't report still requires a human, rather than bypassing the
+      # ceiling.
       def too_many_changes?(pr)
         count = change_count(pr)
-        !count.nil? && count > max_changes
+        count.nil? || count > max_changes
       end
 
-      # nil when GitHub doesn't report the size — "ignore if we don't know".
+      def change_size_reason(pr)
+        count = change_count(pr)
+        return 'PR change size is unknown' if count.nil?
+
+        "PR has #{count} changes (max #{max_changes})"
+      end
+
+      # nil when GitHub doesn't report the size.
       def change_count(pr)
         additions = pr.additions
         deletions = pr.deletions

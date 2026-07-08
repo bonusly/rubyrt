@@ -86,11 +86,11 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     expect(client).not_to have_received(:create_pull_request_review)
   end
 
-  it 'ignores the change limit when GitHub does not report the size' do
+  it 'blocks approval when GitHub does not report the change size' do
     allow(pr).to receive_messages(additions: nil, deletions: nil)
     approver.run(report_for([]))
 
-    expect(client).to have_received(:create_pull_request_review)
+    expect(client).not_to have_received(:create_pull_request_review)
   end
 
   it 'blocks when the PR changes the RubyRT config' do
