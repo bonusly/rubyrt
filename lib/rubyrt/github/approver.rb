@@ -238,7 +238,12 @@ module Rubyrt
       end
 
       def approval_body
-        "#{APPROVAL_MARKER}\n\nApproved automatically by RubyRT: all auto-approval rules passed."
+        "#{APPROVAL_MARKER}\n\nApproved automatically by RubyRT: all auto-approval rules passed." \
+          "\n\n#{version_line}"
+      end
+
+      def version_line
+        "_RubyRT v#{Rubyrt::VERSION}_"
       end
 
       def dismiss_stale
@@ -308,6 +313,7 @@ module Rubyrt
         parts << '_Dry run — no approval action was taken._' if dry_run?
         parts << "**#{headline}**"
         parts << reasons
+        parts << version_line
         parts.join("\n\n")
       end
 

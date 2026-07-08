@@ -226,6 +226,20 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including('Dry run'))
   end
 
+  it 'includes the RubyRT version in the status comment' do
+    allow(pr).to receive_messages(additions: 600, deletions: 0)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including("RubyRT v#{Rubyrt::VERSION}"))
+  end
+
+  it 'includes the RubyRT version in the approval review body' do
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+      .with('o/r', 1, hash_including(body: a_string_including("RubyRT v#{Rubyrt::VERSION}")))
+  end
+
   it 'does not duplicate an approval already present for the head SHA' do
     stub_existing_approval(commit_id: 'sha1')
     approver.run(report_for([]))
