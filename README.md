@@ -259,7 +259,7 @@ Key settings:
 | Auto-approve change limit | `500` | `approve.max_changes` | — | — |
 | Auto-approve severity gate | `3` | `approve.max_severity` | — | — |
 | Auto-approve skip label | `rubyrt-skip-approve` | `approve.skip_label` | — | — |
-| Auto-approve protected paths | `[]` | `approve.protected_paths` | — | — |
+| Auto-approve protected paths | `[".rubyrt/**/*"]` | `approve.protected_paths` | — | — |
 | Auto-approve dry run | `false` | `approve.dry_run` | — | — |
 | Skill directories | `.agents`, `.claude`, `.cursor` | `skill_directories` | — | — |
 | Auxiliary files | `[]` | `aux_files` | — | — |
