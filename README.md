@@ -220,7 +220,9 @@ A PR is approved only when **all** of these hold:
 - No RubyRT findings at or above `max_severity` are still unresolved.
 - Every resolved RubyRT finding at or above `max_severity` was resolved by someone who is **neither the PR author nor a contributor** to the PR — an author can't clear their own findings to earn an approval.
 
-Re-runs are idempotent: RubyRT won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. With `dry_run = true` it logs the decision and reasons but takes no action — useful for rollout.
+When RubyRT does **not** approve — a rule failed (block) or the run was skipped — it posts a single status comment on the PR explaining why, and keeps that comment updated in place on re-runs (it doesn't stack a new comment each push). Once the PR qualifies and is approved, that status comment is removed.
+
+Re-runs are idempotent: RubyRT won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. With `dry_run = true` it still posts the status comment (marked as a dry run) and logs the decision, but takes no approve/dismiss action — useful for rollout.
 
 The approval needs the workflow's `pull-requests: write` permission (already required for comments). RubyRT tries the approval with the main `github_token` first, then falls back to the `resolve_token` PAT if that attempt fails.
 

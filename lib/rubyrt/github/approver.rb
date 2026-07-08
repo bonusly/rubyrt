@@ -13,6 +13,9 @@ module Rubyrt
     # falls back to the resolve-token user (PAT) when that attempt errors.
     class Approver # rubocop:disable Metrics/ClassLength
       APPROVAL_MARKER = '<!-- rubyrt-approval -->'
+      # Marks the single upsert-able comment that explains why a PR was not
+      # auto-approved, so re-runs update it in place instead of stacking comments.
+      STATUS_MARKER = '<!-- rubyrt-approval-status -->'
       # Never auto-approve a PR that edits RubyRT's own config — that's how
       # someone would weaken the approval rules to wave their change through.
       CONFIG_PATH = '.rubyrt/config.toml'
@@ -45,6 +48,7 @@ module Rubyrt
         decision = decide(pr, report)
         log(decision)
         apply(pr, decision)
+        sync_status_comment(decision)
       rescue StandardError => e
         warn "Auto-approval skipped — #{e.message}"
       end
@@ -274,6 +278,54 @@ module Rubyrt
           warn "#{prefix}RubyRT auto-approval: approving PR ##{@pr_number}."
         else
           warn "#{prefix}RubyRT auto-approval: #{decision.action} — #{decision.reasons.join('; ')}."
+        end
+      end
+
+      # Surface the decision on the PR itself, not just in the workflow log. A
+      # blocked or skipped decision upserts a single status comment explaining
+      # why; an approval removes any stale status comment. Posted even in
+      # dry-run (with a note) so the reasons are visible during rollout. Never
+      # raises into the run.
+      def sync_status_comment(decision)
+        existing = status_comment
+        if decision.action == :approve
+          remove_status_comment(existing) if existing
+        else
+          upsert_status_comment(existing, status_body(decision))
+        end
+      rescue Octokit::Error => e
+        warn "Could not post auto-approval status comment — #{e.message}"
+      end
+
+      def status_comment
+        @client.issue_comments(slug, @pr_number).find { |comment| comment.body.to_s.include?(STATUS_MARKER) }
+      end
+
+      def status_body(decision)
+        headline = decision.action == :block ? 'RubyRT did not auto-approve this PR:' : 'RubyRT auto-approval skipped:'
+        reasons = decision.reasons.map { |reason| "- #{reason}" }.join("\n")
+        parts = [STATUS_MARKER]
+        parts << '_Dry run — no approval action was taken._' if dry_run?
+        parts << "**#{headline}**"
+        parts << reasons
+        parts.join("\n\n")
+      end
+
+      def upsert_status_comment(existing, body)
+        if existing
+          attempt_with_fallback("update approval status comment ##{existing.id}") do |client|
+            client.update_comment(slug, existing.id, body)
+          end
+        else
+          attempt_with_fallback('post approval status comment') do |client|
+            client.add_comment(slug, @pr_number, body)
+          end
+        end
+      end
+
+      def remove_status_comment(existing)
+        attempt_with_fallback("remove approval status comment ##{existing.id}") do |client|
+          client.delete_comment(slug, existing.id)
         end
       end
     end
