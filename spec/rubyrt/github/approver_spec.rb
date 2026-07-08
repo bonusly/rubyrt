@@ -203,6 +203,15 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     expect(client).to have_received(:dismiss_pull_request_review).with('o/r', 1, 99, anything)
   end
 
+  it 'dismisses an approval left over from an earlier commit before re-approving the head', :aggregate_failures do
+    stub_existing_approval(commit_id: 'old', id: 42)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:dismiss_pull_request_review).with('o/r', 1, 42, anything)
+    expect(client).to have_received(:create_pull_request_review)
+      .with('o/r', 1, hash_including(event: 'APPROVE'))
+  end
+
   context 'when the main token cannot approve and a PAT fallback is configured' do
     subject(:approver) do
       described_class.new(token: 'gh', owner: 'o', repo: 'r', pr_number: 1, config: config, resolve_token: 'pat')

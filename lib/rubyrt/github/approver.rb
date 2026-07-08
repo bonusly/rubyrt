@@ -228,8 +228,14 @@ module Rubyrt
         return if dry_run?
 
         case decision.action
-        when :approve then ensure_approved(pr)
-        when :block then dismiss_stale
+        when :approve
+          # Drop any approval left over from an earlier commit before approving
+          # the current head, so an approval never outlives the exact commit it
+          # was granted for.
+          dismiss(superseded_approvals(pr.head.sha))
+          ensure_approved(pr)
+        when :block
+          dismiss(rubyrt_approvals)
         end
       end
 
@@ -247,8 +253,14 @@ module Rubyrt
         "#{APPROVAL_MARKER}\n\nApproved automatically by RubyRT: all auto-approval rules passed."
       end
 
-      def dismiss_stale
-        rubyrt_approvals.each do |review|
+      # Prior RubyRT approvals granted for a commit other than the current head.
+      # A new push supersedes them, so they must not keep counting.
+      def superseded_approvals(head_sha)
+        rubyrt_approvals.reject { |review| review.commit_id == head_sha }
+      end
+
+      def dismiss(reviews)
+        reviews.each do |review|
           attempt_with_fallback("dismiss stale approval ##{review.id}") do |client|
             client.dismiss_pull_request_review(slug, @pr_number, review.id,
                                                'RubyRT auto-approval no longer applies.')
