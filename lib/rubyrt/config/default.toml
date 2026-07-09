@@ -136,8 +136,8 @@ enabled = true
 # Requires the workflow's `pull-requests: write` permission (already needed for
 # comments).
 enabled = false
-# Block approval when additions + deletions exceed this. Skipped when GitHub
-# doesn't report the size.
+# Block approval when additions + deletions exceed this. Also blocks approval
+# when GitHub doesn't report the size (fails safe).
 max_changes = 500
 # Issues at or below this severity number (1=Critical) block approval — both new
 # findings from this run and unresolved/self-resolved findings from prior runs.
@@ -156,3 +156,12 @@ skip_label = "rubyrt-skip-approve"
 protected_paths = [".rubyrt/**/*"]
 # Evaluate the rules and log the decision without approving or dismissing.
 dry_run = false
+# When set to an "org/team-slug" (e.g. "bonusly/pr-auto-approval"), only
+# auto-approve PRs whose author is a member of that GitHub team — a controlled
+# allowlist managed from GitHub org settings. Empty means any author is eligible
+# (subject to the other rules). A non-member is skipped (not blocked), so an
+# existing human approval is left intact. Reading team membership needs a token
+# with read:org, which the Actions GITHUB_TOKEN usually lacks; set
+# RUBYRT_RESOLVE_TOKEN to a PAT with read:org. Membership that can't be
+# determined fails safe (not eligible).
+approval_team = ""

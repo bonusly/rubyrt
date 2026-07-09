@@ -13,6 +13,9 @@ module Rubyrt
     # falls back to the resolve-token user (PAT) when that attempt errors.
     class Approver # rubocop:disable Metrics/ClassLength
       APPROVAL_MARKER = '<!-- rubyrt-approval -->'
+      # Marks the single upsert-able comment that explains why a PR was not
+      # auto-approved, so re-runs update it in place instead of stacking comments.
+      STATUS_MARKER = '<!-- rubyrt-approval-status -->'
       # Never auto-approve a PR that edits RubyRT's own config — that's how
       # someone would weaken the approval rules to wave their change through.
       CONFIG_PATH = '.rubyrt/config.toml'
@@ -45,6 +48,7 @@ module Rubyrt
         decision = decide(pr, report)
         log(decision)
         apply(pr, decision)
+        sync_status_comment(decision)
       rescue StandardError => e
         warn "Auto-approval skipped — #{e.message}"
       end
@@ -71,12 +75,19 @@ module Rubyrt
         @config['dry_run'] ? true : false
       end
 
+      # "org/team-slug" the PR author must belong to for auto-approval. Blank
+      # disables team gating.
+      def approval_team
+        @config['approval_team'].to_s.strip
+      end
+
       # Skip (leave existing approvals alone) for intentional non-approvals;
       # block (dismiss any stale approval) when a rule fails.
       def decide(pr, report)
         return skip("skip label '#{skip_label}' present") if labelled_skip?(pr)
         return skip('PR is a draft') if pr.draft
         return skip('approving identity is the PR author') if self_approval?(pr)
+        return skip("PR author is not in the #{approval_team} team") if outside_approval_team?(pr)
 
         reasons = block_reasons(pr, report)
         reasons.empty? ? approve : blocked(reasons)
@@ -87,7 +98,7 @@ module Rubyrt
         reasons = []
         reasons << "#{CONFIG_PATH} was changed in this PR" if config_changed?
         reasons << 'a protected path was changed in this PR' if protected_path_changed?
-        reasons << "PR has #{change_count(pr)} changes (max #{max_changes})" if too_many_changes?(pr)
+        reasons << change_size_reason(pr) if too_many_changes?(pr)
         reasons << 'new findings at or above the approval severity threshold' if current_issues?(report)
         reasons << 'unresolved RubyRT findings remain' if unresolved?(threads)
         reasons << 'RubyRT findings were resolved by the author or a contributor' if self_resolved?(threads, pr)
@@ -119,6 +130,38 @@ module Rubyrt
         !me.nil? && pr.user&.login == me
       end
 
+      # True when team gating is configured and the PR author is not an active
+      # member. Skips (not blocks) so a human's existing approval is left intact.
+      def outside_approval_team?(pr)
+        return false if approval_team.empty?
+
+        !author_on_approval_team?(pr)
+      end
+
+      def author_on_approval_team?(pr)
+        login = pr.user&.login
+        org, team_slug = approval_team.split('/', 2)
+        return false if login.nil? || org.to_s.empty? || team_slug.to_s.empty?
+
+        team_membership_active?(org, team_slug, login)
+      end
+
+      # Reading org team membership needs read:org, which the Actions
+      # GITHUB_TOKEN usually lacks — try the resolve-token PAT first, then the
+      # main token. A 404 is a definitive "not a member"; any other error leaves
+      # membership undetermined, which fails safe (treated as not eligible).
+      def team_membership_active?(org, team_slug, login)
+        path = "/orgs/#{org}/teams/#{team_slug}/memberships/#{login}"
+        [@resolve_client, @client].compact.each do |client|
+          return client.get(path)[:state] == 'active'
+        rescue Octokit::NotFound
+          return false
+        rescue Octokit::Error
+          next
+        end
+        false
+      end
+
       # Tokens that can't read /user (Actions GITHUB_TOKEN, App installation
       # tokens) leave the identity unknown; the GitHub 422 on the approve call is
       # the backstop in that case.
@@ -147,12 +190,22 @@ module Rubyrt
         @changed_files ||= @client.pull_request_files(slug, @pr_number).map(&:filename)
       end
 
+      # Fail safe: an unknown size (nil) blocks approval so a PR whose size
+      # GitHub doesn't report still requires a human, rather than bypassing the
+      # ceiling.
       def too_many_changes?(pr)
         count = change_count(pr)
-        !count.nil? && count > max_changes
+        count.nil? || count > max_changes
       end
 
-      # nil when GitHub doesn't report the size — "ignore if we don't know".
+      def change_size_reason(pr)
+        count = change_count(pr)
+        return 'PR change size is unknown' if count.nil?
+
+        "PR has #{count} changes (max #{max_changes})"
+      end
+
+      # nil when GitHub doesn't report the size.
       def change_count(pr)
         additions = pr.additions
         deletions = pr.deletions
@@ -218,8 +271,14 @@ module Rubyrt
         return if dry_run?
 
         case decision.action
-        when :approve then ensure_approved(pr)
-        when :block then dismiss_stale
+        when :approve
+          # Drop any approval left over from an earlier commit before approving
+          # the current head, so an approval never outlives the exact commit it
+          # was granted for.
+          dismiss(superseded_approvals(pr.head.sha))
+          ensure_approved(pr)
+        when :block
+          dismiss(rubyrt_approvals)
         end
       end
 
@@ -234,11 +293,22 @@ module Rubyrt
       end
 
       def approval_body
-        "#{APPROVAL_MARKER}\n\nApproved automatically by RubyRT: all auto-approval rules passed."
+        "#{APPROVAL_MARKER}\n\nApproved automatically by RubyRT: all auto-approval rules passed." \
+          "\n\n#{version_line}"
       end
 
-      def dismiss_stale
-        rubyrt_approvals.each do |review|
+      def version_line
+        "_RubyRT v#{Rubyrt::VERSION}_"
+      end
+
+      # Prior RubyRT approvals granted for a commit other than the current head.
+      # A new push supersedes them, so they must not keep counting.
+      def superseded_approvals(head_sha)
+        rubyrt_approvals.reject { |review| review.commit_id == head_sha }
+      end
+
+      def dismiss(reviews)
+        reviews.each do |review|
           attempt_with_fallback("dismiss stale approval ##{review.id}") do |client|
             client.dismiss_pull_request_review(slug, @pr_number, review.id,
                                                'RubyRT auto-approval no longer applies.')
@@ -274,6 +344,55 @@ module Rubyrt
           warn "#{prefix}RubyRT auto-approval: approving PR ##{@pr_number}."
         else
           warn "#{prefix}RubyRT auto-approval: #{decision.action} — #{decision.reasons.join('; ')}."
+        end
+      end
+
+      # Surface the decision on the PR itself, not just in the workflow log. A
+      # blocked or skipped decision upserts a single status comment explaining
+      # why; an approval removes any stale status comment. Posted even in
+      # dry-run (with a note) so the reasons are visible during rollout. Never
+      # raises into the run.
+      def sync_status_comment(decision)
+        existing = status_comment
+        if decision.action == :approve
+          remove_status_comment(existing) if existing
+        else
+          upsert_status_comment(existing, status_body(decision))
+        end
+      rescue Octokit::Error => e
+        warn "Could not post auto-approval status comment — #{e.message}"
+      end
+
+      def status_comment
+        @client.issue_comments(slug, @pr_number).find { |comment| comment.body.to_s.include?(STATUS_MARKER) }
+      end
+
+      def status_body(decision)
+        headline = decision.action == :block ? 'RubyRT did not auto-approve this PR:' : 'RubyRT auto-approval skipped:'
+        reasons = decision.reasons.map { |reason| "- #{reason}" }.join("\n")
+        parts = [STATUS_MARKER]
+        parts << '_Dry run — no approval action was taken._' if dry_run?
+        parts << "**#{headline}**"
+        parts << reasons
+        parts << version_line
+        parts.join("\n\n")
+      end
+
+      def upsert_status_comment(existing, body)
+        if existing
+          attempt_with_fallback("update approval status comment ##{existing.id}") do |client|
+            client.update_comment(slug, existing.id, body)
+          end
+        else
+          attempt_with_fallback('post approval status comment') do |client|
+            client.add_comment(slug, @pr_number, body)
+          end
+        end
+      end
+
+      def remove_status_comment(existing)
+        attempt_with_fallback("remove approval status comment ##{existing.id}") do |client|
+          client.delete_comment(slug, existing.id)
         end
       end
     end

@@ -26,11 +26,15 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
       pull_request_commits: [],
       pull_request_files: [],
       pull_request_reviews: [],
+      issue_comments: [],
       user: double('me', login: 'rubyrt-bot'), # rubocop:disable RSpec/VerifiedDoubles
       post: threads_response([])
     )
     allow(client).to receive(:create_pull_request_review)
     allow(client).to receive(:dismiss_pull_request_review)
+    allow(client).to receive(:add_comment)
+    allow(client).to receive(:update_comment)
+    allow(client).to receive(:delete_comment)
   end
 
   def threads_response(nodes)
@@ -86,11 +90,11 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     expect(client).not_to have_received(:create_pull_request_review)
   end
 
-  it 'ignores the change limit when GitHub does not report the size' do
+  it 'blocks approval when GitHub does not report the change size' do
     allow(pr).to receive_messages(additions: nil, deletions: nil)
     approver.run(report_for([]))
 
-    expect(client).to have_received(:create_pull_request_review)
+    expect(client).not_to have_received(:create_pull_request_review)
   end
 
   it 'blocks when the PR changes the RubyRT config' do
@@ -181,11 +185,107 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     expect(client).not_to have_received(:create_pull_request_review)
   end
 
+  context 'with approval_team gating' do
+    let(:membership_path) { '/orgs/bonusly/teams/pr-auto-approval/memberships/author' }
+
+    before { config['approval_team'] = 'bonusly/pr-auto-approval' }
+
+    it 'approves when the PR author is an active team member' do
+      allow(client).to receive(:get).with(membership_path).and_return({ state: 'active' })
+      approver.run(report_for([]))
+
+      expect(client).to have_received(:create_pull_request_review)
+    end
+
+    it 'does not approve when the PR author is not a team member' do
+      allow(client).to receive(:get).with(membership_path).and_raise(Octokit::NotFound)
+      approver.run(report_for([]))
+
+      expect(client).not_to have_received(:create_pull_request_review)
+    end
+
+    it 'does not approve when team membership cannot be determined' do
+      allow(client).to receive(:get).with(membership_path).and_raise(Octokit::Forbidden)
+      approver.run(report_for([]))
+
+      expect(client).not_to have_received(:create_pull_request_review)
+    end
+
+    it 'does not approve when the membership is pending rather than active' do
+      allow(client).to receive(:get).with(membership_path).and_return({ state: 'pending' })
+      approver.run(report_for([]))
+
+      expect(client).not_to have_received(:create_pull_request_review)
+    end
+
+    it 'leaves an existing approval in place for a non-member (skip, not block)' do
+      allow(client).to receive(:get).with(membership_path).and_raise(Octokit::NotFound)
+      stub_existing_approval(commit_id: 'sha1')
+      approver.run(report_for([]))
+
+      expect(client).not_to have_received(:dismiss_pull_request_review)
+    end
+  end
+
+  it 'ignores team gating when approval_team is unset' do
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+  end
+
   it 'does not approve in dry-run mode' do
     config['dry_run'] = true
     approver.run(report_for([]))
 
     expect(client).not_to have_received(:create_pull_request_review)
+  end
+
+  it 'posts a status comment explaining why the PR was not approved' do
+    allow(pr).to receive_messages(additions: 600, deletions: 0)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:add_comment)
+      .with('o/r', 1, a_string_including('max 500'))
+  end
+
+  it 'updates an existing status comment instead of posting a duplicate', :aggregate_failures do
+    existing = double('comment', id: 7, body: described_class::STATUS_MARKER) # rubocop:disable RSpec/VerifiedDoubles
+    allow(client).to receive(:issue_comments).and_return([existing])
+    allow(pr).to receive_messages(additions: 600, deletions: 0)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:update_comment).with('o/r', 7, anything)
+    expect(client).not_to have_received(:add_comment)
+  end
+
+  it 'removes a stale status comment when the PR now qualifies for approval' do
+    existing = double('comment', id: 7, body: described_class::STATUS_MARKER) # rubocop:disable RSpec/VerifiedDoubles
+    allow(client).to receive(:issue_comments).and_return([existing])
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:delete_comment).with('o/r', 7)
+  end
+
+  it 'still posts the status comment in dry-run mode' do
+    config['dry_run'] = true
+    allow(pr).to receive_messages(additions: 600, deletions: 0)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including('Dry run'))
+  end
+
+  it 'includes the RubyRT version in the status comment' do
+    allow(pr).to receive_messages(additions: 600, deletions: 0)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including("RubyRT v#{Rubyrt::VERSION}"))
+  end
+
+  it 'includes the RubyRT version in the approval review body' do
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+      .with('o/r', 1, hash_including(body: a_string_including("RubyRT v#{Rubyrt::VERSION}")))
   end
 
   it 'does not duplicate an approval already present for the head SHA' do
@@ -201,6 +301,15 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     approver.run(report_for([]))
 
     expect(client).to have_received(:dismiss_pull_request_review).with('o/r', 1, 99, anything)
+  end
+
+  it 'dismisses an approval left over from an earlier commit before re-approving the head', :aggregate_failures do
+    stub_existing_approval(commit_id: 'old', id: 42)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:dismiss_pull_request_review).with('o/r', 1, 42, anything)
+    expect(client).to have_received(:create_pull_request_review)
+      .with('o/r', 1, hash_including(event: 'APPROVE'))
   end
 
   context 'when the main token cannot approve and a PAT fallback is configured' do
