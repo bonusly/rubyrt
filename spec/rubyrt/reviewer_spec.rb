@@ -93,6 +93,30 @@ RSpec.describe Rubyrt::Reviewer do
     end
   end
 
+  context 'when the LLM returns a nil response' do
+    let(:fake_llm_client) do
+      instance_double(Rubyrt::LlmClient, complete_with_schema: nil)
+    end
+
+    it 'treats the file as having no issues' do
+      expect(reviewer.review.total_issues).to eq(0)
+    end
+  end
+
+  context 'when the LLM returns a response with nil content' do
+    let(:fake_llm_client) do
+      response = instance_double(RubyLLM::Message, content: nil,
+                                                   input_tokens: nil, output_tokens: nil, tool_calls: {},
+                                                   cache_read_tokens: nil, cache_write_tokens: nil,
+                                                   cost: instance_double(RubyLLM::Cost, total: nil))
+      instance_double(Rubyrt::LlmClient, complete_with_schema: response)
+    end
+
+    it 'treats the file as having no issues' do
+      expect(reviewer.review.total_issues).to eq(0)
+    end
+  end
+
   context 'when the LLM returns a raw JSON array string (fallback)' do
     let(:fake_llm_client) do
       json = '[{"title":"Bug","details":"desc","severity":1,"confidence":1,' \
