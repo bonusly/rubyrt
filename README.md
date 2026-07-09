@@ -203,7 +203,7 @@ RubyRT can submit an **Approve** review when a PR is clean enough. It's **off by
 ```toml
 [approve]
 enabled = true
-max_changes = 500          # additions + deletions ceiling; skipped if GitHub doesn't report the size
+max_changes = 500          # additions + deletions ceiling; blocks approval if GitHub doesn't report the size
 max_severity = 3           # issues at/below this severity number (1=Critical) block approval
 skip_label = "rubyrt-skip-approve"
 protected_paths = ["app/billing/**", "config/secrets.yml"]  # globs that block approval when changed
@@ -215,14 +215,16 @@ A PR is approved only when **all** of these hold:
 - It isn't a draft and doesn't carry the `skip_label`.
 - It doesn't modify `.rubyrt/config.toml` — a PR can't weaken the approval rules and wave itself through.
 - No changed file matches a `protected_paths` glob — e.g. billing code or sensitive config you always want a human to review.
-- Total changes are within `max_changes` (this check is skipped when the size is unknown).
+- Total changes are within `max_changes` (an unknown size fails safe and blocks approval).
 - This run produced no findings at or above `max_severity`.
 - No RubyRT findings at or above `max_severity` are still unresolved.
 - Every resolved RubyRT finding at or above `max_severity` was resolved by someone who is **neither the PR author nor a contributor** to the PR — an author can't clear their own findings to earn an approval.
 
 When RubyRT does **not** approve — a rule failed (block) or the run was skipped — it posts a single status comment on the PR explaining why, and keeps that comment updated in place on re-runs (it doesn't stack a new comment each push). Once the PR qualifies and is approved, that status comment is removed.
 
-Re-runs are idempotent: RubyRT won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. With `dry_run = true` it still posts the status comment (marked as a dry run) and logs the decision, but takes no approve/dismiss action — useful for rollout.
+Re-runs are idempotent: RubyRT won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. It also dismisses any approval left over from a **previous commit** before approving a new head, so an approval never outlives the exact commit it was granted for. With `dry_run = true` it still posts the status comment (marked as a dry run) and logs the decision, but takes no approve/dismiss action — useful for rollout.
+
+> **Close the re-review window with branch protection.** RubyRT only runs *as* the push-triggered workflow, so between a new push and the re-review finishing, an approval granted for the previous commit still counts unless GitHub dismisses it. Enable branch protection's **"Dismiss stale pull request approvals when new commits are pushed"** so a new commit invalidates the prior approval instantly; RubyRT then re-approves only if the new commit still passes.
 
 The approval needs the workflow's `pull-requests: write` permission (already required for comments). RubyRT tries the approval with the main `github_token` first, then falls back to the `resolve_token` PAT if that attempt fails.
 

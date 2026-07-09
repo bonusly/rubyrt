@@ -91,7 +91,7 @@ module Rubyrt
         reasons = []
         reasons << "#{CONFIG_PATH} was changed in this PR" if config_changed?
         reasons << 'a protected path was changed in this PR' if protected_path_changed?
-        reasons << "PR has #{change_count(pr)} changes (max #{max_changes})" if too_many_changes?(pr)
+        reasons << change_size_reason(pr) if too_many_changes?(pr)
         reasons << 'new findings at or above the approval severity threshold' if current_issues?(report)
         reasons << 'unresolved RubyRT findings remain' if unresolved?(threads)
         reasons << 'RubyRT findings were resolved by the author or a contributor' if self_resolved?(threads, pr)
@@ -151,12 +151,22 @@ module Rubyrt
         @changed_files ||= @client.pull_request_files(slug, @pr_number).map(&:filename)
       end
 
+      # Fail safe: an unknown size (nil) blocks approval so a PR whose size
+      # GitHub doesn't report still requires a human, rather than bypassing the
+      # ceiling.
       def too_many_changes?(pr)
         count = change_count(pr)
-        !count.nil? && count > max_changes
+        count.nil? || count > max_changes
       end
 
-      # nil when GitHub doesn't report the size — "ignore if we don't know".
+      def change_size_reason(pr)
+        count = change_count(pr)
+        return 'PR change size is unknown' if count.nil?
+
+        "PR has #{count} changes (max #{max_changes})"
+      end
+
+      # nil when GitHub doesn't report the size.
       def change_count(pr)
         additions = pr.additions
         deletions = pr.deletions
@@ -222,8 +232,14 @@ module Rubyrt
         return if dry_run?
 
         case decision.action
-        when :approve then ensure_approved(pr)
-        when :block then dismiss_stale
+        when :approve
+          # Drop any approval left over from an earlier commit before approving
+          # the current head, so an approval never outlives the exact commit it
+          # was granted for.
+          dismiss(superseded_approvals(pr.head.sha))
+          ensure_approved(pr)
+        when :block
+          dismiss(rubyrt_approvals)
         end
       end
 
@@ -246,8 +262,14 @@ module Rubyrt
         "_RubyRT v#{Rubyrt::VERSION}_"
       end
 
-      def dismiss_stale
-        rubyrt_approvals.each do |review|
+      # Prior RubyRT approvals granted for a commit other than the current head.
+      # A new push supersedes them, so they must not keep counting.
+      def superseded_approvals(head_sha)
+        rubyrt_approvals.reject { |review| review.commit_id == head_sha }
+      end
+
+      def dismiss(reviews)
+        reviews.each do |review|
           attempt_with_fallback("dismiss stale approval ##{review.id}") do |client|
             client.dismiss_pull_request_review(slug, @pr_number, review.id,
                                                'RubyRT auto-approval no longer applies.')

@@ -90,11 +90,11 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     expect(client).not_to have_received(:create_pull_request_review)
   end
 
-  it 'ignores the change limit when GitHub does not report the size' do
+  it 'blocks approval when GitHub does not report the change size' do
     allow(pr).to receive_messages(additions: nil, deletions: nil)
     approver.run(report_for([]))
 
-    expect(client).to have_received(:create_pull_request_review)
+    expect(client).not_to have_received(:create_pull_request_review)
   end
 
   it 'blocks when the PR changes the RubyRT config' do
@@ -253,6 +253,15 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     approver.run(report_for([]))
 
     expect(client).to have_received(:dismiss_pull_request_review).with('o/r', 1, 99, anything)
+  end
+
+  it 'dismisses an approval left over from an earlier commit before re-approving the head', :aggregate_failures do
+    stub_existing_approval(commit_id: 'old', id: 42)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:dismiss_pull_request_review).with('o/r', 1, 42, anything)
+    expect(client).to have_received(:create_pull_request_review)
+      .with('o/r', 1, hash_including(event: 'APPROVE'))
   end
 
   context 'when the main token cannot approve and a PAT fallback is configured' do
