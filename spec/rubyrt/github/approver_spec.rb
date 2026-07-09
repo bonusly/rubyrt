@@ -109,6 +109,30 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     )
   end
 
+  it 'labels the severity threshold in the passed-rules checklist' do
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+      .with('o/r', 1, hash_including(body: a_string_including('No findings at or above Medium (3)')))
+  end
+
+  it 'lists configured external checks in the approval body' do
+    config['external_checks'] = ['Security review pass', 'Full test suite']
+    approver.run(report_for([]))
+
+    expected = a_string_including('Other checks that must pass before merge')
+               .and(a_string_including('Security review pass'))
+               .and(a_string_including('Full test suite'))
+    expect(client).to have_received(:create_pull_request_review).with('o/r', 1, hash_including(body: expected))
+  end
+
+  it 'omits the external checks section when none are configured' do
+    approver.run(report_for([]))
+
+    no_external = satisfy('excludes external checks') { |b| !b.include?('Other checks that must pass') }
+    expect(client).to have_received(:create_pull_request_review).with('o/r', 1, hash_including(body: no_external))
+  end
+
   context 'with an LLM client for the risk assessment' do
     subject(:approver) do
       described_class.new(token: 'token', owner: 'o', repo: 'r', pr_number: 1, config: config,

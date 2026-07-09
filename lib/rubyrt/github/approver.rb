@@ -303,6 +303,7 @@ module Rubyrt
           APPROVAL_MARKER,
           'Approved automatically by RubyRT: all auto-approval rules passed.',
           passed_rules_section(pr),
+          external_checks_section,
           risk_assessment_section(pr, report),
           details_section(report)
         ].compact.join("\n\n")
@@ -312,12 +313,27 @@ module Rubyrt
       def passed_rules_section(pr)
         checks = ['No RubyRT config change', 'No protected paths changed']
         checks << change_size_check(pr)
-        checks << "No findings at or above the severity threshold (#{max_severity})"
+        checks << "No findings at or above #{severity_label(max_severity)} (#{max_severity})"
         checks << 'No unresolved RubyRT findings'
         checks << 'No findings resolved by the PR author or a contributor'
         checks << 'No human reviewer requested changes'
         checks << "Author is a member of #{approval_team}" unless approval_team.empty?
         "**Checks passed**\n\n#{checks.map { |c| "- #{c}" }.join("\n")}"
+      end
+
+      def severity_label(severity)
+        Commenter::SEVERITY_LABELS.fetch(severity, "severity #{severity}")
+      end
+
+      # Other required checks RubyRT does not evaluate (e.g. a security pass, the
+      # test suite) that still gate merge. Configured via approve.external_checks
+      # so a repo can make clear that RubyRT's approval isn't the only gate.
+      def external_checks_section
+        checks = Array(@config['external_checks']).map(&:to_s).reject(&:empty?)
+        return nil if checks.empty?
+
+        list = checks.map { |c| "- #{c}" }.join("\n")
+        "**Other checks that must pass before merge** (not evaluated by RubyRT)\n\n#{list}"
       end
 
       def change_size_check(pr)
@@ -351,22 +367,40 @@ module Rubyrt
         content if content.is_a?(Hash)
       end
 
-      def risk_prompt(pr, report)
+      def risk_prompt(pr, _report)
         <<~PROMPT
-          You are assessing the residual risk of automatically approving a pull request
-          that has already passed all of RubyRT's automated review gates. Base your
-          assessment only on the information below.
+          A pull request has already passed all of RubyRT's automated approval rules,
+          so do NOT restate or list those rules. Instead, look at the actual code change
+          below and give an honest assessment of the real-world risk of merging it,
+          focused on: regressions in existing behavior, downtime or availability impact,
+          and whether it removes or weakens any security controls.
 
           Pull request: #{pr.title}
-          RubyRT findings kept after filtering: #{report.issues.size}
 
-          Review summary:
-          #{@review_summary[0, 4000]}
+          Code changes (diff):
+          #{pr_diff[0, 12_000]}
 
-          Return risk_level ("Low", "Medium", or "High") for the residual risk of merging
-          without further human review, and a one-to-two sentence summary of what passed
-          and any residual risk.
+          Review summary for context:
+          #{@review_summary[0, 3000]}
+
+          Auto-approval is appropriate for Low or Medium risk. Return risk_level of "Low"
+          or "Medium" and a one-to-three sentence reason that justifies the approval,
+          grounded in the code change (call out any regression, downtime, or security
+          concern you do see, even if you still rate it Medium).
         PROMPT
+      end
+
+      # Unified diff of the PR's changed files, for the risk assessment. Best
+      # effort: an API failure just yields an empty diff (risk section still runs
+      # on the summary, or is omitted if that also fails).
+      def pr_diff
+        @client.pull_request_files(slug, @pr_number).filter_map do |file|
+          next unless file.patch
+
+          "--- #{file.filename}\n#{file.patch}"
+        end.join("\n\n")
+      rescue Octokit::Error
+        ''
       end
 
       def details_section(report)
