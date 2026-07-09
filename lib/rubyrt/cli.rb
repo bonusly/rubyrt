@@ -121,7 +121,7 @@ module Rubyrt
       report = Rubyrt::Report.from_file(json_path_for(options[:md_report_file]))
       debug_approve_state
       commenter.post_review(summary: summary, report: report)
-      maybe_approve(context, report)
+      maybe_approve(context, report, summary)
     rescue StandardError => e
       warn "GitHub comment failed: #{e.message}"
       exit 1
@@ -261,21 +261,34 @@ module Rubyrt
 
       # Auto-approve the PR when the [approve] config block is enabled. Loads
       # config here because github-comment otherwise runs without it.
-      def maybe_approve(context, report)
-        approve = Rubyrt::Configuration.new['approve']
+      def maybe_approve(context, report, summary)
+        config = Rubyrt::Configuration.new
+        approve = config['approve']
         return unless approve.is_a?(Hash) && approve['enabled']
 
-        build_approver(context, approve).run(report)
+        build_approver(context, approve, summary, approval_llm_client(config)).run(report)
       end
 
-      def build_approver(context, approve_config)
+      # Best-effort LLM client for the approval risk assessment. Returns nil when
+      # no LLM key is configured (e.g. the github-comment step lacks LLM_API_KEY),
+      # so the approval still posts, just without the risk section.
+      def approval_llm_client(config)
+        Rubyrt::LlmClient.new(config)
+      rescue StandardError => e
+        warn "Approval risk assessment disabled — #{e.message}" if debug_enabled?
+        nil
+      end
+
+      def build_approver(context, approve_config, summary, llm_client)
         Rubyrt::GitHub::Approver.new(
           token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
           resolve_token: options[:resolve_token] || ENV.fetch('RUBYRT_RESOLVE_TOKEN', nil),
           owner: repo_owner(context),
           repo: repo_name(context),
           pr_number: options[:pr] || context&.pr_number,
-          config: approve_config
+          config: approve_config,
+          llm_client: llm_client,
+          review_summary: summary
         )
       end
 

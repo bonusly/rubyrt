@@ -29,7 +29,8 @@ module Rubyrt
 
       Decision = Struct.new(:action, :reasons)
 
-      def initialize(token:, owner:, repo:, pr_number:, config: {}, resolve_token: nil)
+      def initialize(token:, owner:, repo:, pr_number:, config: {}, resolve_token: nil,
+                     llm_client: nil, review_summary: nil)
         # Reads and the first approval attempt use the main token; the PAT is the
         # fallback when that attempt errors. An empty env var is treated as unset.
         resolve_token = nil if resolve_token.to_s.strip.empty?
@@ -39,6 +40,10 @@ module Rubyrt
         @repo = repo
         @pr_number = pr_number
         @config = config || {}
+        # Optional: used only to add an informational risk assessment to the
+        # approval comment. Absent client/summary just omits that section.
+        @llm_client = llm_client
+        @review_summary = review_summary.to_s
       end
 
       # Evaluate the rules and approve / dismiss accordingly. Never raises into
@@ -47,7 +52,7 @@ module Rubyrt
         pr = @client.pull_request(slug, @pr_number)
         decision = decide(pr, report)
         log(decision)
-        apply(pr, decision)
+        apply(pr, decision, report)
         sync_status_comment(decision)
       rescue StandardError => e
         warn "Auto-approval skipped — #{e.message}"
@@ -268,7 +273,7 @@ module Rubyrt
         SEVERITY_BY_LABEL[label]
       end
 
-      def apply(pr, decision)
+      def apply(pr, decision, report)
         return if dry_run?
 
         case decision.action
@@ -277,25 +282,97 @@ module Rubyrt
           # the current head, so an approval never outlives the exact commit it
           # was granted for.
           dismiss(superseded_approvals(pr.head.sha))
-          ensure_approved(pr)
+          ensure_approved(pr, report)
         when :block
           dismiss(rubyrt_approvals)
         end
       end
 
-      def ensure_approved(pr)
+      def ensure_approved(pr, report)
         return if approved_for?(pr.head.sha)
 
         # Main token first, PAT fallback. The PAT fallback covers the common
         # case where the main token (GITHUB_TOKEN) lacks approval rights.
         attempt_with_fallback('approve PR') do |client|
-          client.create_pull_request_review(slug, @pr_number, event: 'APPROVE', body: approval_body)
+          client.create_pull_request_review(slug, @pr_number, event: 'APPROVE', body: approval_body(pr, report))
         end
       end
 
-      def approval_body
-        "#{APPROVAL_MARKER}\n\nApproved automatically by RubyRT: all auto-approval rules passed." \
-          "\n\n#{version_line}"
+      def approval_body(pr, report)
+        [
+          APPROVAL_MARKER,
+          'Approved automatically by RubyRT: all auto-approval rules passed.',
+          passed_rules_section(pr),
+          risk_assessment_section(pr, report),
+          details_section(report)
+        ].compact.join("\n\n")
+      end
+
+      # Deterministic list of the gates that were satisfied for this approval.
+      def passed_rules_section(pr)
+        checks = ['No RubyRT config change', 'No protected paths changed']
+        checks << change_size_check(pr)
+        checks << "No findings at or above the severity threshold (#{max_severity})"
+        checks << 'No unresolved RubyRT findings'
+        checks << 'No findings resolved by the PR author or a contributor'
+        checks << 'No human reviewer requested changes'
+        checks << "Author is a member of #{approval_team}" unless approval_team.empty?
+        "**Checks passed**\n\n#{checks.map { |c| "- #{c}" }.join("\n")}"
+      end
+
+      def change_size_check(pr)
+        count = change_count(pr)
+        count.nil? ? 'Change size within limit' : "Change size within limit (#{count} of max #{max_changes})"
+      end
+
+      # Informational only: an LLM risk level + summary. Omitted when no LLM
+      # client is configured or the call fails — it must never block an approval
+      # the deterministic rules already granted.
+      def risk_assessment_section(pr, report)
+        return nil unless @llm_client
+
+        content = risk_assessment(pr, report)
+        return nil if content.nil?
+
+        level = content['risk_level'] || content[:risk_level]
+        summary = content['summary'] || content[:summary]
+        return nil if level.to_s.strip.empty? || summary.to_s.strip.empty?
+
+        "**Risk assessment: #{level}**\n\n#{summary}"
+      rescue StandardError => e
+        warn "Risk assessment skipped — #{e.message}"
+        nil
+      end
+
+      def risk_assessment(pr, report)
+        response = @llm_client.complete_with_schema(risk_prompt(pr, report), Schemas::RISK_ASSESSMENT_SCHEMA)
+        content = response&.content
+        content = JSON.parse(content) if content.is_a?(String)
+        content if content.is_a?(Hash)
+      end
+
+      def risk_prompt(pr, report)
+        <<~PROMPT
+          You are assessing the residual risk of automatically approving a pull request
+          that has already passed all of RubyRT's automated review gates. Base your
+          assessment only on the information below.
+
+          Pull request: #{pr.title}
+          RubyRT findings kept after filtering: #{report.issues.size}
+
+          Review summary:
+          #{@review_summary[0, 4000]}
+
+          Return risk_level ("Low", "Medium", or "High") for the residual risk of merging
+          without further human review, and a one-to-two sentence summary of what passed
+          and any residual risk.
+        PROMPT
+      end
+
+      def details_section(report)
+        rows = ["- RubyRT version: #{Rubyrt::VERSION}"]
+        rows << "- Review model: #{report.model}" unless report.model.to_s.strip.empty?
+        "<details><summary>RubyRT details</summary>\n\n#{rows.join("\n")}\n\n</details>"
       end
 
       def version_line

@@ -12,7 +12,7 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
 
   # rubocop:disable RSpec/VerifiedDoubles
   let(:pr) do
-    double('pr', draft: false, additions: 10, deletions: 20,
+    double('pr', draft: false, additions: 10, deletions: 20, title: 'Example PR',
                  head: double('head', sha: 'sha1'), user: double('user', login: 'author'),
                  labels: [])
   end
@@ -89,6 +89,53 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
 
     expect(client).to have_received(:create_pull_request_review)
       .with('o/r', 1, hash_including(event: 'APPROVE', body: a_string_including(described_class::APPROVAL_MARKER)))
+  end
+
+  it 'enriches the approval body with the passed-rules checklist and RubyRT details' do
+    approver.run(report_for([]))
+
+    expected_body = a_string_including('Checks passed')
+                    .and(a_string_including("RubyRT version: #{Rubyrt::VERSION}"))
+                    .and(a_string_including('Review model: m'))
+    expect(client).to have_received(:create_pull_request_review)
+      .with('o/r', 1, hash_including(body: expected_body))
+  end
+
+  it 'omits the risk assessment when no LLM client is configured' do
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review).with(
+      'o/r', 1, hash_including(body: satisfy('excludes risk assessment') { |b| !b.include?('Risk assessment') })
+    )
+  end
+
+  context 'with an LLM client for the risk assessment' do
+    subject(:approver) do
+      described_class.new(token: 'token', owner: 'o', repo: 'r', pr_number: 1, config: config,
+                          llm_client: llm_client, review_summary: 'summary text')
+    end
+
+    let(:llm_client) { instance_double(Rubyrt::LlmClient) }
+
+    it 'adds the LLM risk level and summary to the approval body' do
+      response = double('resp', content: { 'risk_level' => 'Low', 'summary' => 'Looks safe.' }) # rubocop:disable RSpec/VerifiedDoubles
+      allow(llm_client).to receive(:complete_with_schema).and_return(response)
+      approver.run(report_for([]))
+
+      expect(client).to have_received(:create_pull_request_review).with(
+        'o/r', 1,
+        hash_including(body: a_string_including('Risk assessment: Low').and(a_string_including('Looks safe.')))
+      )
+    end
+
+    it 'still approves without a risk section when the LLM call fails' do
+      allow(llm_client).to receive(:complete_with_schema).and_raise(StandardError)
+      approver.run(report_for([]))
+
+      expect(client).to have_received(:create_pull_request_review).with(
+        'o/r', 1, hash_including(body: satisfy('no risk section') { |b| !b.include?('Risk assessment') })
+      )
+    end
   end
 
   it 'blocks when the PR exceeds the change limit' do
@@ -341,7 +388,7 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     approver.run(report_for([]))
 
     expect(client).to have_received(:create_pull_request_review)
-      .with('o/r', 1, hash_including(body: a_string_including("RubyRT v#{Rubyrt::VERSION}")))
+      .with('o/r', 1, hash_including(body: a_string_including("RubyRT version: #{Rubyrt::VERSION}")))
   end
 
   it 'does not duplicate an approval already present for the head SHA' do
