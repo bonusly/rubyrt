@@ -220,6 +220,7 @@ A PR is approved only when **all** of these hold:
 - Total changes are within `max_changes` (an unknown size fails safe and blocks approval).
 - This run produced no findings at or above `max_severity`.
 - No RubyRT findings at or above `max_severity` are still unresolved.
+- No human reviewer's current review is `CHANGES_REQUESTED` (a later dismissal or approval by that reviewer clears it). RubyRT never waves through a change a human has pushed back on; an undeterminable review state fails safe and blocks.
 - Every resolved RubyRT finding at or above `max_severity` was resolved by someone who is **neither the PR author nor a contributor** to the PR — an author can't clear their own findings to earn an approval.
 
 When RubyRT does **not** approve — a rule failed (block) or the run was skipped — it posts a single status comment on the PR explaining why, and keeps that comment updated in place on re-runs (it doesn't stack a new comment each push). Once the PR qualifies and is approved, that status comment is removed.

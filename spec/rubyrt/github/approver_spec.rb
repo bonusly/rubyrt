@@ -76,6 +76,14 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     allow(client).to receive(:pull_request_reviews).and_return([review])
   end
 
+  def human_review(login:, state:, body: '', id: 1)
+    double('review', id: id, state: state, body: body, user: double('u', login: login)) # rubocop:disable RSpec/VerifiedDoubles
+  end
+
+  def stub_reviews(*reviews)
+    allow(client).to receive(:pull_request_reviews).and_return(reviews)
+  end
+
   it 'approves a clean PR with the approval marker' do
     approver.run(report_for([]))
 
@@ -162,6 +170,54 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     approver.run(report_for([]))
 
     expect(client).to have_received(:create_pull_request_review)
+  end
+
+  it 'blocks when a human reviewer requested changes' do
+    stub_reviews(human_review(login: 'dev', state: 'CHANGES_REQUESTED'))
+    approver.run(report_for([]))
+
+    expect(client).not_to have_received(:create_pull_request_review)
+  end
+
+  it 'approves once the reviewer dismissed the changes request' do
+    stub_reviews(human_review(login: 'dev', state: 'CHANGES_REQUESTED'),
+                 human_review(login: 'dev', state: 'DISMISSED'))
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+  end
+
+  it 'approves once the reviewer re-approved after requesting changes' do
+    stub_reviews(human_review(login: 'dev', state: 'CHANGES_REQUESTED'),
+                 human_review(login: 'dev', state: 'APPROVED'))
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+  end
+
+  it 'stays blocked when the reviewer only commented after requesting changes' do
+    stub_reviews(human_review(login: 'dev', state: 'CHANGES_REQUESTED'),
+                 human_review(login: 'dev', state: 'COMMENTED'))
+    approver.run(report_for([]))
+
+    expect(client).not_to have_received(:create_pull_request_review)
+  end
+
+  it "ignores RubyRT's own reviews when checking for human requested changes" do
+    stub_reviews(
+      human_review(login: 'rubyrt[bot]', state: 'APPROVED', body: described_class::APPROVAL_MARKER),
+      human_review(login: 'dev', state: 'CHANGES_REQUESTED')
+    )
+    approver.run(report_for([]))
+
+    expect(client).not_to have_received(:create_pull_request_review)
+  end
+
+  it 'blocks (fails safe) when the review state cannot be determined' do
+    allow(client).to receive(:pull_request_reviews).and_raise(Octokit::InternalServerError)
+    approver.run(report_for([]))
+
+    expect(client).not_to have_received(:create_pull_request_review)
   end
 
   it 'skips a PR carrying the skip label' do
