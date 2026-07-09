@@ -129,9 +129,8 @@ module Rubyrt
     end
 
     def parse_response(response, file)
-      return [] if response.nil?
-
-      content = response.content
+      content = response&.content
+      return [] if content.nil?
       return [] if content.is_a?(String) && content.strip.empty?
 
       parsed = content.is_a?(String) ? JSON.parse(content) : content
