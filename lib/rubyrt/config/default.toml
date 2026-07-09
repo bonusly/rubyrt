@@ -165,3 +165,7 @@ dry_run = false
 # RUBYRT_RESOLVE_TOKEN to a PAT with read:org. Membership that can't be
 # determined fails safe (not eligible).
 approval_team = ""
+# Other required checks RubyRT does not evaluate but that still gate merge (e.g.
+# a security scan, the test suite). Listed in the approval comment so it's clear
+# RubyRT's approval isn't the only gate — these do not affect RubyRT's decision.
+external_checks = []
