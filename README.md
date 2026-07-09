@@ -218,6 +218,7 @@ A PR is approved only when **all** of these hold:
 - Total changes are within `max_changes` (this check is skipped when the size is unknown).
 - This run produced no findings at or above `max_severity`.
 - No RubyRT findings at or above `max_severity` are still unresolved.
+- No human reviewer's current review is `CHANGES_REQUESTED` (a later dismissal or approval by that reviewer clears it). RubyRT never waves through a change a human has pushed back on; an undeterminable review state fails safe and blocks.
 - Every resolved RubyRT finding at or above `max_severity` was resolved by someone who is **neither the PR author nor a contributor** to the PR — an author can't clear their own findings to earn an approval.
 
 Re-runs are idempotent: RubyRT won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. With `dry_run = true` it logs the decision and reasons but takes no action — useful for rollout.

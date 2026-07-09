@@ -91,6 +91,7 @@ module Rubyrt
         reasons << 'new findings at or above the approval severity threshold' if current_issues?(report)
         reasons << 'unresolved RubyRT findings remain' if unresolved?(threads)
         reasons << 'RubyRT findings were resolved by the author or a contributor' if self_resolved?(threads, pr)
+        reasons << 'a human reviewer requested changes' if human_requested_changes?
         reasons
       end
 
@@ -265,6 +266,29 @@ module Rubyrt
       def rubyrt_approvals
         @client.pull_request_reviews(slug, @pr_number).select do |review|
           review.state == 'APPROVED' && review.body.to_s.include?(APPROVAL_MARKER)
+        end
+      end
+
+      # Block when a human reviewer's current review is CHANGES_REQUESTED — a
+      # human's active pushback must never be waved through. Undeterminable state
+      # fails safe (block), consistent with the other fail-safe gates.
+      def human_requested_changes?
+        latest_human_review_states.value?('CHANGES_REQUESTED')
+      rescue Octokit::Error
+        true
+      end
+
+      # Each human reviewer's most recent approval-affecting review state, so a
+      # later approval or dismissal supersedes an earlier CHANGES_REQUESTED.
+      # RubyRT's own reviews (APPROVAL_MARKER) are ignored; COMMENTED/PENDING
+      # reviews don't change a reviewer's state and are skipped.
+      def latest_human_review_states
+        @client.pull_request_reviews(slug, @pr_number).each_with_object({}) do |review, states|
+          next if review.body.to_s.include?(APPROVAL_MARKER)
+          next unless %w[APPROVED CHANGES_REQUESTED DISMISSED].include?(review.state)
+
+          login = review.user&.login
+          states[login] = review.state unless login.nil?
         end
       end
 
