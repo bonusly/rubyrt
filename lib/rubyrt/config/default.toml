@@ -148,8 +148,12 @@ max_severity = 3
 skip_label = "rubyrt-skip-approve"
 # Glob patterns (matched like exclude_files) that block auto-approval when any
 # changed file matches — e.g. billing code or sensitive config that always
-# wants human eyes. Changes to .rubyrt/config.toml are always blocked.
-protected_paths = []
+# wants human eyes. Changes to .rubyrt/config.toml are always blocked. By
+# default the whole .rubyrt/ directory is protected so RubyRT never
+# auto-approves changes to its own config, skills, or review prompts. NOTE:
+# setting protected_paths in a project replaces this default, so include
+# ".rubyrt/**/*" there too if you override it.
+protected_paths = [".rubyrt/**/*"]
 # Evaluate the rules and log the decision without approving or dismissing.
 dry_run = false
 # When set to an "org/team-slug" (e.g. "bonusly/pr-auto-approval"), only
