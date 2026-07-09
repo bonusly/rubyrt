@@ -220,7 +220,9 @@ A PR is approved only when **all** of these hold:
 - No RubyRT findings at or above `max_severity` are still unresolved.
 - Every resolved RubyRT finding at or above `max_severity` was resolved by someone who is **neither the PR author nor a contributor** to the PR — an author can't clear their own findings to earn an approval.
 
-Re-runs are idempotent: RubyRT won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. It also dismisses any approval left over from a **previous commit** before approving a new head, so an approval never outlives the exact commit it was granted for. With `dry_run = true` it logs the decision and reasons but takes no action — useful for rollout.
+When RubyRT does **not** approve — a rule failed (block) or the run was skipped — it posts a single status comment on the PR explaining why, and keeps that comment updated in place on re-runs (it doesn't stack a new comment each push). Once the PR qualifies and is approved, that status comment is removed.
+
+Re-runs are idempotent: RubyRT won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. It also dismisses any approval left over from a **previous commit** before approving a new head, so an approval never outlives the exact commit it was granted for. With `dry_run = true` it still posts the status comment (marked as a dry run) and logs the decision, but takes no approve/dismiss action — useful for rollout.
 
 > **Close the re-review window with branch protection.** RubyRT only runs *as* the push-triggered workflow, so between a new push and the re-review finishing, an approval granted for the previous commit still counts unless GitHub dismisses it. Enable branch protection's **"Dismiss stale pull request approvals when new commits are pushed"** so a new commit invalidates the prior approval instantly; RubyRT then re-approves only if the new commit still passes.
 

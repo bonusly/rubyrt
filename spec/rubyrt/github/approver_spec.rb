@@ -26,11 +26,15 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
       pull_request_commits: [],
       pull_request_files: [],
       pull_request_reviews: [],
+      issue_comments: [],
       user: double('me', login: 'rubyrt-bot'), # rubocop:disable RSpec/VerifiedDoubles
       post: threads_response([])
     )
     allow(client).to receive(:create_pull_request_review)
     allow(client).to receive(:dismiss_pull_request_review)
+    allow(client).to receive(:add_comment)
+    allow(client).to receive(:update_comment)
+    allow(client).to receive(:delete_comment)
   end
 
   def threads_response(nodes)
@@ -186,6 +190,54 @@ RSpec.describe Rubyrt::GitHub::Approver do # rubocop:disable RSpec/SpecFilePathF
     approver.run(report_for([]))
 
     expect(client).not_to have_received(:create_pull_request_review)
+  end
+
+  it 'posts a status comment explaining why the PR was not approved' do
+    allow(pr).to receive_messages(additions: 600, deletions: 0)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:add_comment)
+      .with('o/r', 1, a_string_including('max 500'))
+  end
+
+  it 'updates an existing status comment instead of posting a duplicate', :aggregate_failures do
+    existing = double('comment', id: 7, body: described_class::STATUS_MARKER) # rubocop:disable RSpec/VerifiedDoubles
+    allow(client).to receive(:issue_comments).and_return([existing])
+    allow(pr).to receive_messages(additions: 600, deletions: 0)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:update_comment).with('o/r', 7, anything)
+    expect(client).not_to have_received(:add_comment)
+  end
+
+  it 'removes a stale status comment when the PR now qualifies for approval' do
+    existing = double('comment', id: 7, body: described_class::STATUS_MARKER) # rubocop:disable RSpec/VerifiedDoubles
+    allow(client).to receive(:issue_comments).and_return([existing])
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:delete_comment).with('o/r', 7)
+  end
+
+  it 'still posts the status comment in dry-run mode' do
+    config['dry_run'] = true
+    allow(pr).to receive_messages(additions: 600, deletions: 0)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including('Dry run'))
+  end
+
+  it 'includes the RubyRT version in the status comment' do
+    allow(pr).to receive_messages(additions: 600, deletions: 0)
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:add_comment).with('o/r', 1, a_string_including("RubyRT v#{Rubyrt::VERSION}"))
+  end
+
+  it 'includes the RubyRT version in the approval review body' do
+    approver.run(report_for([]))
+
+    expect(client).to have_received(:create_pull_request_review)
+      .with('o/r', 1, hash_including(body: a_string_including("RubyRT v#{Rubyrt::VERSION}")))
   end
 
   it 'does not duplicate an approval already present for the head SHA' do
