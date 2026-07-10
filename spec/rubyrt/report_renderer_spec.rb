@@ -40,7 +40,7 @@ RSpec.describe Rubyrt::ReportRenderer do
 
   it 'renders Markdown output', :aggregate_failures do
     output = renderer.to_md
-    expect(output).to include('RubyRT Code Review')
+    expect(output).not_to include('RubyRT Code Review')
     expect(output).to include('Unused variable')
     expect(output).to include('app.rb')
     expect(output).to include('[High]')
