@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-require_relative 'lib/rubyrt/version'
+require_relative 'lib/thingie/version'
 
 Gem::Specification.new do |spec|
   spec.name = 'rubyrt'
-  spec.version = Rubyrt::VERSION
+  spec.version = Thingie::VERSION
   spec.authors = ['Bonusly Engineering']
   spec.email = ['engineering@bonus.ly']
 
-  spec.summary = 'RubyRT: Ruby (but mostly Rails) Review Thing'
+  spec.summary = 'Thingie: Ruby (but mostly Rails) Review Thing'
   spec.description = 'An opinionated, flexible AI code review tool for Ruby and Rails projects. ' \
                      'Inspired by Gito, rubyrt reviews pull requests using LLMs, pulling extra ' \
                      'context from language servers (LSP) and posting feedback on changed lines.'
