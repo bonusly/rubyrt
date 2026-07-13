@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-RubyRT is an opinionated, AI-powered code review CLI and GitHub Action for Ruby/Rails projects. It diffs a PR's changeset, sends each changed file to an LLM for review, optionally runs a "critic pass" that adversarially re-checks each finding, then posts inline PR comments and optionally auto-approves.
+Thingie is an opinionated, AI-powered code review CLI and GitHub Action for Ruby/Rails projects. It diffs a PR's changeset, sends each changed file to an LLM for review, optionally runs a "critic pass" that adversarially re-checks each finding, then posts inline PR comments and optionally auto-approves.
 
 ## Commands
 
@@ -12,7 +12,7 @@ RubyRT is an opinionated, AI-powered code review CLI and GitHub Action for Ruby/
 bundle install          # install deps
 bundle exec rake        # RuboCop + RSpec (default CI task)
 bundle exec rspec       # tests only
-bundle exec rspec spec/rubyrt/configuration_spec.rb:17  # single test by line
+bundle exec rspec spec/thingie/configuration_spec.rb:17  # single test by line
 bundle exec rubocop     # lint
 bundle exec rubocop -A  # auto-fix
 ```
@@ -22,7 +22,7 @@ bundle exec rubocop -A  # auto-fix
 The review pipeline flows through these modules in order:
 
 1. **`CLI`** (`cli.rb`) — Thor commands wire everything together. `review` is the main command.
-2. **`Configuration`** (`configuration.rb`) — 5-layer merge: bundled defaults → `.rubyrt/config.toml` → `~/.rubyrt/.env` → env vars → CLI flags. `prompt_vars` is deep-merged; all other keys override. Skills (markdown fragments from `.agents/`, `.claude/`, `.cursor/`) are lazy-loaded.
+2. **`Configuration`** (`configuration.rb`) — 5-layer merge: bundled defaults → `.thingie/config.toml` → `~/.thingie/.env` → env vars → CLI flags. `prompt_vars` is deep-merged; all other keys override. Skills (markdown fragments from `.agents/`, `.claude/`, `.cursor/`) are lazy-loaded.
 3. **`Changeset`** (`changeset.rb`) — Uses `Rugged` (libgit2) to compute the diff between two refs. Supports merge-base comparison, glob-pattern file filters, and an `--all` mode to review the full codebase.
 4. **`Reviewer`** (`reviewer.rb`) — Orchestrates the pipeline. Runs file reviews concurrently via `Async` fibers (bounded by `max_concurrent_tasks`). Aggregates errors without halting other files.
 5. **PromptBuilder** (`prompt_builder.rb`) — Renders ERB templates (`review.erb`, `verify.erb`) with config vars, skills, and aux file content merged in.
@@ -34,7 +34,7 @@ The review pipeline flows through these modules in order:
 11. **`ReportRenderer`** — Renders CLI (colored) or Markdown output from a `Report`.
 
 **GitHub integration** (`github/`):
-- `Commenter` — Posts/updates line-level PR comments via Octokit. Collapses stale RubyRT threads before reposting.
+- `Commenter` — Posts/updates line-level PR comments via Octokit. Collapses stale Thingie threads before reposting.
 - `Approver` — Evaluates PR against configured thresholds and submits an Approve review.
 - `GraphQLClient` — Resolves stale review threads via GraphQL mutation (requires a user PAT; `GITHUB_TOKEN` cannot do this).
 
@@ -53,7 +53,7 @@ The review pipeline flows through these modules in order:
 
 ## Configuration
 
-Project config lives in `.rubyrt/config.toml`. Key sections:
+Project config lives in `.thingie/config.toml`. Key sections:
 
 ```toml
 provider = "openai"           # or anthropic, gemini, etc.
