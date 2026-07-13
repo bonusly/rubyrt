@@ -162,7 +162,7 @@ RSpec.describe Thingie::LlmClient do
         overrides: {
           provider: provider,
           llm_api_key: 'secret',
-          log_file: File.join(tmp_dir, 'rubyrt-test.log'),
+          log_file: File.join(tmp_dir, 'thingie-test.log'),
           log_level: 'debug'
         }
       )
@@ -170,7 +170,7 @@ RSpec.describe Thingie::LlmClient do
 
     it 'applies log_file and log_level to the context', :aggregate_failures do
       cfg = context_config(described_class.new(config))
-      expect(cfg.log_file).to eq(File.join(tmp_dir, 'rubyrt-test.log'))
+      expect(cfg.log_file).to eq(File.join(tmp_dir, 'thingie-test.log'))
       expect(cfg.log_level).to eq(Logger::DEBUG)
     end
   end
@@ -223,7 +223,7 @@ RSpec.describe Thingie::LlmClient do
       File.write(models_path, <<~JSON)
         [
           {
-            "id": "rubyrt-test-model",
+            "id": "thingie-test-model",
             "name": "Thingie Test",
             "provider": "openai",
             "type": "chat",
@@ -237,12 +237,12 @@ RSpec.describe Thingie::LlmClient do
     it 'points the global registry at the configured file', :aggregate_failures do
       described_class.new(config)
       expect(RubyLLM.config.model_registry_file).to eq(models_path)
-      expect(RubyLLM.models.any? { |m| m.id == 'rubyrt-test-model' }).to be(true)
+      expect(RubyLLM.models.any? { |m| m.id == 'thingie-test-model' }).to be(true)
     end
 
     it 'can resolve a model from the local registry' do
       described_class.new(config)
-      model = RubyLLM.models.find('rubyrt-test-model', 'openai')
+      model = RubyLLM.models.find('thingie-test-model', 'openai')
       expect(model.name).to eq('Thingie Test')
     end
   end

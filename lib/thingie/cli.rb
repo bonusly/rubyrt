@@ -6,20 +6,20 @@ require 'thingie'
 require 'thingie/version'
 
 module Thingie
-  # Thor-based CLI for rubyrt. Mirrors the command structure of Gito where possible:
+  # Thor-based CLI for thingie. Mirrors the command structure of Gito where possible:
   # review, report, files, github-comment, setup.
   # rubocop:disable Metrics/ClassLength
   class CLI < Thor
     class_option :debug, type: :boolean, default: false,
                          desc: 'Enable debug logging (also: RUBYRT_DEBUG env var)'
 
-    desc 'version', 'Show rubyrt version'
+    desc 'version', 'Show thingie version'
     def version
       puts Thingie::VERSION
     end
 
     # Override the default help output to also list each command's options,
-    # so `rubyrt --help` shows what flags each command accepts.
+    # so `thingie --help` shows what flags each command accepts.
     def help(command = nil, subcommand = false) # rubocop:disable Style/OptionalBooleanParameter
       return super if command
 

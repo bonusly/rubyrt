@@ -3,14 +3,14 @@
 require_relative 'lib/thingie/version'
 
 Gem::Specification.new do |spec|
-  spec.name = 'rubyrt'
+  spec.name = 'thingie'
   spec.version = Thingie::VERSION
   spec.authors = ['Bonusly Engineering']
   spec.email = ['engineering@bonus.ly']
 
   spec.summary = 'Thingie: Ruby (but mostly Rails) Review Thing'
   spec.description = 'An opinionated, flexible AI code review tool for Ruby and Rails projects. ' \
-                     'Inspired by Gito, rubyrt reviews pull requests using LLMs, pulling extra ' \
+                     'Inspired by Gito, thingie reviews pull requests using LLMs, pulling extra ' \
                      'context from language servers (LSP) and posting feedback on changed lines.'
   spec.homepage = 'https://github.com/Bonusly/rubyrt'
   spec.license = 'MIT'

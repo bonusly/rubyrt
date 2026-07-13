@@ -6,7 +6,7 @@ module Thingie
   # Renders a Thingie::Report to Markdown or CLI formats.
   class ReportRenderer
     # Fallback labels used when no severity scale is supplied (e.g. when
-    # rendering a saved report via `rubyrt report` without config context).
+    # rendering a saved report via `thingie report` without config context).
     DEFAULT_SEVERITY_SCALE = {
       1 => 'Critical',
       2 => 'High',

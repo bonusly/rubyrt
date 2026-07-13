@@ -77,7 +77,7 @@ module Thingie
     # RubyLLM's model registry is a process-wide singleton resolved from the
     # global RubyLLM.config, so this is the one global mutation the client
     # makes; provider keys/base stay per-context. A missing file is ignored so
-    # reviews fall back to the shipped registry until `rubyrt models` creates it.
+    # reviews fall back to the shipped registry until `thingie models` creates it.
     def load_local_models_registry
       path = @config['models_file']
       return unless path && !path.to_s.strip.empty?

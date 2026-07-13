@@ -27,7 +27,7 @@ RSpec.describe Thingie::GitHub::Approver do # rubocop:disable RSpec/SpecFilePath
       pull_request_files: [],
       pull_request_reviews: [],
       issue_comments: [],
-      user: double('me', login: 'rubyrt-bot'), # rubocop:disable RSpec/VerifiedDoubles
+      user: double('me', login: 'thingie-bot'), # rubocop:disable RSpec/VerifiedDoubles
       post: threads_response([])
     )
     allow(client).to receive(:create_pull_request_review)
@@ -45,11 +45,11 @@ RSpec.describe Thingie::GitHub::Approver do # rubocop:disable RSpec/SpecFilePath
     allow(client).to receive(:post).and_return(threads_response(nodes))
   end
 
-  def rubyrt_thread(severity: 'Critical', resolved: false, resolved_by: nil)
+  def thingie_thread(severity: 'Critical', resolved: false, resolved_by: nil)
     {
       'id' => 'T1', 'isResolved' => resolved, 'isOutdated' => false, 'line' => 1, 'path' => 'a.rb',
       'resolvedBy' => resolved_by && { 'login' => resolved_by },
-      'comments' => { 'nodes' => [{ 'author' => { 'login' => 'rubyrt-bot' },
+      'comments' => { 'nodes' => [{ 'author' => { 'login' => 'thingie-bot' },
                                     'body' => "#{Thingie::GitHub::Commenter::REVIEW_COMMENT_MARKER} [#{severity}] x" }] }
     }
   end
@@ -215,14 +215,14 @@ RSpec.describe Thingie::GitHub::Approver do # rubocop:disable RSpec/SpecFilePath
   end
 
   it 'blocks on an unresolved qualifying Thingie thread' do
-    stub_threads([rubyrt_thread(resolved: false)])
+    stub_threads([thingie_thread(resolved: false)])
     approver.run(report_for([]))
 
     expect(client).not_to have_received(:create_pull_request_review)
   end
 
   it 'blocks when a qualifying thread was resolved by the PR author' do
-    stub_threads([rubyrt_thread(resolved: true, resolved_by: 'author')])
+    stub_threads([thingie_thread(resolved: true, resolved_by: 'author')])
     approver.run(report_for([]))
 
     expect(client).not_to have_received(:create_pull_request_review)
@@ -230,14 +230,14 @@ RSpec.describe Thingie::GitHub::Approver do # rubocop:disable RSpec/SpecFilePath
 
   it 'blocks when a qualifying thread was resolved by a contributor' do
     stub_commit_authors('dev')
-    stub_threads([rubyrt_thread(resolved: true, resolved_by: 'dev')])
+    stub_threads([thingie_thread(resolved: true, resolved_by: 'dev')])
     approver.run(report_for([]))
 
     expect(client).not_to have_received(:create_pull_request_review)
   end
 
   it 'approves when a qualifying thread was resolved by an independent reviewer' do
-    stub_threads([rubyrt_thread(resolved: true, resolved_by: 'reviewer')])
+    stub_threads([thingie_thread(resolved: true, resolved_by: 'reviewer')])
     approver.run(report_for([]))
 
     expect(client).to have_received(:create_pull_request_review)
@@ -276,7 +276,7 @@ RSpec.describe Thingie::GitHub::Approver do # rubocop:disable RSpec/SpecFilePath
 
   it "ignores Thingie's own reviews when checking for human requested changes" do
     stub_reviews(
-      human_review(login: 'rubyrt[bot]', state: 'APPROVED', body: described_class::APPROVAL_MARKER),
+      human_review(login: 'thingie[bot]', state: 'APPROVED', body: described_class::APPROVAL_MARKER),
       human_review(login: 'dev', state: 'CHANGES_REQUESTED')
     )
     approver.run(report_for([]))
