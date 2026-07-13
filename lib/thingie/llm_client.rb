@@ -68,7 +68,7 @@ module Thingie
       return if @config['llm_api_key'] && !@config['llm_api_key'].to_s.strip.empty?
 
       raise ConfigurationError,
-            'Missing LLM_API_KEY. Set it as an environment variable or in ~/.rubyrt/.env.'
+            'Missing LLM_API_KEY. Set it as an environment variable or in ~/.thingie/.env.'
     end
 
     # When `models_file` is configured and exists, point the process-wide

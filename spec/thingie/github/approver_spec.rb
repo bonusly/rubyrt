@@ -178,7 +178,7 @@ RSpec.describe Thingie::GitHub::Approver do # rubocop:disable RSpec/SpecFilePath
 
   it 'blocks when the PR changes the Thingie config' do
     allow(client).to receive(:pull_request_files)
-      .and_return([double('file', filename: '.rubyrt/config.toml')]) # rubocop:disable RSpec/VerifiedDoubles
+      .and_return([double('file', filename: '.thingie/config.toml')]) # rubocop:disable RSpec/VerifiedDoubles
     approver.run(report_for([]))
 
     expect(client).not_to have_received(:create_pull_request_review)
@@ -292,7 +292,7 @@ RSpec.describe Thingie::GitHub::Approver do # rubocop:disable RSpec/SpecFilePath
   end
 
   it 'skips a PR carrying the skip label' do
-    allow(pr).to receive(:labels).and_return([double('l', name: 'rubyrt-skip-approve')]) # rubocop:disable RSpec/VerifiedDoubles
+    allow(pr).to receive(:labels).and_return([double('l', name: 'thingie-skip-approve')]) # rubocop:disable RSpec/VerifiedDoubles
     approver.run(report_for([]))
 
     expect(client).not_to have_received(:create_pull_request_review)

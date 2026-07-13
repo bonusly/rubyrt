@@ -7,9 +7,9 @@ module Thingie
   # Loads and merges Thingie configuration.
   #
   # Layers (later layers override earlier ones):
-  # 1. Bundled defaults from lib/rubyrt/config/default.toml
-  # 2. Project-specific .rubyrt/config.toml
-  # 3. ~/.rubyrt/.env (loaded into ENV via dotenv)
+  # 1. Bundled defaults from lib/thingie/config/default.toml
+  # 2. Project-specific .thingie/config.toml
+  # 3. ~/.thingie/.env (loaded into ENV via dotenv)
   # 4. OS environment variables
   # 5. Explicit overrides passed to Configuration.new
   class Configuration
@@ -17,7 +17,7 @@ module Thingie
 
     # Expanded lazily in load_user_env_file so a missing/unresolvable home
     # directory can't crash at load time.
-    USER_ENV_FILE = '~/.rubyrt/.env'
+    USER_ENV_FILE = '~/.thingie/.env'
 
     DEFAULT_SKILL_DIRECTORIES = %w[.agents .claude .cursor].freeze
 
@@ -27,9 +27,9 @@ module Thingie
       'llm_api_key' => 'LLM_API_KEY',
       'llm_api_base' => 'LLM_API_BASE',
       'github_token' => 'GITHUB_TOKEN',
-      'log_file' => 'RUBYRT_LOG_FILE',
-      'log_level' => 'RUBYRT_LOG_LEVEL',
-      'models_file' => 'RUBYRT_MODELS_FILE'
+      'log_file' => 'THINGIE_LOG_FILE',
+      'log_level' => 'THINGIE_LOG_LEVEL',
+      'models_file' => 'THINGIE_MODELS_FILE'
     }.freeze
 
     INTEGER_ENV_OVERRIDES = {
@@ -95,7 +95,7 @@ module Thingie
       return unless File.file?(path)
 
       # Fill only unset keys so real OS environment variables (layer 4) keep
-      # precedence over the user's ~/.rubyrt/.env defaults (layer 3).
+      # precedence over the user's ~/.thingie/.env defaults (layer 3).
       Dotenv.parse(path).each { |key, value| ENV[key] ||= value }
     rescue StandardError
       # A missing/unreadable/malformed user env file must never be fatal.
@@ -107,7 +107,7 @@ module Thingie
     end
 
     def project_config_path
-      path = File.join(@root, '.rubyrt', 'config.toml')
+      path = File.join(@root, '.thingie', 'config.toml')
       File.file?(path) ? path : nil
     end
 

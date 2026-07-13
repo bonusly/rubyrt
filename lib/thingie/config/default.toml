@@ -1,5 +1,5 @@
-# Default RubyRT project configuration.
-# Copy this to .rubyrt/config.toml in your project to customize. Project values
+# Default Thingie project configuration.
+# Copy this to .thingie/config.toml in your project to customize. Project values
 # are merged on top of these defaults; prompt_vars are deep-merged.
 
 # Auxiliary files to provide as extra context during review (paths relative to
@@ -8,7 +8,7 @@ aux_files = []
 
 # Directories to scan for skill fragments (.md files) that get injected into
 # the review prompt as additional rules.
-skill_directories = [".agents", ".claude", ".cursor", "skills", ".rubyrt/skills"]
+skill_directories = [".agents", ".claude", ".cursor", "skills", ".thingie/skills"]
 
 # Glob patterns for files or directories to exclude from review.
 exclude_files = [
@@ -47,7 +47,7 @@ model = "gpt-5.4-nano"
 provider = "openai"
 # Path to a local RubyLLM models registry (JSON). When set and the file exists,
 # reviews load model metadata from it instead of the (potentially stale) file
-# shipped with the ruby_llm gem. Run `rubyrt models` to refresh and persist it.
+# shipped with the ruby_llm gem. Run `thingie models` to refresh and persist it.
 # Supports `~` and relative paths (resolved against the project root). Leave
 # empty to use the shipped registry.
 models_file = ""
@@ -131,7 +131,7 @@ enabled = true
 
 [approve]
 # Auto-approve the PR when every rule below passes. Disabled by default. The
-# approval is submitted as the resolve-token user (RUBYRT_RESOLVE_TOKEN) when
+# approval is submitted as the resolve-token user (THINGIE_RESOLVE_TOKEN) when
 # one is configured so it counts toward branch protection, else the main token.
 # Requires the workflow's `pull-requests: write` permission (already needed for
 # comments).
@@ -142,18 +142,18 @@ max_changes = 500
 # Issues at or below this severity number (1=Critical) block approval — both new
 # findings from this run and unresolved/self-resolved findings from prior runs.
 max_severity = 3
-# A RubyRT finding only counts as "resolved" for approval if a user who is
+# A Thingie finding only counts as "resolved" for approval if a user who is
 # neither the PR author nor a contributor resolved it; otherwise approval is
 # blocked. Add this label to a PR to skip auto-approval entirely.
-skip_label = "rubyrt-skip-approve"
+skip_label = "thingie-skip-approve"
 # Glob patterns (matched like exclude_files) that block auto-approval when any
 # changed file matches — e.g. billing code or sensitive config that always
-# wants human eyes. Changes to .rubyrt/config.toml are always blocked. By
-# default the whole .rubyrt/ directory is protected so RubyRT never
+# wants human eyes. Changes to .thingie/config.toml are always blocked. By
+# default the whole .thingie/ directory is protected so Thingie never
 # auto-approves changes to its own config, skills, or review prompts. NOTE:
 # setting protected_paths in a project replaces this default, so include
-# ".rubyrt/**/*" there too if you override it.
-protected_paths = [".rubyrt/**/*"]
+# ".thingie/**/*" there too if you override it.
+protected_paths = [".thingie/**/*"]
 # Evaluate the rules and log the decision without approving or dismissing.
 dry_run = false
 # When set to an "org/team-slug" (e.g. "bonusly/pr-auto-approval"), only
@@ -162,10 +162,10 @@ dry_run = false
 # (subject to the other rules). A non-member is skipped (not blocked), so an
 # existing human approval is left intact. Reading team membership needs a token
 # with read:org, which the Actions GITHUB_TOKEN usually lacks; set
-# RUBYRT_RESOLVE_TOKEN to a PAT with read:org. Membership that can't be
+# THINGIE_RESOLVE_TOKEN to a PAT with read:org. Membership that can't be
 # determined fails safe (not eligible).
 approval_team = ""
-# Other required checks RubyRT does not evaluate but that still gate merge (e.g.
+# Other required checks Thingie does not evaluate but that still gate merge (e.g.
 # a security scan, the test suite). Listed in the approval comment so it's clear
-# RubyRT's approval isn't the only gate — these do not affect RubyRT's decision.
+# Thingie's approval isn't the only gate — these do not affect Thingie's decision.
 external_checks = []

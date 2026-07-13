@@ -11,7 +11,7 @@ module Thingie
   # rubocop:disable Metrics/ClassLength
   class CLI < Thor
     class_option :debug, type: :boolean, default: false,
-                         desc: 'Enable debug logging (also: RUBYRT_DEBUG env var)'
+                         desc: 'Enable debug logging (also: THINGIE_DEBUG env var)'
 
     desc 'version', 'Show thingie version'
     def version
@@ -159,7 +159,7 @@ module Thingie
       def resolve_models_path(config)
         path = options[:path] || config['models_file']
         unless path && !path.to_s.strip.empty?
-          warn 'No models_file configured. Set models_file in .rubyrt/config.toml or pass --path.'
+          warn 'No models_file configured. Set models_file in .thingie/config.toml or pass --path.'
           exit 1
         end
         File.expand_path(path)
@@ -252,7 +252,7 @@ module Thingie
       def build_commenter(context)
         Thingie::GitHub::Commenter.new(
           token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
-          resolve_token: options[:resolve_token] || ENV.fetch('RUBYRT_RESOLVE_TOKEN', nil),
+          resolve_token: options[:resolve_token] || ENV.fetch('THINGIE_RESOLVE_TOKEN', nil),
           owner: repo_owner(context),
           repo: repo_name(context),
           pr_number: options[:pr] || context&.pr_number
@@ -282,7 +282,7 @@ module Thingie
       def build_approver(context, approve_config, summary, llm_client)
         Thingie::GitHub::Approver.new(
           token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
-          resolve_token: options[:resolve_token] || ENV.fetch('RUBYRT_RESOLVE_TOKEN', nil),
+          resolve_token: options[:resolve_token] || ENV.fetch('THINGIE_RESOLVE_TOKEN', nil),
           owner: repo_owner(context),
           repo: repo_name(context),
           pr_number: options[:pr] || context&.pr_number,
@@ -292,11 +292,11 @@ module Thingie
         )
       end
 
-      # Debug is on when --debug is passed OR RUBYRT_DEBUG is set to a non-empty,
+      # Debug is on when --debug is passed OR THINGIE_DEBUG is set to a non-empty,
       # non-false value. Empty string is treated as off so GitHub Actions' default
       # empty-variable expansion doesn't accidentally enable debug on every run.
       def debug_enabled?
-        env_val = ENV.fetch('RUBYRT_DEBUG', nil)
+        env_val = ENV.fetch('THINGIE_DEBUG', nil)
         env_on = env_val && !env_val.strip.empty? && !%w[0 false].include?(env_val.strip.downcase)
         env_on || options[:debug]
       end

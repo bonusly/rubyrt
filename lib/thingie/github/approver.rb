@@ -12,16 +12,16 @@ module Thingie
     # approval (and any dismissal) is attempted with the main token first, then
     # falls back to the resolve-token user (PAT) when that attempt errors.
     class Approver # rubocop:disable Metrics/ClassLength
-      APPROVAL_MARKER = '<!-- rubyrt-approval -->'
+      APPROVAL_MARKER = '<!-- thingie-approval -->'
       # Marks the single upsert-able comment that explains why a PR was not
       # auto-approved, so re-runs update it in place instead of stacking comments.
-      STATUS_MARKER = '<!-- rubyrt-approval-status -->'
+      STATUS_MARKER = '<!-- thingie-approval-status -->'
       # Never auto-approve a PR that edits Thingie's own config — that's how
       # someone would weaken the approval rules to wave their change through.
-      CONFIG_PATH = '.rubyrt/config.toml'
+      CONFIG_PATH = '.thingie/config.toml'
       DEFAULT_MAX_CHANGES = 500
       DEFAULT_MAX_SEVERITY = 3
-      DEFAULT_SKIP_LABEL = 'rubyrt-skip-approve'
+      DEFAULT_SKIP_LABEL = 'thingie-skip-approve'
 
       # Inverse of Commenter::SEVERITY_LABELS, to read a thread's severity back
       # out of the comment body Thingie wrote (e.g. "[Critical]").
@@ -99,7 +99,7 @@ module Thingie
       end
 
       def block_reasons(pr, report)
-        threads = rubyrt_threads
+        threads = thingie_threads
         reasons = []
         reasons << "#{CONFIG_PATH} was changed in this PR" if config_changed?
         reasons << 'a protected path was changed in this PR' if protected_path_changed?
@@ -257,13 +257,13 @@ module Thingie
         severity.nil? || severity <= max_severity
       end
 
-      def rubyrt_threads
+      def thingie_threads
         GraphqlClient.new(@client)
                      .review_threads(owner: @owner, repo: @repo, pr_number: @pr_number)
-                     .select { |thread| rubyrt_thread?(thread) }
+                     .select { |thread| thingie_thread?(thread) }
       end
 
-      def rubyrt_thread?(thread)
+      def thingie_thread?(thread)
         thread.dig('comments', 'nodes', 0, 'body').to_s.include?(Commenter::REVIEW_COMMENT_MARKER)
       end
 
@@ -284,7 +284,7 @@ module Thingie
           dismiss(superseded_approvals(pr.head.sha))
           ensure_approved(pr, report)
         when :block
-          dismiss(rubyrt_approvals)
+          dismiss(thingie_approvals)
         end
       end
 
@@ -416,7 +416,7 @@ module Thingie
       # Prior Thingie approvals granted for a commit other than the current head.
       # A new push supersedes them, so they must not keep counting.
       def superseded_approvals(head_sha)
-        rubyrt_approvals.reject { |review| review.commit_id == head_sha }
+        thingie_approvals.reject { |review| review.commit_id == head_sha }
       end
 
       def dismiss(reviews)
@@ -441,10 +441,10 @@ module Thingie
       end
 
       def approved_for?(sha)
-        rubyrt_approvals.any? { |review| review.commit_id == sha }
+        thingie_approvals.any? { |review| review.commit_id == sha }
       end
 
-      def rubyrt_approvals
+      def thingie_approvals
         @client.pull_request_reviews(slug, @pr_number).select do |review|
           review.state == 'APPROVED' && review.body.to_s.include?(APPROVAL_MARKER)
         end

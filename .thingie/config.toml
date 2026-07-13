@@ -1,4 +1,4 @@
-models_file = ".rubyrt/models.json"
+models_file = ".thingie/models.json"
 
 [lsp.ruby]
 command = ["bundle", "exec", "rake"]
@@ -13,8 +13,8 @@ model = "deepseek/deepseek-v4-pro"
 
 # Auto-Approving PRs
 #
-# Disabled in RubyRT's own repository: we don't want RubyRT auto-approving
-# pull requests to RubyRT itself. Changes here should always get a human
+# Disabled in Thingie's own repository: we don't want Thingie auto-approving
+# pull requests to Thingie itself. Changes here should always get a human
 # review. The remaining settings are kept for reference/documentation.
 
 [approve]
@@ -26,5 +26,5 @@ protected_paths = [
   ".github/*",
   "Gemfile",
   "Gemfile.lock",
-  "rubyrt.gemspec"
+  "thingie.gemspec"
 ]

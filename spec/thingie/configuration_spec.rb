@@ -10,7 +10,7 @@ RSpec.describe Thingie::Configuration do
   let(:tmp_dir) { Dir.mktmpdir }
 
   # Clean up the temp dir so the suite doesn't leak directories, and keep it
-  # hermetic by never reading a developer's real ~/.rubyrt/.env.
+  # hermetic by never reading a developer's real ~/.thingie/.env.
   before { stub_const('Thingie::Configuration::USER_ENV_FILE', File.join(tmp_dir, 'no-such.env')) }
   after { FileUtils.rm_rf(tmp_dir) }
 
@@ -26,8 +26,8 @@ RSpec.describe Thingie::Configuration do
 
   context 'with a project config file' do
     before do
-      FileUtils.mkdir_p(File.join(tmp_dir, '.rubyrt'))
-      File.write(File.join(tmp_dir, '.rubyrt', 'config.toml'), <<~TOML)
+      FileUtils.mkdir_p(File.join(tmp_dir, '.thingie'))
+      File.write(File.join(tmp_dir, '.thingie', 'config.toml'), <<~TOML)
         retries = 10
         model = "claude-sonnet-4"
 
@@ -47,7 +47,7 @@ RSpec.describe Thingie::Configuration do
     end
   end
 
-  context 'with ~/.rubyrt/.env' do
+  context 'with ~/.thingie/.env' do
     let(:env_file) { File.join(tmp_dir, 'fake-home.env') }
 
     around do |example|
@@ -82,17 +82,17 @@ RSpec.describe Thingie::Configuration do
     end
   end
 
-  context 'with RUBYRT_MODELS_FILE environment variable' do
+  context 'with THINGIE_MODELS_FILE environment variable' do
     around do |example|
-      original = ENV.fetch('RUBYRT_MODELS_FILE', nil)
-      ENV['RUBYRT_MODELS_FILE'] = '/tmp/rubyrt-models.json'
+      original = ENV.fetch('THINGIE_MODELS_FILE', nil)
+      ENV['THINGIE_MODELS_FILE'] = '/tmp/thingie-models.json'
       example.run
     ensure
-      original ? ENV['RUBYRT_MODELS_FILE'] = original : ENV.delete('RUBYRT_MODELS_FILE')
+      original ? ENV['THINGIE_MODELS_FILE'] = original : ENV.delete('THINGIE_MODELS_FILE')
     end
 
     it 'overrides models_file from environment' do
-      expect(config['models_file']).to eq('/tmp/rubyrt-models.json')
+      expect(config['models_file']).to eq('/tmp/thingie-models.json')
     end
   end
 

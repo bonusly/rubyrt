@@ -1,4 +1,4 @@
-name: "RubyRT Review"
+name: "Thingie Review"
 
 on:
   pull_request:
@@ -23,12 +23,12 @@ jobs:
       # name/avatar. Skipped (falls back to GITHUB_TOKEN) when the app isn't set up.
       - uses: actions/create-github-app-token@v3
         id: app_token
-        if: ${{ vars.RUBYRT_APP_ID != '' }}
+        if: ${{ vars.THINGIE_APP_ID != '' }}
         with:
-          client-id: ${{ vars.RUBYRT_APP_ID }}
-          private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
-      - name: Run RubyRT review
-        uses: ./.github/actions/rubyrt
+          client-id: ${{ vars.THINGIE_APP_ID }}
+          private-key: ${{ secrets.THINGIE_APP_PRIVATE_KEY }}
+      - name: Run Thingie review
+        uses: ./.github/actions/thingie
         env:
           PR_NUMBER_FROM_WORKFLOW_DISPATCH: ${{ github.event.inputs.pr_number }}
         with:
@@ -36,14 +36,14 @@ jobs:
           model: ${{ vars.LLM_MODEL }}
           provider: ${{ vars.LLM_PROVIDER }}
           ruby_version: ${{ vars.RUBY_VERSION || '3.4' }}
-          rubyrt_version: local
+          thingie_version: local
           # Post as the app when configured, otherwise as github-actions.
           github_token: ${{ steps.app_token.outputs.token || github.token }}
           # PAT (user token) with pull-requests write so stale review threads can
           # be auto-resolved. GITHUB_TOKEN and GitHub App installation tokens
           # cannot call resolveReviewThread. Resolution is skipped if unset.
-          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}
+          resolve_token: ${{ secrets.THINGIE_RESOLVE_TOKEN }}
           # Emit per-call token counts, cost, and tool-call details to the job
-          # log. Override by setting the RUBYRT_DEBUG repository variable to
+          # log. Override by setting the THINGIE_DEBUG repository variable to
           # 'false' or '0' to silence it.
-          debug: ${{ vars.RUBYRT_DEBUG != 'false' && vars.RUBYRT_DEBUG != '0' && 'true' || 'false' }}
+          debug: ${{ vars.THINGIE_DEBUG != 'false' && vars.THINGIE_DEBUG != '0' && 'true' || 'false' }}

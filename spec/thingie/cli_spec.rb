@@ -9,7 +9,7 @@ RSpec.describe Thingie::CLI do
   let(:tmp_dir) { Dir.mktmpdir }
 
   # Keep the global RubyLLM registry hermetic, and never read a developer's real
-  # ~/.rubyrt/.env (which would leak LLM_MODEL into ENV for the whole suite).
+  # ~/.thingie/.env (which would leak LLM_MODEL into ENV for the whole suite).
   around do |example|
     original_file = RubyLLM.config.model_registry_file
     original_key = RubyLLM.config.openai_api_key

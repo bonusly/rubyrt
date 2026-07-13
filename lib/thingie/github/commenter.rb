@@ -8,7 +8,7 @@ module Thingie
     # Thingie review threads and collapses previous summary comments before
     # posting new feedback.
     class Commenter # rubocop:disable Metrics/ClassLength
-      REVIEW_COMMENT_MARKER = '<!-- rubyrt-review-comment -->'
+      REVIEW_COMMENT_MARKER = '<!-- thingie-review-comment -->'
 
       # Mirrors the default severity_scale in config/default.toml — used only
       # for human-facing labels in comments.
@@ -187,7 +187,7 @@ module Thingie
              'GITHUB_TOKEN and GitHub App installation tokens cannot; ' \
              'fine-grained PATs are unreliable and need org approval for write. ' \
              'Use a classic PAT with the `repo` scope (SSO-authorized if your ' \
-             'org requires it) in --resolve-token / RUBYRT_RESOLVE_TOKEN.'
+             'org requires it) in --resolve-token / THINGIE_RESOLVE_TOKEN.'
       end
 
       def current_issue_lines(issues)
@@ -225,7 +225,7 @@ module Thingie
       # records the error) when the resolve call itself failed.
       def resolve_thread(thread, current_lines)
         return true if thread['isResolved']
-        return true unless rubyrt_thread?(thread)
+        return true unless thingie_thread?(thread)
         return true if line_still_reported?(thread, current_lines)
 
         graphql_client.resolve_thread(thread['id'])
@@ -235,7 +235,7 @@ module Thingie
         false
       end
 
-      def rubyrt_thread?(thread)
+      def thingie_thread?(thread)
         first_comment = thread.dig('comments', 'nodes', 0)
         first_comment && first_comment['body'].to_s.include?(REVIEW_COMMENT_MARKER)
       end

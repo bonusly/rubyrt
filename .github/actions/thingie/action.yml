@@ -1,5 +1,5 @@
-name: "RubyRT Review"
-description: "Run RubyRT AI code review on pull requests"
+name: "Thingie Review"
+description: "Run Thingie AI code review on pull requests"
 branding:
   icon: "star"
   color: "red"
@@ -8,7 +8,7 @@ inputs:
     description: "LLM API key"
     required: true
   ruby_version:
-    description: "Ruby version to install for running RubyRT"
+    description: "Ruby version to install for running Thingie"
     required: false
     default: "3.4"
   api_base:
@@ -26,20 +26,20 @@ inputs:
     description: "Directory for review reports"
     required: false
     default: "."
-  rubyrt_version:
+  thingie_version:
     description: >-
-      RubyRT gem version to install. Use 'local' to build and install from the
-      checked-out repo, or 'skip' to install nothing (when rubyrt_command
-      already provides RubyRT, e.g. via your Gemfile).
+      Thingie gem version to install. Use 'local' to build and install from the
+      checked-out repo, or 'skip' to install nothing (when thingie_command
+      already provides Thingie, e.g. via your Gemfile).
     required: false
     default: ">= 0"
-  rubyrt_command:
+  thingie_command:
     description: >-
-      Command used to invoke the RubyRT CLI. Defaults to 'rubyrt'. Set to
-      something like 'bundle exec rubyrt' or 'direnv exec . rubyrt' for setups
+      Command used to invoke the Thingie CLI. Defaults to 'thingie'. Set to
+      something like 'bundle exec thingie' or 'direnv exec . thingie' for setups
       that need it.
     required: false
-    default: "rubyrt"
+    default: "thingie"
   github_token:
     description: >-
       Token used to post review comments. Falls back to the workflow
@@ -56,7 +56,7 @@ inputs:
     required: false
   debug:
     description: >-
-      Enable debug logging (sets RUBYRT_DEBUG=1). Emits per-call token counts,
+      Enable debug logging (sets THINGIE_DEBUG=1). Emits per-call token counts,
       cost, tool-call details, and section headers for the initial review pass
       and critic pass. Useful for diagnosing review behaviour or cost.
     required: false
@@ -69,19 +69,19 @@ runs:
       with:
         ruby-version: ${{ inputs.ruby_version }}
         bundler-cache: true
-    - name: Install RubyRT
+    - name: Install Thingie
       shell: bash
       env:
-        RUBYRT_VERSION: ${{ inputs.rubyrt_version }}
-        RUBYRT_CMD: ${{ inputs.rubyrt_command }}
+        THINGIE_VERSION: ${{ inputs.thingie_version }}
+        THINGIE_CMD: ${{ inputs.thingie_command }}
       run: |
-        if [ "$RUBYRT_VERSION" = "skip" ]; then
-          echo "Skipping install; using '$RUBYRT_CMD' to run RubyRT."
-        elif [ "$RUBYRT_VERSION" = "local" ]; then
-          gem build rubyrt.gemspec -o rubyrt.gem
-          gem install ./rubyrt.gem
+        if [ "$THINGIE_VERSION" = "skip" ]; then
+          echo "Skipping install; using '$THINGIE_CMD' to run Thingie."
+        elif [ "$THINGIE_VERSION" = "local" ]; then
+          gem build thingie.gemspec -o thingie.gem
+          gem install ./thingie.gem
         else
-          gem install rubyrt -v "$RUBYRT_VERSION"
+          gem install thingie -v "$THINGIE_VERSION"
         fi
     - name: Determine base ref
       id: base
@@ -91,7 +91,7 @@ runs:
       run: |
         if [ -n "$BASE_SHA" ]; then
           # Unshallow so merge-base(base, head) is computable. With a depth=1
-          # fetch there's no common ancestor, so RubyRT falls back to diffing
+          # fetch there's no common ancestor, so Thingie falls back to diffing
           # the raw base SHA and reviews files that only diverged on the base
           # branch (not in this PR).
           # ponytail: unshallow is O(repo history); swap for a bounded
@@ -106,7 +106,7 @@ runs:
           git fetch --no-tags --deepen=1 || true
           echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
         fi
-    - name: Run RubyRT review
+    - name: Run Thingie review
       shell: bash
       env:
         LLM_API_KEY: ${{ inputs.api_key }}
@@ -115,21 +115,21 @@ runs:
         LLM_PROVIDER: ${{ inputs.provider }}
         OUTPUT_DIR: ${{ inputs.output_dir }}
         BASE_REF: ${{ steps.base.outputs.ref }}
-        RUBYRT_CMD: ${{ inputs.rubyrt_command }}
-        RUBYRT_DEBUG: ${{ inputs.debug == 'true' && '1' || '' }}
-      # Unquoted so multi-word commands (e.g. "bundle exec rubyrt") word-split.
-      run: $RUBYRT_CMD review --output "$OUTPUT_DIR" --what HEAD --against "$BASE_REF"
+        THINGIE_CMD: ${{ inputs.thingie_command }}
+        THINGIE_DEBUG: ${{ inputs.debug == 'true' && '1' || '' }}
+      # Unquoted so multi-word commands (e.g. "bundle exec thingie") word-split.
+      run: $THINGIE_CMD review --output "$OUTPUT_DIR" --what HEAD --against "$BASE_REF"
     - name: Post review to GitHub
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_token || github.token }}
-        RUBYRT_RESOLVE_TOKEN: ${{ inputs.resolve_token }}
+        THINGIE_RESOLVE_TOKEN: ${{ inputs.resolve_token }}
         OUTPUT_DIR: ${{ inputs.output_dir }}
-        RUBYRT_CMD: ${{ inputs.rubyrt_command }}
+        THINGIE_CMD: ${{ inputs.thingie_command }}
       run: |
         REPORT="$OUTPUT_DIR/code-review-report.md"
         if [ -f "$REPORT" ]; then
-          $RUBYRT_CMD github-comment --md-report-file "$REPORT"
+          $THINGIE_CMD github-comment --md-report-file "$REPORT"
         else
           echo "No report at $REPORT; skipping comment."
         fi
@@ -138,7 +138,7 @@ runs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: rubyrt-review-results
+        name: thingie-review-results
         path: |
           ${{ inputs.output_dir }}/code-review-report.json
           ${{ inputs.output_dir }}/code-review-report.md

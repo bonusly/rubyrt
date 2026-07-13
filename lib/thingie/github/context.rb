@@ -6,7 +6,7 @@ module Thingie
   module GitHub
     # Helper to read repository and PR context from GitHub Actions environment.
     class Context
-      SUMMARY_MARKER = '<!-- rubyrt-summary -->'
+      SUMMARY_MARKER = '<!-- thingie-summary -->'
 
       def self.from_env
         new(

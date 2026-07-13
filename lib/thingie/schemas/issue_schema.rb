@@ -5,7 +5,7 @@ module Thingie
   # and avoid markdown-wrapped or malformed JSON.
   module Schemas
     ISSUE_SCHEMA = {
-      name: 'rubyrt_review_issues',
+      name: 'thingie_review_issues',
       description: 'Array of code review issues found in the diff',
       strict: true,
       schema: {
