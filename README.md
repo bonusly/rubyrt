@@ -1,6 +1,6 @@
-# RubyRT: Ruby (but mostly Rails) Review Thing
+# Thingie: Ruby (but mostly Rails) Review Thing
 
-RubyRT is an opinionated but helpful and flexible AI code review tool for Ruby and Rails projects. It is heavily inspired by [Gito](https://github.com/Nayjest/Gito) and brings the same LLM-driven review workflow to Ruby codebases, with extra context pulled from the Ruby LSP.
+Thingie is an opinionated but helpful and flexible AI code review tool for Ruby and Rails projects. It is heavily inspired by [Gito](https://github.com/Nayjest/Gito) and brings the same LLM-driven review workflow to Ruby codebases, with extra context pulled from the Ruby LSP.
 
 ## Features
 
@@ -18,8 +18,8 @@ RubyRT is an opinionated but helpful and flexible AI code review tool for Ruby a
 Add to your repository:
 
 ```yaml
-# .github/workflows/rubyrt-review.yml
-name: "RubyRT Review"
+# .github/workflows/thingie-review.yml
+name: "Thingie Review"
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+      - uses: Bonusly/rubyrt/.github/actions/thingie@v1
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
           provider: openrouter
@@ -43,29 +43,29 @@ jobs:
 
 ### Ruby version and run command
 
-- **`ruby_version`** — Ruby the action installs to run RubyRT. Defaults to `3.4`.
-- **`rubyrt_command`** — how the CLI is invoked. Defaults to `rubyrt`. Set it to `bundle exec rubyrt`, `direnv exec . rubyrt`, etc. when your environment needs it.
-- **`rubyrt_version`** — gem version to install (`local` builds from the checked-out repo). Set to `skip` to install nothing when `rubyrt_command` already provides RubyRT (e.g. it's in your Gemfile).
+- **`ruby_version`** — Ruby the action installs to run Thingie. Defaults to `3.4`.
+- **`thingie_command`** — how the CLI is invoked. Defaults to `thingie`. Set it to `bundle exec thingie`, `direnv exec . thingie`, etc. when your environment needs it.
+- **`thingie_version`** — gem version to install (`local` builds from the checked-out repo). Set to `skip` to install nothing when `thingie_command` already provides Thingie (e.g. it's in your Gemfile).
 
 ```yaml
-      - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+      - uses: Bonusly/rubyrt/.github/actions/thingie@v1
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
           ruby_version: "4.0"
-          rubyrt_command: bundle exec rubyrt
-          rubyrt_version: skip   # rubyrt comes from the project's Gemfile
+          thingie_command: bundle exec thingie
+          thingie_version: skip   # thingie comes from the project's Gemfile
 ```
 
 ### Full working example (the workflow this repo runs)
 
-RubyRT reviews its own pull requests. Below is the actual
-`.github/workflows/rubyrt-review.yml` from this repo — copy it as a known-good
+Thingie reviews its own pull requests. Below is the actual
+`.github/workflows/thingie-review.yml` from this repo — copy it as a known-good
 starting point. It mints a GitHub App token when one is configured (so comments
 post under the app's name) and otherwise falls back to the default token.
 
 ```yaml
-# .github/workflows/rubyrt-review.yml
-name: "RubyRT Review"
+# .github/workflows/thingie-review.yml
+name: "Thingie Review"
 
 on:
   pull_request:
@@ -90,12 +90,12 @@ jobs:
       # name/avatar. Skipped (falls back to GITHUB_TOKEN) when the app isn't set up.
       - uses: actions/create-github-app-token@v3
         id: app_token
-        if: ${{ vars.RUBYRT_APP_ID != '' }}
+        if: ${{ vars.THINGIE_APP_ID != '' }}
         with:
-          client-id: ${{ vars.RUBYRT_APP_ID }}
-          private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
-      - name: Run RubyRT review
-        uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+          client-id: ${{ vars.THINGIE_APP_ID }}
+          private-key: ${{ secrets.THINGIE_APP_PRIVATE_KEY }}
+      - name: Run Thingie review
+        uses: Bonusly/rubyrt/.github/actions/thingie@v1
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
           model: ${{ vars.LLM_MODEL }}
@@ -104,7 +104,7 @@ jobs:
           github_token: ${{ steps.app_token.outputs.token || github.token }}
           # PAT (user token) with pull-requests write so stale review threads can
           # be auto-resolved — GITHUB_TOKEN and App tokens cannot. Skipped if unset.
-          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}
+          resolve_token: ${{ secrets.THINGIE_RESOLVE_TOKEN }}
 ```
 
 Model and provider come from repo **variables** (`vars.LLM_MODEL`,
@@ -113,27 +113,27 @@ repo runs the review on OpenRouter and re-checks findings with a stronger model
 in the critic pass — see [The critic pass](#the-critic-pass-reducing-false-positives).
 
 The action referenced above is the composite action at
-[`.github/actions/rubyrt/action.yml`](.github/actions/rubyrt/action.yml); it
-installs Ruby, installs RubyRT, computes the base ref (unshallowing as needed so
+[`.github/actions/thingie/action.yml`](.github/actions/thingie/action.yml); it
+installs Ruby, installs Thingie, computes the base ref (unshallowing as needed so
 merge-base is correct), runs the review, posts the comment, and uploads the JSON
 and Markdown reports as artifacts.
 
 ### Required secrets and permissions
 
 - `secrets.LLM_API_KEY`: Your LLM provider API key.
-- `secrets.GITHUB_TOKEN` is provided automatically by GitHub Actions. It must have at least `pull-requests: write` permission (set in the workflow `permissions` block) so RubyRT can post review comments.
+- `secrets.GITHUB_TOKEN` is provided automatically by GitHub Actions. It must have at least `pull-requests: write` permission (set in the workflow `permissions` block) so Thingie can post review comments.
 - Want comments to post under a custom name and avatar instead of "github-actions"? See **Posting as a GitHub App** below.
 - Resolving stale review threads needs an **extra** token — see **Resolving stale review threads** below. The default `GITHUB_TOKEN` cannot do it.
 
 ### Posting as a GitHub App (custom name and avatar)
 
-By default RubyRT posts as **github-actions[bot]** (the workflow `GITHUB_TOKEN`). To post under your own bot name and avatar, authenticate with a **GitHub App installation token** and pass it as the action's `github_token` input — review comments then appear as **YourApp[bot]**.
+By default Thingie posts as **github-actions[bot]** (the workflow `GITHUB_TOKEN`). To post under your own bot name and avatar, authenticate with a **GitHub App installation token** and pass it as the action's `github_token` input — review comments then appear as **YourApp[bot]**.
 
 1. Create the app: **Settings → Developer settings → GitHub Apps → New GitHub App** (under your org or account). Give it the name and avatar you want to see on comments.
    - **Repository permissions → Pull requests: Read and write.** (No webhook needed — uncheck **Active**.)
 2. **Generate a private key** and note the **App ID**.
-3. **Install the app** on the repositories that run RubyRT.
-4. Store the **App ID** as a variable (e.g. `vars.RUBYRT_APP_ID`) and the private key as a secret (e.g. `secrets.RUBYRT_APP_PRIVATE_KEY`).
+3. **Install the app** on the repositories that run Thingie.
+4. Store the **App ID** as a variable (e.g. `vars.THINGIE_APP_ID`) and the private key as a secret (e.g. `secrets.THINGIE_APP_PRIVATE_KEY`).
 5. Mint an installation token with [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token) and pass it as `github_token`:
 
 ```yaml
@@ -150,29 +150,29 @@ jobs:
       - uses: actions/create-github-app-token@v2
         id: app_token
         with:
-          app-id: ${{ vars.RUBYRT_APP_ID }}
-          private-key: ${{ secrets.RUBYRT_APP_PRIVATE_KEY }}
-      - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+          app-id: ${{ vars.THINGIE_APP_ID }}
+          private-key: ${{ secrets.THINGIE_APP_PRIVATE_KEY }}
+      - uses: Bonusly/rubyrt/.github/actions/thingie@v1
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
           github_token: ${{ steps.app_token.outputs.token }}   # post as the app
-          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}    # resolve threads (PAT — see below)
+          resolve_token: ${{ secrets.THINGIE_RESOLVE_TOKEN }}    # resolve threads (PAT — see below)
 ```
 
 > The app installation token posts comments fine, but **cannot resolve review threads** (`resolveReviewThread` rejects server-to-server tokens). If you also want stale threads auto-resolved, pair it with a user PAT in `resolve_token` as shown — see the next section.
 
 ### Resolving stale review threads
 
-When RubyRT re-reviews a PR, it can mark its earlier threads as resolved once the issue is fixed or the line is outdated. This uses the GraphQL `resolveReviewThread` mutation, which **requires a user-to-server token (a personal access token).**
+When Thingie re-reviews a PR, it can mark its earlier threads as resolved once the issue is fixed or the line is outdated. This uses the GraphQL `resolveReviewThread` mutation, which **requires a user-to-server token (a personal access token).**
 
 > **The default `GITHUB_TOKEN` cannot do this, and neither can a GitHub App.** Both are *server-to-server* tokens, and `resolveReviewThread` returns `Resource not accessible by integration` for them even with `pull-requests: write` — including the installation token from `actions/create-github-app-token`. Only a user PAT works.
 
-To enable auto-resolving, create a PAT and pass it via the `resolve_token` action input (or the `RUBYRT_RESOLVE_TOKEN` env var / `--resolve-token` flag for the `github-comment` CLI). If you don't set one, RubyRT skips resolving and still posts the new review.
+To enable auto-resolving, create a PAT and pass it via the `resolve_token` action input (or the `THINGIE_RESOLVE_TOKEN` env var / `--resolve-token` flag for the `github-comment` CLI). If you don't set one, Thingie skips resolving and still posts the new review.
 
 1. Create a token as a user with write access to the repo:
    - **Classic PAT** with the `repo` scope (**recommended** — reliably works for `resolveReviewThread`). **Settings → Developer settings → Personal access tokens → Tokens (classic)**. If your org enforces SSO, click **Configure SSO** on the token and authorize it for the org.
    - **Fine-grained PATs are not recommended here.** Even with **Pull requests: Read and write** they often fail `resolveReviewThread` with `Resource not accessible by personal access token` — and for an **org** repo the write permission stays **read-only until an org owner approves it**, so the fetch succeeds but resolving fails. If you must use one, get it org-approved and expect to troubleshoot.
-2. Store it as a repository (or org) secret, e.g. `secrets.RUBYRT_RESOLVE_TOKEN`.
+2. Store it as a repository (or org) secret, e.g. `secrets.THINGIE_RESOLVE_TOKEN`.
 3. Pass it to the action:
 
 ```yaml
@@ -186,26 +186,26 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: Bonusly/rubyrt/.github/actions/rubyrt@v1
+      - uses: Bonusly/rubyrt/.github/actions/thingie@v1
         with:
           api_key: ${{ secrets.LLM_API_KEY }}
           provider: openrouter
           model: moonshotai/kimi-k2.6
-          resolve_token: ${{ secrets.RUBYRT_RESOLVE_TOKEN }}
+          resolve_token: ${{ secrets.THINGIE_RESOLVE_TOKEN }}
 ```
 
 Threads are resolved as whichever user owns the PAT. (A machine/bot user account is a good fit if you don't want resolutions attributed to a person.)
 
 ### Auto-approving PRs
 
-RubyRT can submit an **Approve** review when a PR is clean enough. It's **off by default** — enable it under `[approve]` in `.rubyrt/config.toml`:
+Thingie can submit an **Approve** review when a PR is clean enough. It's **off by default** — enable it under `[approve]` in `.thingie/config.toml`:
 
 ```toml
 [approve]
 enabled = true
 max_changes = 500          # additions + deletions ceiling; blocks approval if GitHub doesn't report the size
 max_severity = 3           # issues at/below this severity number (1=Critical) block approval
-skip_label = "rubyrt-skip-approve"
+skip_label = "thingie-skip-approve"
 approval_team = "bonusly/pr-auto-approval"  # only auto-approve PRs whose author is on this GitHub team (needs read:org)
 protected_paths = ["app/billing/**", "config/secrets.yml"]  # globs that block approval when changed
 dry_run = false            # evaluate and log the decision without approving/dismissing
@@ -214,38 +214,38 @@ dry_run = false            # evaluate and log the decision without approving/dis
 A PR is approved only when **all** of these hold:
 
 - It isn't a draft and doesn't carry the `skip_label`.
-- Its author is a member of `approve.approval_team`, when that option is set (a non-member is skipped, not blocked, so a human's approval is left intact). Reading team membership needs a `read:org` token — set `RUBYRT_RESOLVE_TOKEN` to a PAT with that scope.
-- It doesn't modify `.rubyrt/config.toml` — a PR can't weaken the approval rules and wave itself through.
+- Its author is a member of `approve.approval_team`, when that option is set (a non-member is skipped, not blocked, so a human's approval is left intact). Reading team membership needs a `read:org` token — set `THINGIE_RESOLVE_TOKEN` to a PAT with that scope.
+- It doesn't modify `.thingie/config.toml` — a PR can't weaken the approval rules and wave itself through.
 - No changed file matches a `protected_paths` glob — e.g. billing code or sensitive config you always want a human to review.
 - Total changes are within `max_changes` (an unknown size fails safe and blocks approval).
 - This run produced no findings at or above `max_severity`.
-- No RubyRT findings at or above `max_severity` are still unresolved.
-- No human reviewer's current review is `CHANGES_REQUESTED` (a later dismissal or approval by that reviewer clears it). RubyRT never waves through a change a human has pushed back on; an undeterminable review state fails safe and blocks.
-- Every resolved RubyRT finding at or above `max_severity` was resolved by someone who is **neither the PR author nor a contributor** to the PR — an author can't clear their own findings to earn an approval.
+- No Thingie findings at or above `max_severity` are still unresolved.
+- No human reviewer's current review is `CHANGES_REQUESTED` (a later dismissal or approval by that reviewer clears it). Thingie never waves through a change a human has pushed back on; an undeterminable review state fails safe and blocks.
+- Every resolved Thingie finding at or above `max_severity` was resolved by someone who is **neither the PR author nor a contributor** to the PR — an author can't clear their own findings to earn an approval.
 
-When RubyRT does **not** approve — a rule failed (block) or the run was skipped — it posts a single status comment on the PR explaining why, and keeps that comment updated in place on re-runs (it doesn't stack a new comment each push). Once the PR qualifies and is approved, that status comment is removed.
+When Thingie does **not** approve — a rule failed (block) or the run was skipped — it posts a single status comment on the PR explaining why, and keeps that comment updated in place on re-runs (it doesn't stack a new comment each push). Once the PR qualifies and is approved, that status comment is removed.
 
-Re-runs are idempotent: RubyRT won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. It also dismisses any approval left over from a **previous commit** before approving a new head, so an approval never outlives the exact commit it was granted for. With `dry_run = true` it still posts the status comment (marked as a dry run) and logs the decision, but takes no approve/dismiss action — useful for rollout.
+Re-runs are idempotent: Thingie won't stack a second approval on a head commit it already approved, and it **dismisses** its earlier approval if a later push stops meeting the rules. It also dismisses any approval left over from a **previous commit** before approving a new head, so an approval never outlives the exact commit it was granted for. With `dry_run = true` it still posts the status comment (marked as a dry run) and logs the decision, but takes no approve/dismiss action — useful for rollout.
 
-> **Close the re-review window with branch protection.** RubyRT only runs *as* the push-triggered workflow, so between a new push and the re-review finishing, an approval granted for the previous commit still counts unless GitHub dismisses it. Enable branch protection's **"Dismiss stale pull request approvals when new commits are pushed"** so a new commit invalidates the prior approval instantly; RubyRT then re-approves only if the new commit still passes.
+> **Close the re-review window with branch protection.** Thingie only runs *as* the push-triggered workflow, so between a new push and the re-review finishing, an approval granted for the previous commit still counts unless GitHub dismisses it. Enable branch protection's **"Dismiss stale pull request approvals when new commits are pushed"** so a new commit invalidates the prior approval instantly; Thingie then re-approves only if the new commit still passes.
 
-The approval comment lists the checks that passed and a collapsed **RubyRT details** section (RubyRT version and the review model). If you set `approve.external_checks` (e.g. `["Security review pass", "Full test suite"]`), those are listed under **Other checks that must pass before merge** — checks RubyRT does not evaluate but that still gate merge, so it's clear RubyRT's approval isn't the only gate (they don't affect RubyRT's decision).
+The approval comment lists the checks that passed and a collapsed **Thingie details** section (Thingie version and the review model). If you set `approve.external_checks` (e.g. `["Security review pass", "Full test suite"]`), those are listed under **Other checks that must pass before merge** — checks Thingie does not evaluate but that still gate merge, so it's clear Thingie's approval isn't the only gate (they don't affect Thingie's decision).
 
 When an LLM key is available in the `github-comment` step, it also adds an informational **risk assessment**. Rather than restating the rules, the LLM looks at the actual code diff and gives an honest Low/Medium risk read focused on regressions, downtime, and security impact, with a short reason that justifies the approval. The risk level never affects the decision — the deterministic rules above do — and the section is simply omitted if no LLM client is configured or the call fails.
 
-The approval needs the workflow's `pull-requests: write` permission (already required for comments). The risk assessment additionally needs an LLM key (`LLM_API_KEY`) available to the `github-comment` step; without it the approval still posts, just without that section. RubyRT tries the approval with the main `github_token` first, then falls back to the `resolve_token` PAT if that attempt fails.
+The approval needs the workflow's `pull-requests: write` permission (already required for comments). The risk assessment additionally needs an LLM key (`LLM_API_KEY`) available to the `github-comment` step; without it the approval still posts, just without that section. Thingie tries the approval with the main `github_token` first, then falls back to the `resolve_token` PAT if that attempt fails.
 
-> **Heads up on which token approves.** An approval submitted by `GITHUB_TOKEN` (or a GitHub App installation token) does **not** count toward branch-protection "required approvals", and the fallback only triggers when the first attempt *errors* — a non-counting approval from `GITHUB_TOKEN` succeeds and won't fall through to the PAT. If you need the approval to satisfy required reviewers, run RubyRT with the PAT as its main `github_token` (or as a bot user) so the counting identity is the one that approves.
+> **Heads up on which token approves.** An approval submitted by `GITHUB_TOKEN` (or a GitHub App installation token) does **not** count toward branch-protection "required approvals", and the fallback only triggers when the first attempt *errors* — a non-counting approval from `GITHUB_TOKEN` succeeds and won't fall through to the PAT. If you need the approval to satisfy required reviewers, run Thingie with the PAT as its main `github_token` (or as a bot user) so the counting identity is the one that approves.
 
-> **Limitation.** "Contributor" is determined from commit author/committer GitHub logins, so a `Co-authored-by:` trailer doesn't count as having committed. If a thread's resolver can't be determined (e.g. a deleted account), RubyRT fails safe and does not approve.
+> **Limitation.** "Contributor" is determined from commit author/committer GitHub logins, so a `Co-authored-by:` trailer doesn't count as having committed. If a thread's resolver can't be determined (e.g. a deleted account), Thingie fails safe and does not approve.
 
 ### Configuration options
 
-RubyRT reads configuration from layers (later layers override earlier ones):
+Thingie reads configuration from layers (later layers override earlier ones):
 
-1. `lib/rubyrt/config/default.toml` bundled with the gem.
-2. `.rubyrt/config.toml` in your project root.
-3. `~/.rubyrt/.env` (loaded into your environment).
+1. `lib/thingie/config/default.toml` bundled with the gem.
+2. `.thingie/config.toml` in your project root.
+3. `~/.thingie/.env` (loaded into your environment).
 4. Environment variables.
 5. CLI flags.
 
@@ -259,8 +259,8 @@ Key settings:
 | API base URL | provider default | `llm_api_base` | `LLM_API_BASE` | — |
 | Request timeout (seconds) | `120` | `request_timeout` | `LLM_REQUEST_TIMEOUT` | — |
 | Retries | `3` | `retries` | `LLM_RETRIES` | — |
-| Log file | stdout | `log_file` | `RUBYRT_LOG_FILE` | — |
-| Log level | `info` | `log_level` | `RUBYRT_LOG_LEVEL` | — |
+| Log file | stdout | `log_file` | `THINGIE_LOG_FILE` | — |
+| Log level | `info` | `log_level` | `THINGIE_LOG_LEVEL` | — |
 | Max concurrent file reviews | `10` | `max_concurrent_tasks` | `MAX_CONCURRENT_TASKS` | — |
 | Confidence threshold (keep if ≤) | `1` | `post_process.max_confidence` | — | — |
 | Severity threshold (keep if ≤) | `3` | `post_process.max_severity` | — | — |
@@ -269,8 +269,8 @@ Key settings:
 | Auto-approve PRs | `false` | `approve.enabled` | — | — |
 | Auto-approve change limit | `500` | `approve.max_changes` | — | — |
 | Auto-approve severity gate | `3` | `approve.max_severity` | — | — |
-| Auto-approve skip label | `rubyrt-skip-approve` | `approve.skip_label` | — | — |
-| Auto-approve protected paths | `[".rubyrt/**/*"]` | `approve.protected_paths` | — | — |
+| Auto-approve skip label | `thingie-skip-approve` | `approve.skip_label` | — | — |
+| Auto-approve protected paths | `[".thingie/**/*"]` | `approve.protected_paths` | — | — |
 | Auto-approve team gate | `""` (disabled) | `approve.approval_team` | — | — |
 | Auto-approve dry run | `false` | `approve.dry_run` | — | — |
 | Skill directories | `.agents`, `.claude`, `.cursor` | `skill_directories` | — | — |
@@ -279,17 +279,17 @@ Key settings:
 
 Supported providers match whatever RubyLLM supports, including `openai`, `anthropic`, `gemini`, `ollama`, `deepseek`, `openrouter`, `mistral`, `perplexity`, `xai`, `azure`, `bedrock`, `vertexai`, and `gpustack`.
 
-Example `.rubyrt/config.toml`:
+Example `.thingie/config.toml`:
 
 ```toml
 provider = "openrouter"
 model = "moonshotai/kimi-k2.6"
 request_timeout = 60
-log_file = "log/rubyrt.log"
+log_file = "log/thingie.log"
 log_level = "debug"
 
 # Add extra files as context to every review prompt
-aux_files = ["docs/conventions.md", ".rubyrt/style-guide.md"]
+aux_files = ["docs/conventions.md", ".thingie/style-guide.md"]
 
 # Customize which directories are scanned for skill fragments
 skill_directories = [".agents", ".github"]
@@ -312,7 +312,7 @@ extensions = [".rb", ".rake"]
 
 ### Skills and auxiliary files
 
-RubyRT automatically discovers markdown files (`.md`) in skill directories and injects them as additional rules in every review prompt. By default it scans `.agents/`, `.claude/`, and `.cursor/` in the project root. Override this with the `skill_directories` config key.
+Thingie automatically discovers markdown files (`.md`) in skill directories and injects them as additional rules in every review prompt. By default it scans `.agents/`, `.claude/`, and `.cursor/` in the project root. Override this with the `skill_directories` config key.
 
 For individual files (rather than whole directories), use `aux_files` to list paths relative to the project root. Their contents are included as extra context in every review prompt:
 
@@ -371,7 +371,7 @@ cheap first filter; the critic pass is the precision filter on top of it.
 
 ### Language servers (LSP)
 
-When you configure a language server, RubyRT exposes a symbol-lookup tool to the
+When you configure a language server, Thingie exposes a symbol-lookup tool to the
 LLM during both review and verification. The model uses it to confirm that a
 class, method, or constant actually exists (and how a third-party API is shaped)
 before reporting an "undefined" or "misused API" issue — a major source of
@@ -395,7 +395,7 @@ Set `log_file` to a file path to persist RubyLLM request logs for debugging. Set
 
 ### Structured output
 
-RubyRT uses [structured output](https://rubyllm.com/available-models/#structured-output-469) to ensure the LLM returns valid JSON. Not all models support this feature; see the [RubyLLM available models page](https://rubyllm.com/available-models/#structured-output-469) for a list of compatible models. For models that don't support structured output, RubyRT falls back to parsing the response as JSON from the prompt instructions.
+Thingie uses [structured output](https://rubyllm.com/available-models/#structured-output-469) to ensure the LLM returns valid JSON. Not all models support this feature; see the [RubyLLM available models page](https://rubyllm.com/available-models/#structured-output-469) for a list of compatible models. For models that don't support structured output, Thingie falls back to parsing the response as JSON from the prompt instructions.
 
 ## Development
 

@@ -1,0 +1,99 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+require 'tmpdir'
+require 'fileutils'
+
+RSpec.describe Thingie::PromptBuilder do
+  subject(:builder) { described_class.new(config) }
+
+  let(:tmp_dir) { Dir.mktmpdir }
+  let(:config) { Thingie::Configuration.new(root: tmp_dir) }
+
+  after do
+    FileUtils.rm_rf(tmp_dir)
+  end
+
+  describe '#review' do
+    it 'includes the diff input' do
+      prompt = builder.review(diff: "class Foo\nend")
+      expect(prompt).to include('class Foo')
+    end
+
+    it 'includes prompt_vars requirements' do
+      prompt = builder.review(diff: '')
+      expect(prompt).to include('Lack of DRY principle enforcement')
+    end
+
+    it 'includes the JSON response requirement' do
+      prompt = builder.review(diff: '')
+      expect(prompt).to include('RESPOND ONLY WITH VALID JSON')
+    end
+
+    it 'adds symbol-lookup guidance only when a lookup tool is available', :aggregate_failures do
+      expect(builder.review(diff: '')).not_to include('symbol lookup tool')
+      expect(builder.review(diff: '', symbol_lookup: true)).to include('symbol lookup tool')
+    end
+
+    context 'with skill fragments' do
+      before do
+        FileUtils.mkdir_p(File.join(tmp_dir, '.cursor'))
+        File.write(File.join(tmp_dir, '.cursor', 'rails.md'), 'Always use strong params.')
+      end
+
+      it 'injects discovered skills as requirements', :aggregate_failures do
+        prompt = builder.review(diff: '')
+        expect(prompt).to match(/RULES FROM .*\.CURSOR SKILL: rails/i)
+        expect(prompt).to include('Always use strong params.')
+      end
+    end
+
+    context 'with aux_files configured' do
+      let(:config) do
+        Thingie::Configuration.new(
+          root: tmp_dir,
+          overrides: { aux_files: ['docs/conventions.md', 'docs/missing.md'] }
+        )
+      end
+
+      before do
+        FileUtils.mkdir_p(File.join(tmp_dir, 'docs'))
+        File.write(File.join(tmp_dir, 'docs', 'conventions.md'), 'Use frozen_string_literal.')
+      end
+
+      it 'injects existing aux file contents into the prompt', :aggregate_failures do
+        prompt = builder.review(diff: '')
+        expect(prompt).to include('AUXILIARY FILE: docs/conventions.md')
+        expect(prompt).to include('Use frozen_string_literal.')
+      end
+
+      it 'skips missing aux files without error' do
+        prompt = builder.review(diff: '')
+        expect(prompt).not_to include('missing.md')
+      end
+    end
+
+    context 'with custom severity and confidence scales' do
+      let(:config) do
+        Thingie::Configuration.new(
+          root: tmp_dir,
+          overrides: {
+            severity_scale: { '1' => 'Blocker', '2' => 'Needs Fix' },
+            confidence_scale: { '1' => 'Sure', '2' => 'Guess' }
+          }
+        )
+      end
+
+      it 'renders the custom scales in the prompt', :aggregate_failures do
+        prompt = builder.review(diff: '')
+        expect(prompt).to include('- 1 — Blocker')
+        expect(prompt).to include('- 2 — Needs Fix')
+        expect(prompt).to include('- 1 — Sure')
+        expect(prompt).to include('- 2 — Guess')
+        # The default severity label must not render in the scale list (it can
+        # still appear elsewhere, e.g. the requirements headings).
+        expect(prompt).not_to include('- 1 — Critical')
+      end
+    end
+  end
+end

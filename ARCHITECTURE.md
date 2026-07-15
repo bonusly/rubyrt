@@ -1,6 +1,6 @@
-# RubyRT Architecture
+# Thingie Architecture
 
-This document maps the design of [Gito](https://github.com/Nayjest/Gito) to Ruby and records the decisions made for `rubyrt`.
+This document maps the design of [Gito](https://github.com/Nayjest/Gito) to Ruby and records the decisions made for `thingie`.
 
 ## Goals
 
@@ -13,13 +13,13 @@ This document maps the design of [Gito](https://github.com/Nayjest/Gito) to Ruby
 
 ## Command surface
 
-| Gito command | RubyRT command | Purpose |
+| Gito command | Thingie command | Purpose |
 |---|---|---|
-| `gito review` | `rubyrt review` | Run code review on a changeset |
-| `gito report` / `gito render` | `rubyrt report` | Render a saved JSON review report |
-| `gito files` | `rubyrt files` | Preview files that would be reviewed |
-| `gito github-comment` | `rubyrt github-comment` | Post review to a GitHub PR |
-| `gito setup` | `rubyrt setup` | Interactive local configuration |
+| `gito review` | `thingie review` | Run code review on a changeset |
+| `gito report` / `gito render` | `thingie report` | Render a saved JSON review report |
+| `gito files` | `thingie files` | Preview files that would be reviewed |
+| `gito github-comment` | `thingie github-comment` | Post review to a GitHub PR |
+| `gito setup` | `thingie setup` | Interactive local configuration |
 | `gito ask` / `gito answer` | (future) | Chat with the codebase |
 
 ## High-level flow
@@ -31,7 +31,7 @@ review command
  discover target .............. git refs / GitHub PR / CLI args
       |
       v
- load configuration .......... bundled defaults + .rubyrt/config.toml + env
+ load configuration .......... bundled defaults + .thingie/config.toml + env
       |
       v
  discover skill fragments ...... .agents / .claude / .cursor directories
@@ -139,8 +139,8 @@ Report = Data.define(
 
 ## Configuration layers
 
-1. **Bundled defaults** in `lib/rubyrt/config/default.toml`
-2. **Project overrides** in `<repo>/.rubyrt/config.toml`
+1. **Bundled defaults** in `lib/thingie/config/default.toml`
+2. **Project overrides** in `<repo>/.thingie/config.toml`
 3. **Environment variables** for secrets and machine-specific settings
 4. **Skill fragments** from `.agents`, `.claude`, `.cursor`
 
@@ -166,11 +166,11 @@ The review prompt instructs the model to respond only with JSON matching the `Ra
 
 ### Language servers (LSP)
 
-`Lsp::Client` is a generic JSON-RPC-over-stdio client configured with a launch command + workspace root, so it works with any language server. `Lsp::SymbolTool` wraps it as a `ruby_llm` tool: during review the model can look up a class/module/method by name (via `workspace/symbol`) and get its definition source for extra context. Configure servers under the `[lsp]` table (opt-in, empty by default); ruby-lsp is the first supported. RubyRT does **not** run static analyzers like RuboCop itself — run those as a separate step if you want them.
+`Lsp::Client` is a generic JSON-RPC-over-stdio client configured with a launch command + workspace root, so it works with any language server. `Lsp::SymbolTool` wraps it as a `ruby_llm` tool: during review the model can look up a class/module/method by name (via `workspace/symbol`) and get its definition source for extra context. Configure servers under the `[lsp]` table (opt-in, empty by default); ruby-lsp is the first supported. Thingie does **not** run static analyzers like RuboCop itself — run those as a separate step if you want them.
 
 ### MCP servers
 
-RubyRT consumes MCP servers using the `mcp` gem. Each configured server is connected, its tools listed, and those tools are registered with the LLM through `ruby_llm` tool calling. This lets teams plug in custom code-search, test, or documentation tools.
+Thingie consumes MCP servers using the `mcp` gem. Each configured server is connected, its tools listed, and those tools are registered with the LLM through `ruby_llm` tool calling. This lets teams plug in custom code-search, test, or documentation tools.
 
 ## GitHub integration
 
