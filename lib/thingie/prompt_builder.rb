@@ -11,6 +11,11 @@ module Thingie
     REVIEW_TEMPLATE = File.expand_path('prompts/review.erb', __dir__)
     VERIFY_TEMPLATE = File.expand_path('prompts/verify.erb', __dir__)
 
+    # ERB's result_with_hash raises NameError for any var referenced in a
+    # template but absent from the hash, so these three (used unconditionally
+    # in review.erb/verify.erb) need a default even when prompt_vars omits them.
+    DEFAULT_TEMPLATE_VARS = { 'requirements' => '', 'json_requirements' => '', 'self_id' => '' }.freeze
+
     attr_reader :config
 
     def initialize(config)
@@ -42,11 +47,7 @@ module Thingie
     end
 
     def template_vars
-      prompt_vars.merge(
-        'requirements' => prompt_vars.fetch('requirements', ''),
-        'json_requirements' => prompt_vars.fetch('json_requirements', ''),
-        'self_id' => prompt_vars.fetch('self_id', '')
-      )
+      DEFAULT_TEMPLATE_VARS.merge(prompt_vars)
     end
 
     # Normalize to string keys so symbol-keyed config can't silently miss lookups.

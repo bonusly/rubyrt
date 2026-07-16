@@ -35,6 +35,14 @@ RSpec.describe Thingie::PromptBuilder do
       expect(builder.review(diff: '', symbol_lookup: true)).to include('symbol lookup tool')
     end
 
+    context 'when prompt_vars omits requirements/json_requirements/self_id' do
+      let(:config) { Thingie::Configuration.new(root: tmp_dir, overrides: { prompt_vars: {} }) }
+
+      it 'renders without raising' do
+        expect { builder.review(diff: '') }.not_to raise_error
+      end
+    end
+
     context 'with skill fragments' do
       before do
         FileUtils.mkdir_p(File.join(tmp_dir, '.cursor'))
