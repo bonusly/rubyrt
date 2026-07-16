@@ -57,25 +57,6 @@ RSpec.describe Thingie::PromptBuilder do
       end
     end
 
-    context 'with aux_files configured' do
-      let(:config) do
-        Thingie::Configuration.new(
-          root: tmp_dir,
-          overrides: { aux_files: ['docs/conventions.md', 'docs/missing.md'] }
-        )
-      end
-
-      before do
-        FileUtils.mkdir_p(File.join(tmp_dir, 'docs'))
-        File.write(File.join(tmp_dir, 'docs', 'conventions.md'), 'Use frozen_string_literal.')
-      end
-
-      it 'does not inline aux file contents into the prompt' do
-        prompt = builder.review(diff: '')
-        expect(prompt).not_to include('Use frozen_string_literal.')
-      end
-    end
-
     context 'with custom severity and confidence scales' do
       let(:config) do
         Thingie::Configuration.new(

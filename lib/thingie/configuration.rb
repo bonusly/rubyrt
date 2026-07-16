@@ -70,10 +70,6 @@ module Thingie
       Array(@data.fetch('skill_directories', DEFAULT_SKILL_DIRECTORIES)).map { |d| File.expand_path(d, @root) }
     end
 
-    def aux_files
-      Array(@data.fetch('aux_files', [])).map { |path| File.expand_path(path, @root) }
-    end
-
     def skills
       @skills ||= skill_directories.flat_map { |dir| load_skills_from(dir) }
     end
@@ -94,9 +90,10 @@ module Thingie
       path = File.expand_path(USER_ENV_FILE)
       return unless File.file?(path)
 
-      # Fill only unset keys so real OS environment variables (layer 4) keep
-      # precedence over the user's ~/.thingie/.env defaults (layer 3).
-      Dotenv.parse(path).each { |key, value| ENV[key] ||= value }
+      # overwrite: true stops Dotenv::Parser from substituting real ENV values
+      # for keys it already finds set — precedence between layers 3 and 4 is
+      # ours to decide, via Env[key] ||= value below, not Dotenv's.
+      Dotenv.parse(path, overwrite: true).each { |key, value| Env[key] ||= value }
     rescue StandardError
       # A missing/unreadable/malformed user env file must never be fatal.
       nil
@@ -137,7 +134,7 @@ module Thingie
 
     def string_env_overrides
       ENV_OVERRIDES.transform_values do |env_key|
-        ENV.fetch(env_key, nil)
+        Env.fetch(env_key, nil)
       end.compact
     end
 
@@ -145,7 +142,7 @@ module Thingie
       # Only override keys that have a non-blank env var set; otherwise leave the
       # merged config value untouched (a blank var must not coerce to 0).
       INTEGER_ENV_OVERRIDES.each_with_object({}) do |(key, env_key), result|
-        value = ENV.fetch(env_key, nil)
+        value = Env.fetch(env_key, nil)
         result[key] = value.to_i if value && !value.strip.empty?
       end
     end

@@ -253,8 +253,8 @@ module Thingie
 
       def build_commenter(context)
         Thingie::GitHub::Commenter.new(
-          token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
-          resolve_token: options[:resolve_token] || ENV.fetch('THINGIE_RESOLVE_TOKEN', nil),
+          token: options[:token] || Env.fetch('GITHUB_TOKEN', nil),
+          resolve_token: options[:resolve_token] || Env.fetch('THINGIE_RESOLVE_TOKEN', nil),
           owner: repo_owner(context),
           repo: repo_name(context),
           pr_number: options[:pr] || context&.pr_number
@@ -283,8 +283,8 @@ module Thingie
 
       def build_approver(context, approve_config, summary, llm_client)
         Thingie::GitHub::Approver.new(
-          token: options[:token] || ENV.fetch('GITHUB_TOKEN', nil),
-          resolve_token: options[:resolve_token] || ENV.fetch('THINGIE_RESOLVE_TOKEN', nil),
+          token: options[:token] || Env.fetch('GITHUB_TOKEN', nil),
+          resolve_token: options[:resolve_token] || Env.fetch('THINGIE_RESOLVE_TOKEN', nil),
           owner: repo_owner(context),
           repo: repo_name(context),
           pr_number: options[:pr] || context&.pr_number,
@@ -298,7 +298,7 @@ module Thingie
       # non-false value. Empty string is treated as off so GitHub Actions' default
       # empty-variable expansion doesn't accidentally enable debug on every run.
       def debug_enabled?
-        env_val = ENV.fetch('THINGIE_DEBUG', nil)
+        env_val = Env.fetch('THINGIE_DEBUG', nil)
         env_on = env_val && !env_val.strip.empty? && !%w[0 false].include?(env_val.strip.downcase)
         env_on || options[:debug]
       end

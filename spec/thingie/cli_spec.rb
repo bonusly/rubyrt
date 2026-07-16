@@ -8,22 +8,16 @@ require 'fileutils'
 RSpec.describe Thingie::CLI do
   let(:tmp_dir) { Dir.mktmpdir }
 
-  # Keep the global RubyLLM registry hermetic, and never read a developer's real
-  # ~/.thingie/.env (which would leak LLM_MODEL into ENV for the whole suite).
+  # Keep the global RubyLLM registry hermetic across examples.
   around do |example|
     original_file = RubyLLM.config.model_registry_file
     original_key = RubyLLM.config.openai_api_key
-    original_llm_model = ENV.fetch('LLM_MODEL', nil)
-    ENV.delete('LLM_MODEL')
     example.run
   ensure
     RubyLLM.config.model_registry_file = original_file
     RubyLLM.config.openai_api_key = original_key
     RubyLLM::Models.instance_variable_set(:@instance, nil)
-    original_llm_model ? ENV['LLM_MODEL'] = original_llm_model : ENV.delete('LLM_MODEL')
   end
-
-  before { stub_const('Thingie::Configuration::USER_ENV_FILE', File.join(tmp_dir, 'no-such.env')) }
 
   after { FileUtils.rm_rf(tmp_dir) }
 

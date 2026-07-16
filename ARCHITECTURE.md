@@ -185,3 +185,4 @@ Thingie consumes MCP servers using the `mcp` gem. Each configured server is conn
 - Fake-LSP-server tests for the `Lsp::Client` transport and `Lsp::SymbolTool` output.
 - Integration tests for the CLI commands using Thor's test helpers.
 - Mock LLM responses so CI runs without real API keys.
+- Environment variables are read through `Thingie::Env`, never `ENV` directly, so specs stub a clean env via `spec_helper` instead of mutating/restoring the real process environment.
