@@ -31,7 +31,8 @@ RSpec.describe Thingie::Reviewer do
     cost_stub = instance_double(RubyLLM::Cost, total: 0.000150)
     response = instance_double(RubyLLM::Message, content: { 'issues' => issues },
                                                  input_tokens: 100, output_tokens: 50, tool_calls: {},
-                                                 cache_read_tokens: nil, cache_write_tokens: nil, cost: cost_stub)
+                                                 cache_read_tokens: nil, cache_write_tokens: nil, cost: cost_stub,
+                                                 model_info: nil)
     instance_double(Thingie::LlmClient, complete_with_schema: response)
   end
 
@@ -187,7 +188,7 @@ RSpec.describe Thingie::Reviewer do
         review_response = instance_double(RubyLLM::Message, content: { 'issues' => issues },
                                                             input_tokens: 200, output_tokens: 80, tool_calls: {},
                                                             cache_read_tokens: nil, cache_write_tokens: nil,
-                                                            cost: review_cost)
+                                                            cost: review_cost, model_info: nil)
         instance_double(Thingie::LlmClient).tap do |client|
           allow(client).to receive(:complete_with_schema) do |prompt, *_|
             next review_response unless prompt.to_s.include?('FINDING TO CHALLENGE')
@@ -197,7 +198,7 @@ RSpec.describe Thingie::Reviewer do
             instance_double(RubyLLM::Message, content: { 'verdict' => verdict, 'reasoning' => 'r' },
                                               input_tokens: 150, output_tokens: 30, tool_calls: {},
                                               cache_read_tokens: nil, cache_write_tokens: nil,
-                                              cost: verdict_cost)
+                                              cost: verdict_cost, model_info: nil)
           end
         end
       end

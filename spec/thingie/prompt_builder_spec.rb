@@ -35,16 +35,25 @@ RSpec.describe Thingie::PromptBuilder do
       expect(builder.review(diff: '', symbol_lookup: true)).to include('symbol lookup tool')
     end
 
+    context 'when prompt_vars omits requirements/json_requirements/self_id' do
+      let(:config) { Thingie::Configuration.new(root: tmp_dir, overrides: { prompt_vars: {} }) }
+
+      it 'renders without raising' do
+        expect { builder.review(diff: '') }.not_to raise_error
+      end
+    end
+
     context 'with skill fragments' do
       before do
         FileUtils.mkdir_p(File.join(tmp_dir, '.cursor'))
         File.write(File.join(tmp_dir, '.cursor', 'rails.md'), 'Always use strong params.')
       end
 
-      it 'injects discovered skills as requirements', :aggregate_failures do
+      it 'does not inline skill content into the prompt' do
+        # Skills are exposed to the LLM via SkillCatalog's progressive-disclosure
+        # tool instead — inlining them here is what blew up the context window.
         prompt = builder.review(diff: '')
-        expect(prompt).to match(/RULES FROM .*\.CURSOR SKILL: rails/i)
-        expect(prompt).to include('Always use strong params.')
+        expect(prompt).not_to include('Always use strong params.')
       end
     end
 
@@ -61,15 +70,9 @@ RSpec.describe Thingie::PromptBuilder do
         File.write(File.join(tmp_dir, 'docs', 'conventions.md'), 'Use frozen_string_literal.')
       end
 
-      it 'injects existing aux file contents into the prompt', :aggregate_failures do
+      it 'does not inline aux file contents into the prompt' do
         prompt = builder.review(diff: '')
-        expect(prompt).to include('AUXILIARY FILE: docs/conventions.md')
-        expect(prompt).to include('Use frozen_string_literal.')
-      end
-
-      it 'skips missing aux files without error' do
-        prompt = builder.review(diff: '')
-        expect(prompt).not_to include('missing.md')
+        expect(prompt).not_to include('Use frozen_string_literal.')
       end
     end
 

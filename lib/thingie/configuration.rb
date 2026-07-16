@@ -175,5 +175,13 @@ module Thingie
     def name
       File.basename(@path, '.md')
     end
+
+    # One-line summary used as progressive-disclosure metadata (SkillCatalog),
+    # so the LLM sees this instead of the full skill body until it asks for it.
+    def description
+      line = content.each_line.map(&:strip).find { |l| !l.empty? } || name
+      line = line.sub(/\A#+\s*/, '')
+      line.length > 150 ? "#{line[0, 150].rstrip}…" : line
+    end
   end
 end

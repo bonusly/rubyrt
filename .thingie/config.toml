@@ -1,5 +1,13 @@
 models_file = ".thingie/models.json"
 
+skill_directories = [
+  ".thingie/skills"
+]
+
+exclude_files = [
+  ".thingie/skills/**/*"
+]
+
 [lsp.ruby]
 command = ["bundle", "exec", "rake"]
 extensions = [".rb", ".rake"]
@@ -26,5 +34,6 @@ protected_paths = [
   ".github/*",
   "Gemfile",
   "Gemfile.lock",
-  "thingie.gemspec"
+  "thingie.gemspec",
+  ".thingie/**/*"
 ]

@@ -100,7 +100,25 @@ module Thingie
       parts << "#{cache_read} cache_read" if cache_read&.positive?
       cache_write = response&.cache_write_tokens
       parts << "#{cache_write} cache_write" if cache_write&.positive?
+      context = context_window_summary(response, input, output)
+      parts << context if context
       "tokens: #{parts.join(' / ')}"
+    end
+
+    # RubyLLM doesn't return an actual "context used" figure from the
+    # provider — only per-call input/output token counts. This approximates
+    # window pressure by comparing input+output against the model's static
+    # context_window limit (from the models registry, via response.model_id).
+    def context_window_summary(response, input, output)
+      return nil unless input && output
+
+      window = response&.model_info&.context_window
+      return nil unless window&.positive?
+
+      used = input + output
+      format('%<used>d/%<window>d ctx (%<pct>.1f%%)', used: used, window: window, pct: (used * 100.0 / window))
+    rescue StandardError
+      nil
     end
 
     def cost_summary(response)

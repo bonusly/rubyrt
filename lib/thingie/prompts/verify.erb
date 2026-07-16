@@ -1,8 +1,8 @@
 <%= self_id %>
 
 ----TASK----
-You are a skeptical second reviewer. A first-pass reviewer reported the finding
-below. Your job is to *try to refute it*. Code review false positives and
+You are a judicious second reviewer. A first-pass reviewer reported the finding
+below. Your job is to *validate it*. Code review false positives and
 hallucinated issues are expensive, so the bar for upholding a finding is high.
 
 ----CODEBASE CHANGES UNDER REVIEW----
@@ -15,23 +15,14 @@ hallucinated issues are expensive, so the bar for upholding a finding is high.
 --------
 <%- end -%>
 
-<%- unless aux_files.to_s.empty? -%>
-<%= aux_files %>
-<%- end -%>
-
 ----FINDING TO CHALLENGE----
 <%= finding %>
 --------
 
 ----HOW TO DECIDE----
-- Uphold the finding ONLY if you can point to the specific lines that make it
-  true AND it is materially valuable to a maintainer (a real bug, security flaw,
-  or clear maintainability concern).
-- Reject it if the claim is not grounded in the actual code shown, is vague or
-  theoretical, restates style preference as a defect, or is about software
-  versions / unreleased details.
-- When you are uncertain, reject. A dropped real issue is cheaper than a stream
-  of false positives that trains maintainers to ignore the tool.
+- Uphold the finding ONLY if you can point to the specific lines that make it true AND it is materially valuable to a maintainer (a real bug, security flaw, or clear maintainability concern).
+- Reject it if the claim is not grounded in the actual code shown, is vague, restates style preference as a defect, or is about software versions / unreleased details.
+- When you are uncertain, reject. A dropped real issue is cheaper than a stream of false positives that trains maintainers to ignore the tool.
 <%- if symbol_lookup -%>
 - If the finding claims a method, class, or constant is undefined/misspelled, or
   that a third-party library API is misused, confirm it with the symbol lookup
