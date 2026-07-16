@@ -69,6 +69,8 @@ module Thingie
       clients = build_lsp_clients(config, changeset)
       tools = clients.map { |client| Thingie::Lsp::SymbolTool.new(client: client, root: changeset.workdir) }
       tools << Thingie::FileTool.new(root: changeset.workdir)
+      skill_tool = Thingie::SkillCatalog.tool(config)
+      tools << skill_tool if skill_tool
       report = build_reviewer(config, changeset, tools).review
       render_report(report, config)
     rescue StandardError => e

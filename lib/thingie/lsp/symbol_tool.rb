@@ -10,7 +10,7 @@ module Thingie
     # or method by name during a review, via a configured LSP client. Generic:
     # any LSP that implements workspace/symbol works here.
     class SymbolTool < RubyLLM::Tool
-      MAX_RESULTS = 5
+      MAX_RESULTS = 3
       # LSP SymbolKind values for local variables and instance/class fields. The
       # model asks about definitions (classes, methods, constants), so these rank
       # last — a fuzzy "User" query otherwise surfaces every `@user` assignment.

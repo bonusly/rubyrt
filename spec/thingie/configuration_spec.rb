@@ -140,6 +140,27 @@ RSpec.describe Thingie::Configuration do
     end
   end
 
+  describe 'SkillFragment#description' do
+    def fragment(content)
+      Thingie::SkillFragment.new(path: '/tmp/skill.md', content: content, source: '/tmp')
+    end
+
+    it 'uses the first non-blank line' do
+      expect(fragment("\n\nAlways use strong params.\nMore detail.").description)
+        .to eq('Always use strong params.')
+    end
+
+    it 'strips leading markdown heading markers' do
+      expect(fragment("# Rails rules\nbody").description).to eq('Rails rules')
+    end
+
+    it 'truncates long lines' do
+      description = fragment('a' * 200).description
+      expect(description.length).to eq(151)
+      expect(description).to end_with('…')
+    end
+  end
+
   context 'with custom skill_directories' do
     subject(:config) do
       described_class.new(root: tmp_dir, overrides: { skill_directories: ['.github'] })
