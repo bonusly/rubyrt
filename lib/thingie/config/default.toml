@@ -2,10 +2,6 @@
 # Copy this to .thingie/config.toml in your project to customize. Project values
 # are merged on top of these defaults; prompt_vars are deep-merged.
 
-# Auxiliary files to provide as extra context during review (paths relative to
-# the project root).
-aux_files = []
-
 # Directories to scan for skill fragments (.md files) that get injected into
 # the review prompt as additional rules.
 skill_directories = [".agents", ".claude", ".cursor", "skills", ".thingie/skills"]

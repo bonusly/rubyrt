@@ -9,9 +9,6 @@ RSpec.describe Thingie::Configuration do
 
   let(:tmp_dir) { Dir.mktmpdir }
 
-  # Clean up the temp dir so the suite doesn't leak directories, and keep it
-  # hermetic by never reading a developer's real ~/.thingie/.env.
-  before { stub_const('Thingie::Configuration::USER_ENV_FILE', File.join(tmp_dir, 'no-such.env')) }
   after { FileUtils.rm_rf(tmp_dir) }
 
   it 'loads bundled defaults', :aggregate_failures do
@@ -50,14 +47,6 @@ RSpec.describe Thingie::Configuration do
   context 'with ~/.thingie/.env' do
     let(:env_file) { File.join(tmp_dir, 'fake-home.env') }
 
-    around do |example|
-      original = ENV.fetch('LLM_API_KEY', nil)
-      ENV.delete('LLM_API_KEY')
-      example.run
-    ensure
-      original ? ENV['LLM_API_KEY'] = original : ENV.delete('LLM_API_KEY')
-    end
-
     before do
       File.write(env_file, "LLM_API_KEY=from-dotenv-file\n")
       stub_const('Thingie::Configuration::USER_ENV_FILE', env_file)
@@ -69,13 +58,7 @@ RSpec.describe Thingie::Configuration do
   end
 
   context 'with environment variables' do
-    around do |example|
-      original = ENV.fetch('LLM_MODEL', nil)
-      ENV['LLM_MODEL'] = 'gpt-5'
-      example.run
-    ensure
-      original ? ENV['LLM_MODEL'] = original : ENV.delete('LLM_MODEL')
-    end
+    before { Thingie::Env['LLM_MODEL'] = 'gpt-5' }
 
     it 'overrides model from environment' do
       expect(config['model']).to eq('gpt-5')
@@ -83,13 +66,7 @@ RSpec.describe Thingie::Configuration do
   end
 
   context 'with THINGIE_MODELS_FILE environment variable' do
-    around do |example|
-      original = ENV.fetch('THINGIE_MODELS_FILE', nil)
-      ENV['THINGIE_MODELS_FILE'] = '/tmp/thingie-models.json'
-      example.run
-    ensure
-      original ? ENV['THINGIE_MODELS_FILE'] = original : ENV.delete('THINGIE_MODELS_FILE')
-    end
+    before { Thingie::Env['THINGIE_MODELS_FILE'] = '/tmp/thingie-models.json' }
 
     it 'overrides models_file from environment' do
       expect(config['models_file']).to eq('/tmp/thingie-models.json')
@@ -107,13 +84,7 @@ RSpec.describe Thingie::Configuration do
   context 'with environment variable and explicit override' do
     subject(:config) { described_class.new(root: tmp_dir, overrides: { model: 'o1-preview' }) }
 
-    around do |example|
-      original = ENV.fetch('LLM_MODEL', nil)
-      ENV['LLM_MODEL'] = 'gpt-5'
-      example.run
-    ensure
-      original ? ENV['LLM_MODEL'] = original : ENV.delete('LLM_MODEL')
-    end
+    before { Thingie::Env['LLM_MODEL'] = 'gpt-5' }
 
     it 'prefers explicit override over environment variable' do
       expect(config['model']).to eq('o1-preview')

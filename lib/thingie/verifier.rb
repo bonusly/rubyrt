@@ -40,8 +40,8 @@ module Thingie
 
     def settings
       base = (@config['verify'] || {}).transform_keys(&:to_s)
-      base['enabled'] = %w[true 1].include?(ENV['VERIFY_ENABLED'].to_s.downcase) if ENV.key?('VERIFY_ENABLED')
-      base['model'] = ENV['VERIFY_MODEL'] if ENV.key?('VERIFY_MODEL')
+      base['enabled'] = %w[true 1].include?(Env['VERIFY_ENABLED'].to_s.downcase) if Env.key?('VERIFY_ENABLED')
+      base['model'] = Env['VERIFY_MODEL'] if Env.key?('VERIFY_MODEL')
       base
     end
 

@@ -7,7 +7,6 @@ Thingie is an opinionated but helpful and flexible AI code review tool for Ruby 
 - AI-powered code review via any OpenAI-compatible LLM (powered by [ruby_llm](https://github.com/crmne/ruby_llm)).
 - Ruby and Rails-aware review prompts out of the box.
 - Reads project skills and rules from configurable directories (defaults to `.agents`, `.claude`, and `.cursor`).
-- Supports auxiliary files (`aux_files`) for injecting individual files as extra context into review prompts.
 - Configurable request timeouts, retries, and logging to fail fast on unreachable providers.
 - Pulls extra context from language servers (LSP) during review — ruby-lsp first, any LSP via config. (Run static analyzers like RuboCop as a separate step.)
 - Cuts false positives with a **critic pass** (`[verify]`): every surviving finding is re-checked by a fresh, skeptical LLM call before it's reported.
@@ -274,7 +273,6 @@ Key settings:
 | Auto-approve team gate | `""` (disabled) | `approve.approval_team` | — | — |
 | Auto-approve dry run | `false` | `approve.dry_run` | — | — |
 | Skill directories | `.agents`, `.claude`, `.cursor` | `skill_directories` | — | — |
-| Auxiliary files | `[]` | `aux_files` | — | — |
 | Language servers | none | `lsp.<name>` | — | — |
 
 Supported providers match whatever RubyLLM supports, including `openai`, `anthropic`, `gemini`, `ollama`, `deepseek`, `openrouter`, `mistral`, `perplexity`, `xai`, `azure`, `bedrock`, `vertexai`, and `gpustack`.
@@ -287,9 +285,6 @@ model = "moonshotai/kimi-k2.6"
 request_timeout = 60
 log_file = "log/thingie.log"
 log_level = "debug"
-
-# Add extra files as context to every review prompt
-aux_files = ["docs/conventions.md", ".thingie/style-guide.md"]
 
 # Customize which directories are scanned for skill fragments
 skill_directories = [".agents", ".github"]
@@ -310,15 +305,9 @@ command = ["ruby-lsp"]
 extensions = [".rb", ".rake"]
 ```
 
-### Skills and auxiliary files
+### Skills
 
 Thingie automatically discovers markdown files (`.md`) in skill directories and injects them as additional rules in every review prompt. By default it scans `.agents/`, `.claude/`, and `.cursor/` in the project root. Override this with the `skill_directories` config key.
-
-For individual files (rather than whole directories), use `aux_files` to list paths relative to the project root. Their contents are included as extra context in every review prompt:
-
-```toml
-aux_files = ["docs/coding-standards.md", "docs/security-rules.md"]
-```
 
 ### The critic pass (reducing false positives)
 

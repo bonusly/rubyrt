@@ -5,8 +5,8 @@ require 'json'
 
 module Thingie
   # Builds prompts for the review LLM by rendering bundled ERB templates with
-  # configuration values. Skills and aux files are not inlined here — they're
-  # exposed to the LLM via SkillCatalog's progressive-disclosure tool instead.
+  # configuration values. Skills are not inlined here — they're exposed to
+  # the LLM via SkillCatalog's progressive-disclosure tool instead.
   class PromptBuilder
     REVIEW_TEMPLATE = File.expand_path('prompts/review.erb', __dir__)
     VERIFY_TEMPLATE = File.expand_path('prompts/verify.erb', __dir__)

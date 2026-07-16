@@ -54,13 +54,7 @@ RSpec.describe Thingie::Verifier do
   end
 
   context 'with VERIFY_ENABLED environment variable' do
-    around do |example|
-      old = ENV.fetch('VERIFY_ENABLED', nil)
-      ENV['VERIFY_ENABLED'] = 'false'
-      example.run
-    ensure
-      old.nil? ? ENV.delete('VERIFY_ENABLED') : ENV['VERIFY_ENABLED'] = old
-    end
+    before { Thingie::Env['VERIFY_ENABLED'] = 'false' }
 
     it 'disables the critic pass even when config says enabled', :aggregate_failures do
       expect(verifier.call(issues)).to eq(issues)

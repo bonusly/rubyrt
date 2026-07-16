@@ -10,9 +10,9 @@ module Thingie
 
       def self.from_env
         new(
-          repo: ENV.fetch('GITHUB_REPOSITORY', nil),
-          event_path: ENV.fetch('GITHUB_EVENT_PATH', nil),
-          workflow_pr: ENV.fetch('PR_NUMBER_FROM_WORKFLOW_DISPATCH', nil)
+          repo: Env.fetch('GITHUB_REPOSITORY', nil),
+          event_path: Env.fetch('GITHUB_EVENT_PATH', nil),
+          workflow_pr: Env.fetch('PR_NUMBER_FROM_WORKFLOW_DISPATCH', nil)
         )
       end
 

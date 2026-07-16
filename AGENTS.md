@@ -27,7 +27,7 @@ The review pipeline runs in this order:
 2. **Configuration** (`lib/thingie/configuration.rb`) — 5-layer merge: bundled defaults → `.thingie/config.toml` → `~/.thingie/.env` → env vars → CLI flags. `prompt_vars` deep-merges; other keys override.
 3. **Changeset** (`lib/thingie/changeset.rb`) — Uses `Rugged` (libgit2) to produce the diff between two git refs.
 4. **Reviewer** (`lib/thingie/reviewer.rb`) — Orchestrates concurrent file reviews via `Async` fibers.
-5. **PromptBuilder** (`lib/thingie/prompt_builder.rb`) — Renders ERB templates with config, skills, and aux files merged in.
+5. **PromptBuilder** (`lib/thingie/prompt_builder.rb`) — Renders ERB templates with config and skills merged in.
 6. **LlmClient** (`lib/thingie/llm_client.rb`) — Wraps `ruby_llm`; handles retries, timeouts, tool registration, structured output.
 7. **IssueParser** (`lib/thingie/issue_parser.rb`) — Validates LLM JSON against `IssueSchema`; converts `RawIssue` → `Issue`.
 8. **PostProcessor** (`lib/thingie/post_processor.rb`) — Filters by `max_confidence`/`max_severity` before the critic pass.
