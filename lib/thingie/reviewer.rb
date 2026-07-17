@@ -16,14 +16,14 @@ module Thingie
     # @param changeset [Thingie::Changeset] the files under review
     # @param prompt_builder [Thingie::PromptBuilder] builds review/verify prompts
     # @param llm_client [Thingie::LlmClient] wraps the LLM used for review calls
-    # @param tools [Array] `ruby_llm` tools (e.g. LSP symbol lookup) made available to the LLM
+    # @param tools [Array, nil] `ruby_llm` tools (e.g. LSP symbol lookup) made available to the LLM
     # @param debug [Boolean] enable verbose debug output during the pipeline
     def initialize(config:, changeset:, prompt_builder:, llm_client:, tools: [], debug: false)
       @config = config
       @changeset = changeset
       @prompt_builder = prompt_builder
       @llm_client = llm_client
-      @tools = tools
+      @tools = tools || []
       # Plain array: Async runs fibers cooperatively on a single thread, so
       # appends between scheduler yields do not race. No lock needed.
       @warnings = []

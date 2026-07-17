@@ -24,13 +24,13 @@ module Thingie
     # @param changeset [Thingie::Changeset] used to fetch diff/full content for each finding's file
     # @param prompt_builder [Thingie::PromptBuilder] builds the critic prompt
     # @param llm_client [Thingie::LlmClient] fallback client, reused when no dedicated `verify.model` is set
-    # @param tools [Array] `ruby_llm` tools (e.g. LSP symbol lookup) made available to the critic LLM
+    # @param tools [Array, nil] `ruby_llm` tools (e.g. LSP symbol lookup) made available to the critic LLM
     # @param debug_output [Thingie::DebugOutput, nil] optional debug output sink
     def initialize(config:, changeset:, prompt_builder:, llm_client:, tools: [], debug_output: nil)
       @config = config
       @changeset = changeset
       @prompt_builder = prompt_builder
-      @tools = tools
+      @tools = tools || []
       @llm_client = verify_client(config, llm_client)
       @debug_output = debug_output
       @warnings = []
