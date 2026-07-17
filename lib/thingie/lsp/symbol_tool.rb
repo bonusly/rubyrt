@@ -25,6 +25,8 @@ module Thingie
 
       param :query, desc: 'Name of the class, module, or method to look up', required: true
 
+      # Wraps an LSP client as a `ruby_llm` tool.
+      #
       # @param client [Thingie::Lsp::Client] the LSP client to query
       # @param root [String] the workspace root, used to relativize file paths
       def initialize(client:, root:)

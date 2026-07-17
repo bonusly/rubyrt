@@ -8,6 +8,8 @@ module Thingie
   # Section tags: [DEBUG][REVIEW] for per-call initial-review lines,
   # [DEBUG][CRITIC] for per-call critic-pass lines, plain [DEBUG] for summaries.
   class DebugOutput
+    # Builds a debug output sink for a single review run.
+    #
     # @param config [Thingie::Configuration] the resolved run configuration
     # @param changeset [Thingie::Changeset] the changeset being reviewed
     # @param enabled [Boolean] whether debug output should actually be printed

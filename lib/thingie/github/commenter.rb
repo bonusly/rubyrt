@@ -14,6 +14,8 @@ module Thingie
       # for human-facing labels in comments.
       SEVERITY_LABELS = { 1 => 'Critical', 2 => 'High', 3 => 'Medium', 4 => 'Low' }.freeze
 
+      # Builds a commenter for a single pull request.
+      #
       # @param token [String] the main GitHub token used for posting/updating comments
       # @param owner [String] the repository owner
       # @param repo [String] the repository name

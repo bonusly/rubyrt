@@ -18,6 +18,8 @@ module Thingie
 
     attr_reader :config
 
+    # Builds a prompt builder backed by the given configuration.
+    #
     # @param config [Thingie::Configuration] provides `prompt_vars`, `severity_scale`, and `confidence_scale`
     def initialize(config)
       @config = config

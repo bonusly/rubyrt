@@ -22,12 +22,16 @@ module Thingie
       RubyLLM::Skills::SkillTool.new(catalog)
     end
 
+    # Builds a catalog backed by the given configuration.
+    #
     # @param config [Thingie::Configuration] the loaded configuration
     def initialize(config)
       super()
       @config = config
     end
 
+    # The skills loaded for this catalog.
+    #
     # @return [Array<RubyLLM::Skills::Skill>] the loaded skills
     def list
       skills

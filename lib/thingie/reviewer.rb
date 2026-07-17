@@ -10,6 +10,8 @@ module Thingie
   # Orchestrates reviewing the changeset: builds prompts, calls the LLM,
   # post-processes issues, and builds a Report.
   class Reviewer
+    # Builds a reviewer for a single run of the pipeline.
+    #
     # @param config [Thingie::Configuration] full merged configuration
     # @param changeset [Thingie::Changeset] the files under review
     # @param prompt_builder [Thingie::PromptBuilder] builds review/verify prompts

@@ -14,6 +14,8 @@ module Thingie
       4 => 'Low'
     }.freeze
 
+    # Builds a renderer for the given report.
+    #
     # @param report [Thingie::Report] the report to render
     # @param severity_scale [Hash, nil] severity level => label; falls back to {DEFAULT_SEVERITY_SCALE}
     def initialize(report, severity_scale: nil)

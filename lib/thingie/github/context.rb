@@ -22,6 +22,8 @@ module Thingie
 
       attr_reader :repo, :event_path, :workflow_pr
 
+      # Builds a context from already-resolved values (see {.from_env} for the usual entry point).
+      #
       # @param repo [String, nil] the `owner/repo` slug
       # @param event_path [String, nil] path to the GitHub Actions event JSON payload
       # @param workflow_pr [String, nil] PR number supplied via `workflow_dispatch`, if any
@@ -41,11 +43,15 @@ module Thingie
         raw && Integer(raw, exception: false)
       end
 
+      # The repository owner, parsed from `repo`.
+      #
       # @return [String, nil] the repository owner, parsed from `repo`
       def owner
         repo&.split('/')&.first
       end
 
+      # The repository name, parsed from `repo`.
+      #
       # @return [String, nil] the repository name, parsed from `repo`
       def repo_name
         repo&.split('/')&.last

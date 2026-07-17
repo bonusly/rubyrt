@@ -16,11 +16,15 @@ module Thingie
     :head_ref,
     :merge_base
   ) do
+    # Whether the review target is a GitHub PR.
+    #
     # @return [Boolean] whether the review target is a GitHub PR
     def github?
       platform == 'github'
     end
 
+    # Whether the review target is a local working copy.
+    #
     # @return [Boolean] whether the review target is a local working copy
     def local?
       platform == 'local'
@@ -39,6 +43,8 @@ module Thingie
     :tags,
     :affected_lines
   ) do
+    # Builds a raw issue, defaulting optional fields absent from the LLM's JSON.
+    #
     # @param title [String] short summary of the issue
     # @param severity [Integer] severity 1 (critical) through 4 (low)
     # @param confidence [Integer] confidence 1 (highest) through 4 (lowest)
@@ -82,6 +88,8 @@ module Thingie
       end
     end
 
+    # Builds an `Issue` from an already-normalized hash and affected ranges.
+    #
     # @param hash [Hash] issue attributes, keyed by string
     # @param affected_lines [Array<Thingie::AffectedRange>] the parsed affected ranges
     # @return [Thingie::Issue] the built issue
@@ -97,6 +105,8 @@ module Thingie
       new(id: hash['id'], file: hash['file'], raw_issue: raw, affected_lines: affected_lines)
     end
 
+    # Builds a normalized issue from a raw LLM finding.
+    #
     # @param id [String, Integer, nil] assigned issue identifier
     # @param file [String] path of the file the issue was found in
     # @param raw_issue [Thingie::RawIssue] the raw issue data from the LLM
@@ -112,6 +122,8 @@ module Thingie
       @affected_lines = affected_lines
     end
 
+    # Converts the issue to a plain hash for JSON serialization.
+    #
     # @return [Hash] a plain-hash representation suitable for JSON serialization
     def to_h
       {
@@ -141,6 +153,8 @@ module Thingie
       from_hash(data)
     end
 
+    # Parses the `"target"` hash out of raw report data.
+    #
     # @param data [Hash] report data containing a `"target"` hash
     # @return [Thingie::ReviewTarget] the parsed review target
     def self.target_from_hash(data)
@@ -164,6 +178,8 @@ module Thingie
       )
     end
 
+    # Builds a report from already-resolved values (see {.from_hash}/{.from_file} to parse one).
+    #
     # @param target [Thingie::ReviewTarget] metadata about the code under review
     # @param model [String] the LLM model used for the review
     # @param issues [Array<Thingie::Issue>] issues found during the review
@@ -180,11 +196,15 @@ module Thingie
       @created_at = Time.now.iso8601
     end
 
+    # The total number of issues in the report.
+    #
     # @return [Integer] the total number of issues in the report
     def total_issues
       @issues.size
     end
 
+    # Converts the report to a plain hash for JSON serialization.
+    #
     # @return [Hash] a plain-hash representation suitable for JSON serialization
     def to_h
       {

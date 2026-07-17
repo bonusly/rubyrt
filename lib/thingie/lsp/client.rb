@@ -21,6 +21,8 @@ module Thingie
       # no background indexing (workspace/symbol is then usable immediately).
       READY_GRACE = 5
 
+      # Builds a client; the server process itself isn't launched until the first {#lookup}.
+      #
       # @param command [String, Array<String>] the LSP server launch command
       # @param root [String] the workspace root the server should index
       def initialize(command:, root:)

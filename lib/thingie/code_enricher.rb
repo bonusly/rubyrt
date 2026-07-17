@@ -3,6 +3,8 @@
 module Thingie
   # Adds affected code snippets to each issue's affected line ranges.
   class CodeEnricher
+    # Builds an enricher backed by the given changeset.
+    #
     # @param changeset [Thingie::Changeset] used to fetch the full file content for each issue's file
     def initialize(changeset)
       @changeset = changeset

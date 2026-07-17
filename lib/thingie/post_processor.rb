@@ -8,6 +8,8 @@ module Thingie
   # Uses plain comparisons rather than evaluating a config-supplied Ruby
   # expression, which avoids arbitrary code execution at the config boundary.
   class PostProcessor
+    # Builds a filter from the `[post_process]` config section.
+    #
     # @param settings [Hash, nil] the `[post_process]` config section, e.g. `max_confidence`/`max_severity`
     def initialize(settings)
       settings = (settings || {}).transform_keys(&:to_s)

@@ -59,6 +59,9 @@ module Thingie
     # New-side line numbers added in this file's diff — the lines actually
     # changed by the changeset. Returns nil in `all` mode, where there's no
     # diff and the whole file is under review (so nothing is filtered out).
+    #
+    # @param file [String] path of the file to check, relative to the repo root
+    # @return [Array<Integer>, nil] changed line numbers, or nil in `all` mode
     def changed_lines_for(file)
       return nil if @all
 

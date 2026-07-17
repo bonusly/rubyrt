@@ -22,6 +22,8 @@ module Thingie
 
     param :path, desc: 'Path relative to the working directory to inspect', required: true
 
+    # Builds a file tool constrained to reads under `root`.
+    #
     # @param root [String] path to the working directory reads are constrained to
     def initialize(root:)
       super()

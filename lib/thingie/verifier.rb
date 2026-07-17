@@ -18,6 +18,8 @@ module Thingie
   class Verifier
     attr_reader :warnings
 
+    # Builds a verifier for a single run of the critic pass.
+    #
     # @param config [Thingie::Configuration] full merged configuration, including the `[verify]` section
     # @param changeset [Thingie::Changeset] used to fetch diff/full content for each finding's file
     # @param prompt_builder [Thingie::PromptBuilder] builds the critic prompt

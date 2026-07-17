@@ -29,6 +29,8 @@ module Thingie
 
       Decision = Struct.new(:action, :reasons)
 
+      # Builds an approver for a single pull request.
+      #
       # @param token [String] the main GitHub token used for reads and the first approval attempt
       # @param owner [String] the repository owner
       # @param repo [String] the repository name

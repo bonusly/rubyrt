@@ -192,6 +192,8 @@ module Thingie
   class SkillFragment
     attr_reader :path, :content, :source
 
+    # Builds a fragment from an already-read skill file.
+    #
     # @param path [String] absolute path to the skill's markdown file
     # @param content [String] the raw markdown content of the skill file
     # @param source [String] the skill directory this fragment was discovered under

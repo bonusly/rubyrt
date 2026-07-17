@@ -8,6 +8,8 @@ module Thingie
     class GraphqlClient
       THREAD_PAGE_SIZE = 100
 
+      # Wraps an existing Octokit client for GraphQL requests.
+      #
       # @param client [Octokit::Client] the Octokit client used to issue GraphQL requests
       def initialize(client)
         @client = client
