@@ -268,6 +268,10 @@ module Thingie
       end
 
       # Treat unknown severity as qualifying so an unparseable thread fails safe.
+      # For findings from this run, `report.issues` already reflects any critic
+      # severity override (Verifier#call applies it before the report is built),
+      # so a downgrade automatically stops blocking approval with no extra
+      # plumbing here — this method never sees the pre-critic grade.
       def qualifying?(severity)
         severity.nil? || severity <= max_severity
       end

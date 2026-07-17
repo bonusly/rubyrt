@@ -14,8 +14,8 @@ module Thingie
     def initialize(settings)
       settings = (settings || {}).transform_keys(&:to_s)
       # Parse thresholds once; an absent/invalid value means "no limit".
-      @max_confidence = Integer(settings['max_confidence'], exception: false)
-      @max_severity = Integer(settings['max_severity'], exception: false)
+      @max_confidence = Threshold.parse(settings['max_confidence'])
+      @max_severity = Threshold.parse(settings['max_severity'])
     end
 
     # Keep only the issues at or below the configured `max_confidence`/`max_severity` thresholds.

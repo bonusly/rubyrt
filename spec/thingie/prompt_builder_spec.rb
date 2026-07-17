@@ -57,6 +57,33 @@ RSpec.describe Thingie::PromptBuilder do
       end
     end
 
+    it 'includes the severity rubric' do
+      prompt = builder.review(diff: '')
+      expect(prompt).to include('Grade severity by real-world consequence')
+    end
+
+    it 'states the show-line threshold in terms of the default post_process config' do
+      prompt = builder.review(diff: '')
+      expect(prompt).to include('severity 4 (Low) or better')
+      expect(prompt).to include('confidence 1 (Highest, 100% confidence) or better')
+    end
+
+    it 'states that auto-approval is disabled by default' do
+      prompt = builder.review(diff: '')
+      expect(prompt).to include('Auto-approval is not enabled for this project')
+    end
+
+    context 'when approve is enabled' do
+      let(:config) do
+        Thingie::Configuration.new(root: tmp_dir, overrides: { approve: { 'enabled' => true, 'max_severity' => 2 } })
+      end
+
+      it 'states the block-line threshold' do
+        prompt = builder.review(diff: '')
+        expect(prompt).to include('severity 2 (High) or better also block')
+      end
+    end
+
     context 'with custom severity and confidence scales' do
       let(:config) do
         Thingie::Configuration.new(
@@ -78,6 +105,37 @@ RSpec.describe Thingie::PromptBuilder do
         # still appear elsewhere, e.g. the requirements headings).
         expect(prompt).not_to include('- 1 — Critical')
       end
+    end
+  end
+
+  describe '#verify' do
+    let(:issue) do
+      Thingie::Issue.from_hash('title' => 'Leaky query', 'details' => 'd', 'severity' => 1,
+                               'confidence' => 2, 'tags' => [], 'file' => 'app.rb',
+                               'affected_lines' => [{ 'start_line' => 1 }])
+    end
+
+    it 'includes the finding\'s current severity and confidence', :aggregate_failures do
+      prompt = builder.verify(issue: issue, diff: '')
+      expect(prompt).to include('Severity: 1 (Critical)')
+      expect(prompt).to include('Confidence: 2 (Very High)')
+    end
+
+    it 'includes the severity/confidence scales and threshold text' do
+      prompt = builder.verify(issue: issue, diff: '')
+      expect(prompt).to include('- 1 — Critical')
+      expect(prompt).to include('severity 4 (Low) or better')
+    end
+
+    it 'includes the severity rubric' do
+      prompt = builder.verify(issue: issue, diff: '')
+      expect(prompt).to include('Grade severity by real-world consequence')
+    end
+
+    it 'includes the severity_override/confidence_override response fields' do
+      prompt = builder.verify(issue: issue, diff: '')
+      expect(prompt).to include('severity_override')
+      expect(prompt).to include('confidence_override')
     end
   end
 end

@@ -8,6 +8,7 @@ end
 require_relative 'thingie/errors'
 require_relative 'thingie/version'
 require_relative 'thingie/env'
+require_relative 'thingie/threshold'
 require_relative 'thingie/configuration'
 require_relative 'thingie/skill_catalog'
 require_relative 'thingie/prompt_builder'

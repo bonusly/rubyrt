@@ -9,7 +9,14 @@ When invoked with code to review:
 
 ## Prioritized Edge Case Categories
 
-Each section is prioritized.  
+Each section is prioritized — but that priority ranks where to spend your
+attention while hunting, it is not the severity you assign a finding once you
+report it. Grade every finding you actually report on Thingie's shared 1-4
+severity scale (see the review prompt's severity rubric), by that finding's
+own real-world impact/blast-radius/reversibility — a race condition that
+corrupts financial data is severity 1-2 regardless of which category below
+surfaced it; a rare timezone display glitch is severity 3-4 even though it's
+in the "High" category for where to look.
 
 For each workflow and method, consider:
 
@@ -47,8 +54,9 @@ For each workflow and method, consider:
 For each potential edge case:
 
 ```
-### Edge Case: [Priority from Section Header] [Descriptive Title]
+### Edge Case: [Severity N] [Descriptive Title]
 
+**Category:** [Priority from Section Header] — where this was found, not its severity
 **Input/Scenario:** The specific input or condition that breaks it
 **What goes wrong:** The resulting error or incorrect behavior
 **Likelihood:** How likely is this in production?

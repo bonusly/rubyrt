@@ -203,7 +203,7 @@ Thingie can submit an **Approve** review when a PR is clean enough. It's **off b
 [approve]
 enabled = true
 max_changes = 500          # additions + deletions ceiling; blocks approval if GitHub doesn't report the size
-max_severity = 3           # issues at/below this severity number (1=Critical) block approval
+max_severity = 3           # BLOCK line: issues at/below this severity number (1=Critical) block approval — independent from post_process.max_severity (the SHOW line), see "Filtering findings" below
 skip_label = "thingie-skip-approve"
 approval_team = "bonusly/pr-auto-approval"  # only auto-approve PRs whose author is on this GitHub team (needs read:org)
 protected_paths = ["app/billing/**", "config/secrets.yml"]  # globs that block approval when changed
@@ -343,11 +343,22 @@ also **fails open**: if a critic call errors or returns an unparseable verdict,
 the finding is kept and a processing warning is recorded, so a broken critic
 never silently swallows a real bug.
 
+The critic can also **correct a miscalibrated severity or confidence grade**
+instead of only upholding/rejecting a finding outright — e.g. downgrade an
+overstated "Critical" cosmetic nit, or upgrade an understated security issue.
+Both the review and critic prompts are given the same severity/confidence
+scale and the current `post_process`/`approve` thresholds (see below), so the
+model reasons about real consequences rather than abstract labels. An override
+only affects this run's final severity/confidence (and therefore whether the
+finding blocks auto-approval, below) — it does not re-run the `post_process`
+filter that already let the finding through to the critic in the first place.
+
 ### Filtering findings (`post_process`)
 
 The model scores every finding on a 1–4 **severity** scale (1 = Critical) and a
-1–4 **confidence** scale (1 = highest). `post_process` drops anything above your
-thresholds *before* the critic pass runs:
+1–4 **confidence** scale (1 = highest). `post_process` is the **SHOW line**: it
+drops anything above your thresholds *before* the critic pass runs, controlling
+whether a finding is surfaced to maintainers as a PR comment at all:
 
 ```toml
 [post_process]
@@ -357,6 +368,11 @@ max_severity = 3     # keep Critical/High/Medium, drop Low
 
 Lower numbers are stricter. An omitted threshold means "no limit". This is a
 cheap first filter; the critic pass is the precision filter on top of it.
+
+This is independent from `approve.max_severity` (the **BLOCK line**, see
+[Auto-approving PRs](#auto-approving-prs)) — a finding can be shown as a
+comment without blocking auto-approval, e.g. `post_process.max_severity = 3`
+but `approve.max_severity = 2`.
 
 ### Language servers (LSP)
 

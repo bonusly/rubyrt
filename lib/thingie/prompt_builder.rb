@@ -12,15 +12,18 @@ module Thingie
     VERIFY_TEMPLATE = File.expand_path('prompts/verify.erb', __dir__)
 
     # ERB's result_with_hash raises NameError for any var referenced in a
-    # template but absent from the hash, so these three (used unconditionally
-    # in review.erb/verify.erb) need a default even when prompt_vars omits them.
-    DEFAULT_TEMPLATE_VARS = { 'requirements' => '', 'json_requirements' => '', 'self_id' => '' }.freeze
+    # template but absent from the hash, so these (used unconditionally in
+    # review.erb/verify.erb) need a default even when prompt_vars omits them.
+    DEFAULT_TEMPLATE_VARS = {
+      'requirements' => '', 'json_requirements' => '', 'self_id' => '', 'severity_rubric' => ''
+    }.freeze
 
     attr_reader :config
 
     # Builds a prompt builder backed by the given configuration.
     #
-    # @param config [Thingie::Configuration] provides `prompt_vars`, `severity_scale`, and `confidence_scale`
+    # @param config [Thingie::Configuration] provides `prompt_vars`, `severity_scale`, `confidence_scale`,
+    #   `show_threshold`, and `block_threshold`
     def initialize(config)
       @config = config
     end
@@ -35,7 +38,9 @@ module Thingie
       render_template(REVIEW_TEMPLATE, 'input' => diff, 'file_lines' => file_lines,
                                        'symbol_lookup' => symbol_lookup,
                                        'severity_scale' => format_scale(@config.severity_scale),
-                                       'confidence_scale' => format_scale(@config.confidence_scale))
+                                       'confidence_scale' => format_scale(@config.confidence_scale),
+                                       'show_threshold_text' => show_threshold_text,
+                                       'block_threshold_text' => block_threshold_text)
     end
 
     # Render the critic/verify prompt (`verify.erb`) that re-checks a single finding.
@@ -48,7 +53,11 @@ module Thingie
     def verify(issue:, diff:, file_lines: nil, symbol_lookup: false)
       render_template(VERIFY_TEMPLATE, 'input' => diff, 'file_lines' => file_lines,
                                        'symbol_lookup' => symbol_lookup,
-                                       'finding' => format_finding(issue))
+                                       'finding' => format_finding(issue),
+                                       'severity_scale' => format_scale(@config.severity_scale),
+                                       'confidence_scale' => format_scale(@config.confidence_scale),
+                                       'show_threshold_text' => show_threshold_text,
+                                       'block_threshold_text' => block_threshold_text)
     end
 
     private
@@ -71,8 +80,9 @@ module Thingie
       @prompt_vars ||= @config.prompt_vars.transform_keys(&:to_s)
     end
 
-    # Render a single issue for the critic prompt: title, details, and each
-    # affected range with the actual code (set by CodeEnricher before verify).
+    # Render a single issue for the critic prompt: title, details, current
+    # severity/confidence grade (the critic's anchor for any correction), and
+    # each affected range with the actual code (set by CodeEnricher before verify).
     def format_finding(issue)
       ranges = issue.affected_lines.map do |range|
         loc = "lines #{range.start_line}-#{range.end_line || range.start_line}"
@@ -81,6 +91,8 @@ module Thingie
       end.join("\n")
       tags = Array(issue.tags).join(', ')
       "File: #{issue.file}\nTitle: #{issue.title}\nTags: #{tags}\n" \
+        "Severity: #{issue.severity} (#{label_for(@config.severity_scale, issue.severity)})\n" \
+        "Confidence: #{issue.confidence} (#{label_for(@config.confidence_scale, issue.confidence)})\n" \
         "Details: #{issue.details}\nAffected code:\n#{ranges}"
     end
 
@@ -88,6 +100,52 @@ module Thingie
       return '' unless scale.is_a?(Hash) && !scale.empty?
 
       scale.sort_by { |k, _| k.to_s.to_i }.map { |level, label| "- #{level} — #{label}" }.join("\n")
+    end
+
+    def label_for(scale, level)
+      return level.to_s unless scale.is_a?(Hash)
+
+      scale[level.to_s] || scale[level] || level.to_s
+    end
+
+    # A sentence stating the "show" line in the reviewer's own reasoning terms:
+    # what severity/confidence a finding needs to be surfaced to maintainers at all.
+    def show_threshold_text
+      threshold = @config.show_threshold
+      bars = [
+        bar_text('severity', threshold[:max_severity], @config.severity_scale),
+        bar_text('confidence', threshold[:max_confidence], @config.confidence_scale)
+      ].compact
+      if bars.empty?
+        return 'Every finding you report is shown to maintainers as a PR comment ' \
+               '(no show-line threshold is configured).'
+      end
+
+      "Only findings that meet #{bars.join(' and ')} are shown to maintainers as a PR comment — " \
+        'weaker findings are recorded but never posted, so reporting one below this bar wastes the review.'
+    end
+
+    # A sentence stating the "block" line: what severity a finding needs to
+    # prevent this PR from being auto-approved, independent of the show line above.
+    def block_threshold_text
+      threshold = @config.block_threshold
+      unless threshold[:enabled]
+        return 'Auto-approval is not enabled for this project, so no severity blocks approval automatically.'
+      end
+
+      max_severity = threshold[:max_severity]
+      unless max_severity
+        return 'Auto-approval is enabled with no severity threshold configured, so no severity blocks approval.'
+      end
+
+      bar = bar_text('severity', max_severity, @config.severity_scale)
+      "Findings at #{bar} also block this PR from auto-approval; findings below that do not block."
+    end
+
+    def bar_text(dimension, level, scale)
+      return nil unless level
+
+      "#{dimension} #{level} (#{label_for(scale, level)}) or better"
     end
   end
 end

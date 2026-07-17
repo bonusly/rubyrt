@@ -27,7 +27,7 @@ We are now working on agents, sub-agents and have an MCP server.  There is a who
 For each issue found:
 
 ```
-### [Severity: Critical/High/Medium/Low] - Issue Title
+### [Severity N] - Issue Title
 
 **Location:** File:Line
 **Vulnerability:** Description of the security issue
@@ -39,10 +39,13 @@ If no issues are found, confirm what security measures are correctly implemented
 
 ## Severity Guidelines
 
-- **Critical:** Remote code execution, auth bypass, SQL injection, prompt injection, exposed secrets
-- **High:** XSS, CSRF, privilege escalation, weak crypto
-- **Medium:** Information disclosure, missing rate limiting, verbose errors
-- **Low:** Missing security headers, minor configuration issues
+Map onto Thingie's shared 1-4 severity scale (see the review prompt's
+severity rubric) rather than inventing a separate tier here:
+
+- **1 (Critical):** Remote code execution, auth bypass, SQL injection, prompt injection, exposed secrets
+- **2 (High):** XSS, CSRF, privilege escalation, weak crypto
+- **3 (Medium):** Information disclosure, missing rate limiting, verbose errors
+- **4 (Low):** Missing security headers, minor configuration issues
 
 Be thorough and adversarial. Think like an attacker trying to exploit this code.
 

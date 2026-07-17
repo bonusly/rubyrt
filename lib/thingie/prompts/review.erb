@@ -78,4 +78,12 @@ Issue severity scale:
 Confidence scale:
 <%= confidence_scale %>
 
+----WHAT SEVERITY ACTUALLY CONTROLS----
+<%= show_threshold_text %>
+<%= block_threshold_text %>
+<%= severity_rubric %>
+If you are unsure whether a finding clears the "shown at all" bar above, lean
+toward NOT reporting it: an unreported real issue is cheaper than noise that
+trains maintainers to ignore this tool.
+
 If no issues are found according to the criteria, respond with an empty list: []

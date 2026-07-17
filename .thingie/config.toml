@@ -29,7 +29,7 @@ model = "deepseek/deepseek-v4-pro"
 enabled = false
 dry_run = false
 max_changes = 500
-max_severity = 3
+max_severity = 2
 protected_paths = [
   ".github/*",
   "Gemfile",

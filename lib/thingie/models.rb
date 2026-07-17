@@ -122,6 +122,18 @@ module Thingie
       @affected_lines = affected_lines
     end
 
+    # Applies a critic-supplied correction to severity and/or confidence,
+    # leaving either unchanged when its argument is nil. This is the only
+    # sanctioned way to mutate a built issue's grade (mirrors `id=`).
+    #
+    # @param severity [Integer, nil] corrected severity, or nil to leave unchanged
+    # @param confidence [Integer, nil] corrected confidence, or nil to leave unchanged
+    # @return [void]
+    def apply_override(severity: nil, confidence: nil)
+      @severity = severity unless severity.nil?
+      @confidence = confidence unless confidence.nil?
+    end
+
     # Converts the issue to a plain hash for JSON serialization.
     #
     # @return [Hash] a plain-hash representation suitable for JSON serialization

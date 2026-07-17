@@ -44,7 +44,7 @@ Consider the code from these perspectives:
 For each issue found:
 
 ```
-### [Severity: High/Medium/Low] - Issue Title
+### [Severity N] - Issue Title
 
 **Location:** File:Line
 **Problem:** Description of the maintainability issue
@@ -79,9 +79,12 @@ Focus on real issues, not style preferences. If the code follows the project's e
 
 ## Severity Guidelines
 
-- **Critical:** Will cause significant confusion or bugs during future changes; architectural pattern violation that others will copy
-- **Medium:** Makes code harder to understand or modify
-- **Low:** Minor improvement opportunity
+Map onto Thingie's shared 1-4 severity scale (see the review prompt's
+severity rubric) rather than inventing a separate tier here:
+
+- **1-2 (Critical/High):** Will cause significant confusion or bugs during future changes; architectural pattern violation that others will copy
+- **2-3 (High/Medium):** Makes code harder to understand or modify
+- **3-4 (Medium/Low):** Minor improvement opportunity
 
 ## Scope
 
