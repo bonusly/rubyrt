@@ -13,4 +13,5 @@ group :development do
   gem 'rubocop-rspec', '~> 3.6'
   gem 'ruby-lsp'
   gem 'simplecov', '~> 0.22'
+  gem 'yard', '~> 0.9.45'
 end
