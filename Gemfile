@@ -6,6 +6,7 @@ source 'https://rubygems.org'
 gemspec
 
 group :development do
+  gem 'kramdown', '~> 2.4'
   gem 'rake', '~> 13.2'
   gem 'rspec', '~> 3.13'
   gem 'rubocop', '~> 1.75'
@@ -13,4 +14,5 @@ group :development do
   gem 'rubocop-rspec', '~> 3.6'
   gem 'ruby-lsp'
   gem 'simplecov', '~> 0.22'
+  gem 'yard', '~> 0.9.45'
 end

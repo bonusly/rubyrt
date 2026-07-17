@@ -9,6 +9,10 @@ on:
         description: "Pull Request number"
         required: true
 
+concurrency:
+  group: thingie-review-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
 jobs:
   review:
     runs-on: ubuntu-latest

@@ -14,12 +14,19 @@ module Thingie
                          desc: 'Enable debug logging (also: THINGIE_DEBUG env var)'
 
     desc 'version', 'Show thingie version'
+    # Prints the installed thingie version.
+    #
+    # @return [void]
     def version
       puts Thingie::VERSION
     end
 
-    # Override the default help output to also list each command's options,
+    # Overrides the default help output to also list each command's options,
     # so `thingie --help` shows what flags each command accepts.
+    #
+    # @param command [String, nil] optional command name to show detailed help for
+    # @param subcommand [Boolean] whether `command` is a subcommand (passed through to Thor)
+    # @return [void]
     def help(command = nil, subcommand = false) # rubocop:disable Style/OptionalBooleanParameter
       return super if command
 
@@ -30,12 +37,21 @@ module Thingie
     end
 
     no_commands do
+      # Prints a command's name, description, and options to the shell.
+      #
+      # @param name [String, Symbol] command name
+      # @param cmd [Thor::Command] the Thor command object
+      # @return [void]
       def print_command_help(name, cmd)
         shell.say "  #{name}"
         shell.say "    #{cmd.description}" if cmd.description && !cmd.description.empty?
         print_command_options(cmd)
       end
 
+      # Prints each of a command's options, one per line.
+      #
+      # @param cmd [Thor::Command] the Thor command object
+      # @return [void]
       def print_command_options(cmd)
         opts = cmd.options.values
         return if opts.empty?
@@ -43,6 +59,10 @@ module Thingie
         opts.each { |opt| shell.say option_line(opt) }
       end
 
+      # Formats a single command option as a `--flag, alias  # description` line.
+      #
+      # @param opt [Thor::Option] the option to format
+      # @return [String] the formatted option line
       def option_line(opt)
         switches = ["--#{opt.name.tr('_', '-')}"]
         switches.concat(Array(opt.aliases).map(&:to_s))
@@ -62,6 +82,9 @@ module Thingie
     option :all, type: :boolean, default: false, desc: 'Review whole codebase'
     option :model, type: :string, aliases: '-m', desc: 'LLM model to use for the review'
     option :provider, type: :string, aliases: '-p', desc: 'LLM provider to use (e.g. openai, anthropic)'
+    # Performs a code review of the target codebase changes and renders the report.
+    #
+    # @return [void]
     def review(*)
       # Thor passes positional args we don't use; accept and ignore them.
       config = Thingie::Configuration.new(overrides: { model: options[:model], provider: options[:provider] }.compact)
@@ -88,6 +111,9 @@ module Thingie
     option :merge_base, type: :boolean, default: true, desc: 'Use merge base for comparison'
     option :all, type: :boolean, default: false, desc: 'List all tracked files'
     option :diff, type: :boolean, default: false, desc: 'Show diff content'
+    # Lists the files in the current changeset.
+    #
+    # @return [void]
     def files
       changeset = build_changeset
       changeset.files.each { |file| print_file(file, changeset) }
@@ -99,6 +125,9 @@ module Thingie
     desc 'report', 'Render a saved code review report'
     option :source, type: :string, aliases: '-s', desc: 'Source JSON report to load'
     option :format, type: :string, default: 'cli', desc: 'Output format (cli, md)'
+    # Renders a previously saved code review report.
+    #
+    # @return [void]
     def report
       source = options[:source] || 'code-review-report.json'
       report = Thingie::Report.from_file(source)
@@ -116,6 +145,9 @@ module Thingie
     option :token, type: :string, desc: 'GitHub token'
     option :resolve_token, type: :string,
                            desc: 'Token for resolving review threads (PAT/App; GITHUB_TOKEN cannot)'
+    # Posts a code review comment to GitHub and optionally auto-approves the PR.
+    #
+    # @return [void]
     def github_comment
       context = resolve_github_context
       commenter = build_commenter(context)
@@ -132,6 +164,9 @@ module Thingie
     desc 'models', 'Refresh and save the local RubyLLM models registry'
     option :path, type: :string, aliases: '-p',
                   desc: 'Where to save the models JSON (defaults to the models_file config)'
+    # Refreshes and saves the local RubyLLM models registry.
+    #
+    # @return [void]
     def models
       config = Thingie::Configuration.new
       expanded = resolve_models_path(config)
@@ -156,8 +191,11 @@ module Thingie
 
     # rubocop:disable Metrics/BlockLength
     no_commands do
-      # Resolves the local models JSON path from --path or the models_file
+      # Resolves the local models JSON path from --path or the `models_file`
       # config. Exits with a usage message when neither is set.
+      #
+      # @param config [Thingie::Configuration] the loaded configuration
+      # @return [String] the expanded, absolute path to the models JSON file
       def resolve_models_path(config)
         path = options[:path] || config['models_file']
         unless path && !path.to_s.strip.empty?
@@ -167,6 +205,10 @@ module Thingie
         File.expand_path(path)
       end
 
+      # Builds a `Thingie::Changeset` from the current command's options.
+      #
+      # @param config [Thingie::Configuration] the loaded configuration
+      # @return [Thingie::Changeset] the computed changeset
       def build_changeset(config = Thingie::Configuration.new)
         Thingie::Changeset.new(
           head_ref: options[:what],
@@ -182,10 +224,18 @@ module Thingie
 
       # `report` command has no config overrides of its own; load defaults so
       # the severity scale matches what was used at review time.
+      #
+      # @return [Thingie::Configuration] a default configuration
       def config_for_report
         Thingie::Configuration.new
       end
 
+      # Builds the `Thingie::Reviewer` that orchestrates the review pipeline.
+      #
+      # @param config [Thingie::Configuration] the loaded configuration
+      # @param changeset [Thingie::Changeset] the changeset to review
+      # @param tools [Array] RubyLLM tools to make available to the LLM
+      # @return [Thingie::Reviewer] the configured reviewer
       def build_reviewer(config, changeset, tools = [])
         Thingie::Reviewer.new(
           config: config,
@@ -199,6 +249,10 @@ module Thingie
 
       # One LSP client per configured language whose extensions match a changed
       # file, so we don't spawn a server the review won't use.
+      #
+      # @param config [Thingie::Configuration] the loaded configuration
+      # @param changeset [Thingie::Changeset] the changeset being reviewed
+      # @return [Array<Thingie::Lsp::Client>] one client per relevant language
       def build_lsp_clients(config, changeset)
         servers = config['lsp']
         return [] unless servers.is_a?(Hash) && !servers.empty?
@@ -211,6 +265,11 @@ module Thingie
         end
       end
 
+      # Renders and saves the review report to CLI output, Markdown, and JSON.
+      #
+      # @param report [Thingie::Report] the report to render
+      # @param config [Thingie::Configuration] the loaded configuration
+      # @return [void]
       def render_report(report, config)
         output = options[:output] || '.'
         renderer = Thingie::ReportRenderer.new(report, severity_scale: config.severity_scale)
@@ -219,6 +278,11 @@ module Thingie
         puts renderer.to_cli
       end
 
+      # Prints a single changeset file's path, or its diff when `--diff` is set.
+      #
+      # @param file [String] path of the file relative to the changeset root
+      # @param changeset [Thingie::Changeset] the changeset being listed
+      # @return [void]
       def print_file(file, changeset)
         if options[:diff]
           puts "--- #{file} ---"
@@ -228,14 +292,22 @@ module Thingie
         end
       end
 
+      # @param context [Thingie::GitHub::Context, nil] the resolved GitHub Action context
+      # @return [String, nil] the repository owner, from `--gh-repo` or the context
       def repo_owner(context)
         options[:gh_repo]&.split('/')&.first || context&.owner
       end
 
+      # @param context [Thingie::GitHub::Context, nil] the resolved GitHub Action context
+      # @return [String, nil] the repository name, from `--gh-repo` or the context
       def repo_name(context)
         options[:gh_repo]&.split('/')&.last || context&.repo_name
       end
 
+      # Derives the JSON report path from the Markdown report path.
+      #
+      # @param md_path [String, nil] path to the Markdown report file
+      # @return [String] path to the corresponding JSON report file
       def json_path_for(md_path)
         return 'code-review-report.json' unless md_path
 
@@ -245,12 +317,16 @@ module Thingie
 
       # Only read the GitHub Actions environment when the caller hasn't supplied
       # the repo and PR explicitly, so manual/local runs aren't forced through it.
+      #
+      # @return [Thingie::GitHub::Context, nil] the resolved context, or nil when unneeded
       def resolve_github_context
         return nil if options[:gh_repo] && options[:pr]
 
         Thingie::GitHub::Context.from_env
       end
 
+      # @param context [Thingie::GitHub::Context, nil] the resolved GitHub Action context
+      # @return [Thingie::GitHub::Commenter] a commenter configured for the target PR
       def build_commenter(context)
         Thingie::GitHub::Commenter.new(
           token: options[:token] || Env.fetch('GITHUB_TOKEN', nil),
@@ -263,6 +339,11 @@ module Thingie
 
       # Auto-approve the PR when the [approve] config block is enabled. Loads
       # config here because github-comment otherwise runs without it.
+      #
+      # @param context [Thingie::GitHub::Context, nil] the resolved GitHub Action context
+      # @param report [Thingie::Report] the review report
+      # @param summary [String] the Markdown review summary
+      # @return [void]
       def maybe_approve(context, report, summary)
         config = Thingie::Configuration.new
         approve = config['approve']
@@ -274,6 +355,9 @@ module Thingie
       # Best-effort LLM client for the approval risk assessment. Returns nil when
       # no LLM key is configured (e.g. the github-comment step lacks LLM_API_KEY),
       # so the approval still posts, just without the risk section.
+      #
+      # @param config [Thingie::Configuration] the loaded configuration
+      # @return [Thingie::LlmClient, nil] the client, or nil when unavailable
       def approval_llm_client(config)
         Thingie::LlmClient.new(config)
       rescue StandardError => e
@@ -281,6 +365,11 @@ module Thingie
         nil
       end
 
+      # @param context [Thingie::GitHub::Context, nil] the resolved GitHub Action context
+      # @param approve_config [Hash] the `[approve]` config section
+      # @param summary [String] the Markdown review summary
+      # @param llm_client [Thingie::LlmClient, nil] client for risk assessment, if available
+      # @return [Thingie::GitHub::Approver] the configured approver
       def build_approver(context, approve_config, summary, llm_client)
         Thingie::GitHub::Approver.new(
           token: options[:token] || Env.fetch('GITHUB_TOKEN', nil),
@@ -297,6 +386,8 @@ module Thingie
       # Debug is on when --debug is passed OR THINGIE_DEBUG is set to a non-empty,
       # non-false value. Empty string is treated as off so GitHub Actions' default
       # empty-variable expansion doesn't accidentally enable debug on every run.
+      #
+      # @return [Boolean] whether debug logging is enabled
       def debug_enabled?
         env_val = Env.fetch('THINGIE_DEBUG', nil)
         env_on = env_val && !env_val.strip.empty? && !%w[0 false].include?(env_val.strip.downcase)
@@ -305,6 +396,8 @@ module Thingie
 
       # Mirror maybe_approve's config load so the debug banner reports the same
       # approve state that will actually be evaluated.
+      #
+      # @return [void]
       def debug_approve_state
         return unless debug_enabled?
 

@@ -18,10 +18,19 @@ module Thingie
 
     attr_reader :config
 
+    # Builds a prompt builder backed by the given configuration.
+    #
+    # @param config [Thingie::Configuration] provides `prompt_vars`, `severity_scale`, and `confidence_scale`
     def initialize(config)
       @config = config
     end
 
+    # Render the review prompt (`review.erb`) for a single file's diff.
+    #
+    # @param diff [String, nil] the diff text (or full content in `all` mode) to review
+    # @param file_lines [String, nil] the full file content, given as extra context to the LLM
+    # @param symbol_lookup [Boolean] whether the LSP symbol-lookup tool is available to the LLM
+    # @return [String] the rendered prompt text
     def review(diff:, file_lines: nil, symbol_lookup: false)
       render_template(REVIEW_TEMPLATE, 'input' => diff, 'file_lines' => file_lines,
                                        'symbol_lookup' => symbol_lookup,
@@ -29,6 +38,13 @@ module Thingie
                                        'confidence_scale' => format_scale(@config.confidence_scale))
     end
 
+    # Render the critic/verify prompt (`verify.erb`) that re-checks a single finding.
+    #
+    # @param issue [Thingie::Issue] the finding to verify
+    # @param diff [String, nil] the diff text (or full content in `all` mode) the finding was raised against
+    # @param file_lines [String, nil] the full file content, given as extra context to the LLM
+    # @param symbol_lookup [Boolean] whether the LSP symbol-lookup tool is available to the LLM
+    # @return [String] the rendered prompt text
     def verify(issue:, diff:, file_lines: nil, symbol_lookup: false)
       render_template(VERIFY_TEMPLATE, 'input' => diff, 'file_lines' => file_lines,
                                        'symbol_lookup' => symbol_lookup,

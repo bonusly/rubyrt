@@ -22,6 +22,9 @@ module Thingie
 
     param :path, desc: 'Path relative to the working directory to inspect', required: true
 
+    # Builds a file tool constrained to reads under `root`.
+    #
+    # @param root [String] path to the working directory reads are constrained to
     def initialize(root:)
       super()
       # Canonicalize the root so symlinked prefixes (e.g. /tmp -> /private/tmp
@@ -29,6 +32,11 @@ module Thingie
       @root = File.realpath(root)
     end
 
+    # Checks whether `path` exists relative to the working directory, and returns its
+    # contents when it is a non-binary, readable file.
+    #
+    # @param path [String] path relative to the working directory
+    # @return [String] a human-readable result: file contents, or a status message
     def execute(path:)
       resolved = resolve(path)
       return "Path `#{path}` is outside the working directory." if resolved.nil?

@@ -10,18 +10,30 @@ module Thingie
   # Orchestrates reviewing the changeset: builds prompts, calls the LLM,
   # post-processes issues, and builds a Report.
   class Reviewer
+    # Builds a reviewer for a single run of the pipeline.
+    #
+    # @param config [Thingie::Configuration] full merged configuration
+    # @param changeset [Thingie::Changeset] the files under review
+    # @param prompt_builder [Thingie::PromptBuilder] builds review/verify prompts
+    # @param llm_client [Thingie::LlmClient] wraps the LLM used for review calls
+    # @param tools [Array, nil] `ruby_llm` tools (e.g. LSP symbol lookup) made available to the LLM
+    # @param debug [Boolean] enable verbose debug output during the pipeline
     def initialize(config:, changeset:, prompt_builder:, llm_client:, tools: [], debug: false)
       @config = config
       @changeset = changeset
       @prompt_builder = prompt_builder
       @llm_client = llm_client
-      @tools = tools
+      @tools = tools || []
       # Plain array: Async runs fibers cooperatively on a single thread, so
       # appends between scheduler yields do not race. No lock needed.
       @warnings = []
       @debug_output = DebugOutput.new(config: config, changeset: changeset, enabled: debug)
     end
 
+    # Run the full review pipeline: gather LLM findings for each changed file, post-process,
+    # enrich with code snippets, run the critic pass, sort by severity, and assign issue ids.
+    #
+    # @return [Thingie::Report] the finished report
     def review
       @debug_output.banner
       @debug_output.review_section_start

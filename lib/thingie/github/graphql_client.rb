@@ -8,10 +8,20 @@ module Thingie
     class GraphqlClient
       THREAD_PAGE_SIZE = 100
 
+      # Wraps an existing Octokit client for GraphQL requests.
+      #
+      # @param client [Octokit::Client] the Octokit client used to issue GraphQL requests
       def initialize(client)
         @client = client
       end
 
+      # Fetches all review threads for a pull request.
+      #
+      # @param owner [String] the repository owner
+      # @param repo [String] the repository name
+      # @param pr_number [Integer] the pull request number
+      # @raise [RuntimeError] if the GraphQL response contains top-level errors
+      # @return [Array<Hash>] the review thread nodes (string-keyed)
       def review_threads(owner:, repo:, pr_number:)
         response = post_graphql(review_threads_query, thread_variables(owner, repo, pr_number))
         body = stringify(to_hash(response))
@@ -19,6 +29,11 @@ module Thingie
         body.dig('data', 'repository', 'pullRequest', 'reviewThreads', 'nodes') || []
       end
 
+      # Resolves a single review thread via the `resolveReviewThread` mutation.
+      #
+      # @param thread_id [String] the GraphQL node ID of the thread to resolve
+      # @raise [RuntimeError] if the GraphQL response contains top-level errors
+      # @return [Object] the raw Octokit response
       def resolve_thread(thread_id)
         response = post_graphql(resolve_thread_mutation, { threadId: thread_id })
         raise_on_errors(stringify(to_hash(response)))

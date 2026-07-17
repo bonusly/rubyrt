@@ -12,6 +12,9 @@ module Thingie
     # Returns a RubyLLM::Skills::SkillTool for the catalog, or nil when there's
     # nothing to disclose (avoids registering a tool whose whole description
     # would be "No skills available.").
+    #
+    # @param config [Thingie::Configuration] the loaded configuration
+    # @return [RubyLLM::Skills::SkillTool, nil] the skill tool, or nil when empty
     def self.tool(config)
       catalog = new(config)
       return nil if catalog.list.empty?
@@ -19,17 +22,26 @@ module Thingie
       RubyLLM::Skills::SkillTool.new(catalog)
     end
 
+    # Builds a catalog backed by the given configuration.
+    #
+    # @param config [Thingie::Configuration] the loaded configuration
     def initialize(config)
       super()
       @config = config
     end
 
+    # The skills loaded for this catalog.
+    #
+    # @return [Array<RubyLLM::Skills::Skill>] the loaded skills
     def list
       skills
     end
 
     protected
 
+    # Loads every skill fragment discovered via `Configuration#skills`.
+    #
+    # @return [Array<RubyLLM::Skills::Skill>] the loaded skills
     def load_all
       skill_fragments
     end

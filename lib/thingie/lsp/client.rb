@@ -21,6 +21,10 @@ module Thingie
       # no background indexing (workspace/symbol is then usable immediately).
       READY_GRACE = 5
 
+      # Builds a client; the server process itself isn't launched until the first {#lookup}.
+      #
+      # @param command [String, Array<String>] the LSP server launch command
+      # @param root [String] the workspace root the server should index
       def initialize(command:, root:)
         @command = Array(command)
         @root = File.expand_path(root)
@@ -35,6 +39,9 @@ module Thingie
 
       # Look up symbols by name. Returns an array of LSP SymbolInformation
       # hashes ({ "name", "kind", "location" => { "uri", "range" } }).
+      #
+      # @param query [String] the symbol name to search for
+      # @return [Array<Hash>] matching SymbolInformation hashes
       def lookup(query)
         @mutex.synchronize do
           start unless @started
@@ -43,6 +50,10 @@ module Thingie
         end
       end
 
+      # Gracefully shuts down the LSP server: sends `shutdown`/`exit`, then closes
+      # the process. Safe to call when the server was never started.
+      #
+      # @return [void]
       def shutdown
         @mutex.synchronize do
           return unless @started

@@ -14,17 +14,27 @@ module Thingie
       4 => 'Low'
     }.freeze
 
+    # Builds a renderer for the given report.
+    #
+    # @param report [Thingie::Report] the report to render
+    # @param severity_scale [Hash, nil] severity level => label; falls back to {DEFAULT_SEVERITY_SCALE}
     def initialize(report, severity_scale: nil)
       @report = report
       @severity_scale = normalize_scale(severity_scale) || DEFAULT_SEVERITY_SCALE
     end
 
+    # Render the report as colored plain text for the terminal.
+    #
+    # @return [String] CLI-formatted report
     def to_cli
       output = summary_line
       output += @report.issues.map { |issue| render_issue(issue) }.join
       output
     end
 
+    # Render the report as Markdown, suitable for posting as a PR comment.
+    #
+    # @return [String] Markdown-formatted report
     def to_md
       lines = [Thingie::GitHub::Context::SUMMARY_MARKER, md_summary_line]
       lines += @report.issues.map { |issue| md_issue(issue) }

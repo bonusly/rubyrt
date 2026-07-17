@@ -29,6 +29,18 @@ module Thingie
 
       Decision = Struct.new(:action, :reasons)
 
+      # Builds an approver for a single pull request.
+      #
+      # @param token [String] the main GitHub token used for reads and the first approval attempt
+      # @param owner [String] the repository owner
+      # @param repo [String] the repository name
+      # @param pr_number [Integer] the pull request number
+      # @param config [Hash] the `approve` section of the resolved configuration
+      # @param resolve_token [String, nil] optional PAT used as a fallback for actions the
+      #   main token can't perform (e.g. team membership reads, dismissals)
+      # @param llm_client [Thingie::LlmClient, nil] optional client used only for the
+      #   informational risk assessment in the approval comment
+      # @param review_summary [String, nil] the review's summary text, included in the risk prompt
       def initialize(token:, owner:, repo:, pr_number:, config: {}, resolve_token: nil,
                      llm_client: nil, review_summary: nil)
         # Reads and the first approval attempt use the main token; the PAT is the
@@ -48,6 +60,9 @@ module Thingie
 
       # Evaluate the rules and approve / dismiss accordingly. Never raises into
       # the run: a failure here must not fail the review that already posted.
+      #
+      # @param report [Thingie::Report] the completed review report
+      # @return [void]
       def run(report)
         pr = @client.pull_request(slug, @pr_number)
         decision = decide(pr, report)
