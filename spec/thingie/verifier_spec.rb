@@ -15,7 +15,10 @@ RSpec.describe Thingie::Verifier do
   end
 
   let(:tmp_dir) { Dir.mktmpdir }
-  let(:config) { { 'verify' => { 'enabled' => true }, 'max_concurrent_tasks' => 4 } }
+  let(:config) do
+    Thingie::Configuration.new(root: tmp_dir, overrides: { 'verify' => { 'enabled' => true },
+                                                           'max_concurrent_tasks' => 4 })
+  end
   let(:fake_changeset) do
     instance_double(Thingie::Changeset, diff_text_for: "+ x\n", full_content_for: "x\n")
   end
@@ -36,8 +39,11 @@ RSpec.describe Thingie::Verifier do
                              'affected_lines' => [{ 'start_line' => 1 }])
   end
 
-  def verdict(value)
-    instance_double(RubyLLM::Message, content: { 'verdict' => value, 'reasoning' => 'r' })
+  def verdict(value, severity_override: nil, confidence_override: nil)
+    instance_double(RubyLLM::Message, content: {
+                      'verdict' => value, 'reasoning' => 'r',
+                      'severity_override' => severity_override, 'confidence_override' => confidence_override
+                    })
   end
 
   after { FileUtils.rm_rf(tmp_dir) }
@@ -45,6 +51,37 @@ RSpec.describe Thingie::Verifier do
   it 'drops findings the critic rejects and keeps the rest' do
     kept = verifier.call(issues)
     expect(kept.map(&:title)).to eq(['keep-me'])
+  end
+
+  context 'when the critic supplies a severity/confidence override' do
+    let(:issues) { [issue('override-me')] }
+    let(:fake_llm_client) do
+      instance_double(Thingie::LlmClient).tap do |client|
+        allow(client).to receive(:complete_with_schema)
+          .and_return(verdict('uphold', severity_override: 1, confidence_override: 2))
+      end
+    end
+
+    it 'applies the override to the kept issue', :aggregate_failures do
+      kept = verifier.call(issues)
+      expect(kept.first.severity).to eq(1)
+      expect(kept.first.confidence).to eq(2)
+    end
+  end
+
+  context 'when the critic supplies an out-of-range override' do
+    let(:issues) { [issue('override-me')] }
+    let(:fake_llm_client) do
+      instance_double(Thingie::LlmClient).tap do |client|
+        allow(client).to receive(:complete_with_schema)
+          .and_return(verdict('uphold', severity_override: 99))
+      end
+    end
+
+    it 'ignores the invalid override, leaving the original grade' do
+      kept = verifier.call(issues)
+      expect(kept.first.severity).to eq(1)
+    end
   end
 
   it 'returns issues untouched without calling the LLM when disabled', :aggregate_failures do

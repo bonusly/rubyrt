@@ -86,6 +86,28 @@ module Thingie
       @data.fetch('confidence_scale', {})
     end
 
+    # The "show" line: thresholds from `` `[post_process]` `` controlling whether a
+    # finding is surfaced to maintainers at all. Absent/invalid values mean "no limit".
+    #
+    # @return [Hash] `{ max_severity:, max_confidence: }`, either possibly nil
+    def show_threshold
+      settings = @data.fetch('post_process', {})
+      {
+        max_severity: Threshold.parse(settings['max_severity']),
+        max_confidence: Threshold.parse(settings['max_confidence'])
+      }
+    end
+
+    # The "block" line: the threshold from `` `[approve]` `` controlling whether a
+    # finding prevents auto-approval. `enabled` reflects whether auto-approval is
+    # configured at all; when it isn't, the threshold is not meaningfully in effect.
+    #
+    # @return [Hash] `{ max_severity:, enabled: }`
+    def block_threshold
+      settings = @data.fetch('approve', {})
+      { max_severity: Threshold.parse(settings['max_severity']), enabled: settings.fetch('enabled', false) }
+    end
+
     # Absolute paths of the directories to scan for skill markdown fragments, defaulting to
     # `.agents`, `.claude`, and `.cursor` resolved against the project root.
     #

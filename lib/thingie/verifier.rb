@@ -8,13 +8,14 @@ require 'kernel/sync'
 
 module Thingie
   # Critic / challenge pass: re-examines each surviving finding with a fresh,
-  # adversarially-framed LLM call and drops the ones it can't uphold. Runs only
-  # on findings that passed the threshold filter, so cost scales with finding
-  # count, not file size.
+  # adversarially-framed LLM call. Drops findings it can't uphold, and may also
+  # correct the severity/confidence of ones it keeps when the first-pass grade
+  # was miscalibrated. Runs only on findings that passed the threshold filter,
+  # so cost scales with finding count, not file size.
   #
-  # Fail-open: if a verdict can't be obtained or parsed, the finding is KEPT and
-  # a warning is recorded — a broken critic must never silently swallow a real
-  # bug.
+  # Fail-open: if a verdict can't be obtained or parsed, the finding is KEPT
+  # UNCHANGED and a warning is recorded — a broken critic must never silently
+  # swallow a real bug or corrupt its grade.
   class Verifier
     attr_reader :warnings
 
@@ -36,7 +37,8 @@ module Thingie
       @warnings = []
     end
 
-    # Re-check each finding with the critic LLM and drop the ones it can't uphold.
+    # Re-check each finding with the critic LLM, drop the ones it can't uphold,
+    # and apply any severity/confidence correction to the ones it keeps.
     # Returns all issues unchanged when verification is disabled or there's nothing to check.
     #
     # @param issues [Array<Thingie::Issue>] surviving findings from the first pass
@@ -46,8 +48,15 @@ module Thingie
 
       concurrency = [@config['max_concurrent_tasks'] || 10, 1].max
       verdicts = verify_in_parallel(issues, concurrency)
-      issues.zip(verdicts).select { |_issue, keep| keep }.map(&:first)
+      issues.zip(verdicts).select { |_issue, verdict| verdict[:keep] }.map do |issue, verdict|
+        issue.apply_override(severity: verdict[:severity], confidence: verdict[:confidence])
+        issue
+      end
     end
+
+    # Fail-open default for a slot whose critic call never completes: keep the
+    # finding, unchanged.
+    FAIL_OPEN_RESULT = { keep: true, severity: nil, confidence: nil }.freeze
 
     private
 
@@ -73,7 +82,7 @@ module Thingie
     # results land by index, errors are aggregated, and the block always blocks
     # until the barrier drains.
     def verify_in_parallel(issues, concurrency)
-      results = Array.new(issues.size, true)
+      results = Array.new(issues.size, FAIL_OPEN_RESULT)
       barrier = nil
       Sync do
         barrier = Async::Barrier.new
@@ -88,6 +97,8 @@ module Thingie
       results
     end
 
+    # @return [Hash] `{ keep:, severity:, confidence: }` — `severity`/`confidence`
+    #   are non-nil only when the critic supplied a validated override.
     def uphold?(issue)
       prompt = @prompt_builder.verify(
         issue: issue,
@@ -96,23 +107,35 @@ module Thingie
         symbol_lookup: @tools.any?
       )
       response = @llm_client.complete_with_schema(prompt, Schemas::VERDICT_SCHEMA, tools: @tools)
-      verdict = verdict_of(response)
+      content = parse_content(response)
+      verdict = content['verdict'].to_s.strip.downcase
       @debug_output&.critic_call(issue: issue, response: response,
-                                 verdict: verdict.nil? || verdict.empty? ? '(no verdict)' : verdict)
-      verdict != 'reject'
+                                 verdict: verdict.empty? ? '(no verdict)' : verdict)
+      {
+        keep: verdict != 'reject',
+        severity: valid_override(content['severity_override'], @config.severity_scale),
+        confidence: valid_override(content['confidence_override'], @config.confidence_scale)
+      }
     rescue StandardError => e
-      # Fail open: keep the finding, but surface that the critic didn't run.
+      # Fail open: keep the finding unchanged, but surface that the critic didn't run.
       @warnings << "Could not verify finding '#{issue.title}' (#{issue.file}): #{e.class}: #{e.message}"
-      true
+      FAIL_OPEN_RESULT
     end
 
-    def verdict_of(response)
+    def parse_content(response)
       content = response&.content
       content = JSON.parse(content) if content.is_a?(String)
-      return nil unless content.is_a?(Hash)
+      content.is_a?(Hash) ? content.transform_keys(&:to_s) : {}
+    end
 
-      value = content['verdict'] || content[:verdict]
-      value.to_s.strip.downcase
+    # A malformed or out-of-range override is a no-op rather than an error —
+    # bad override data must never corrupt the finding.
+    def valid_override(value, scale)
+      valid_levels = scale.keys.map { |k| Integer(k, exception: false) }.compact
+      level = Integer(value, exception: false)
+      return nil if level.nil? || !valid_levels.include?(level)
+
+      level
     end
   end
 end

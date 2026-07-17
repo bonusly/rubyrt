@@ -34,7 +34,7 @@ Before you report that a changed source file doesn't have a spec, _check that th
 
 ## Step 3: Check Spec File Existence
 
-Use Glob, a tool, or console command like `ls` or `cat` to check if each expected spec file exists. Flag any missing spec files as **High** severity issues.
+Use Glob, a tool, or console command like `ls` or `cat` to check if each expected spec file exists. Flag any missing spec files as severity 2 (High).
 
 ## Step 4: Verify Coverage Quality
 
@@ -50,7 +50,7 @@ For spec files that DO exist, Read both the source file and the spec file. Check
 For each issue found:
 
 ```
-### [Severity: Critical/High/Medium/Low] - Issue Title
+### [Severity N] - Issue Title
 
 **Location:** File path
 **Problem:** Description of the coverage gap
@@ -60,10 +60,13 @@ For each issue found:
 
 ## Severity Guidelines
 
-- **Critical:** Public method with no tests at all, especially for methods that handle data, auth, or money
-- **High:** Missing spec file for a changed source file, or a public method with no direct test
-- **Medium:** Missing edge case coverage (nil handling, empty inputs, error paths)
-- **Low:** Minor coverage improvement (additional scenarios, boundary values)
+Map onto Thingie's shared 1-4 severity scale (see the review prompt's
+severity rubric) rather than inventing a separate tier here:
+
+- **1-2 (Critical/High):** Public method with no tests at all, especially for methods that handle data, auth, or money
+- **2 (High):** Missing spec file for a changed source file, or a public method with no direct test
+- **3 (Medium):** Missing edge case coverage (nil handling, empty inputs, error paths)
+- **4 (Low):** Minor coverage improvement (additional scenarios, boundary values)
 
 ## Testing Principles
 
@@ -103,11 +106,11 @@ If any changed files are under these paths, check for eval coverage:
 
 ### What to check
 
-1. **New AI capabilities** (new tools, new agents, new system prompt sections): Flag as **High** if there are no corresponding eval specs in `spec/evals/bizy/v2/`. New capabilities need evals proving the LLM uses them correctly.
+1. **New AI capabilities** (new tools, new agents, new system prompt sections): Flag as severity 2 (High) if there are no corresponding eval specs in `spec/evals/bizy/v2/`. New capabilities need evals proving the LLM uses them correctly.
 
-2. **Behavioral changes** (prompt tweaks, formatting changes, tool selection fixes): Flag as **High** if there is no eval that demonstrates the behavioral difference. Per the project's AI-TDD workflow, behavioral changes should have a failing eval written *before* the fix, then the fix makes the eval pass. Without this, there is no evidence the change worked.
+2. **Behavioral changes** (prompt tweaks, formatting changes, tool selection fixes): Flag as severity 2 (High) if there is no eval that demonstrates the behavioral difference. Per the project's AI-TDD workflow, behavioral changes should have a failing eval written *before* the fix, then the fix makes the eval pass. Without this, there is no evidence the change worked.
 
-3. **Existing eval coverage**: If eval specs already exist for the changed code, verify they still cover the modified behavior. Flag as **Medium** if existing evals may need updating to reflect the changes.
+3. **Existing eval coverage**: If eval specs already exist for the changed code, verify they still cover the modified behavior. Flag as severity 3 (Medium) if existing evals may need updating to reflect the changes.
 
 ### What NOT to flag
 
@@ -116,13 +119,15 @@ If any changed files are under these paths, check for eval coverage:
 
 ### Severity for AI eval gaps
 
-- **High:** New AI capability or behavioral change with no eval spec at all
-- **Medium:** Existing eval specs may need updating to cover modified behavior
-- **Low:** Minor AI code change where existing evals likely still cover the behavior
+Same shared 1-4 scale as above:
+
+- **2 (High):** New AI capability or behavioral change with no eval spec at all
+- **3 (Medium):** Existing eval specs may need updating to cover modified behavior
+- **4 (Low):** Minor AI code change where existing evals likely still cover the behavior
 
 ## Important Notes
 
 - Focus only on **changed** files, not the entire codebase
 - Don't flag private methods that lack direct tests if they're exercised through public method tests
 - If a source file is purely configuration or declarative (e.g., a simple serializer with no custom logic), note it as low priority
-- Spec files that test the right class but miss newly added methods are **High** priority
+- Spec files that test the right class but miss newly added methods are severity 2 (High)

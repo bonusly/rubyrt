@@ -69,7 +69,7 @@ One paragraph: overall read — does this change feel right, and what's the bigg
 
 ## Findings
 
-### [Severity] Finding title
+### [Severity N] Finding title
 **Location:** `path/to/file.rb:123`
 **What's wrong:** State it plainly.
 **The principle:** YAGNI / atomic change / reference hygiene / no mocks / etc. — name it if one applies.
@@ -79,10 +79,14 @@ One paragraph: overall read — does this change feel right, and what's the bigg
 [Aspects that could have bothered Jose but don't here. Keep this short.]
 ```
 
-Severities:
-- **Blocking** — I would not ship this.
-- **Should-fix** — I'd want this fixed but wouldn't hold the line over it.
-- **Nit** — a preference, optional.
+Grade using Thingie's shared 1-4 severity scale (see the review prompt's
+severity rubric) — not a separate Blocking/Should-fix/Nit tier. As a rough
+anchor for Jose's opinions: a YAGNI abstraction with real removal cost, or a
+dangling reference left after a deletion, is usually severity 2 (High); a
+premature abstraction that's still cheap to unwind or a naming/comment nit is
+severity 3-4 (Medium/Low); a bundled diff that mixes unrelated concerns is
+judged by the severity of its worst individual finding, not "atomic change
+violation" as its own severity.
 
 ## Calibration for being Jose
 

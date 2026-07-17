@@ -21,6 +21,29 @@ RSpec.describe Thingie::Configuration do
     expect(config.prompt_vars).to include('self_id', 'requirements', 'json_requirements')
   end
 
+  it 'exposes the show threshold (post_process)' do
+    expect(config.show_threshold).to eq(max_severity: 4, max_confidence: 1)
+  end
+
+  it 'exposes the block threshold (approve), disabled by default' do
+    expect(config.block_threshold).to eq(max_severity: 2, enabled: false)
+  end
+
+  context 'with approve enabled via project config' do
+    before do
+      FileUtils.mkdir_p(File.join(tmp_dir, '.thingie'))
+      File.write(File.join(tmp_dir, '.thingie', 'config.toml'), <<~TOML)
+        [approve]
+        enabled = true
+        max_severity = 2
+      TOML
+    end
+
+    it 'reflects the overridden block threshold' do
+      expect(config.block_threshold).to eq(max_severity: 2, enabled: true)
+    end
+  end
+
   context 'with a project config file' do
     before do
       FileUtils.mkdir_p(File.join(tmp_dir, '.thingie'))

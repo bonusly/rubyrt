@@ -100,6 +100,22 @@ Issues are labeled by their severity
 - Unclear or incorrect English in documentation
 """
 
+severity_rubric = """
+Grade severity by real-world consequence, not by category membership. Ask: how
+bad is it if this ships as-is, how much of the system or how many users does
+it reach (blast radius), and how hard is it to notice and undo once merged
+(reversibility)? A one-line typo in a rarely-read comment and a one-line
+change to an authorization check are both "one line," but they are not the
+same severity — grade the consequence, not the diff size.
+
+Use judgement over enumeration: a domain-specific skill may suggest where to
+look (concurrency, auth, spec coverage, etc.), but the severity number itself
+should reflect this same impact/blast-radius/reversibility reasoning in every
+domain, not a separate scale invented per topic. When a finding straddles two
+severities, pick the one that matches what actually happens to a real user or
+maintainer if this is not caught — not the worst theoretical case.
+"""
+
 json_requirements = """
 - IMPORTANT: RESPOND ONLY WITH VALID JSON. Your response will be parsed
   programmatically.
@@ -108,11 +124,16 @@ json_requirements = """
 """
 
 [post_process]
-# Thresholds applied to issues after the LLM returns them. Lower numbers are
-# more confident / more severe, so an issue is kept only when its confidence
-# and severity are at or below these maximums.
+# This is the SHOW line: thresholds applied to issues after the LLM returns
+# them, controlling whether a finding is surfaced to maintainers at all (as a
+# PR comment). Lower numbers are more confident / more severe, so an issue is
+# kept only when its confidence and severity are at or below these maximums.
+# Independent of `[approve] max_severity` below (the BLOCK line) — a finding
+# can be shown but not block, e.g. show max_severity=3, approve max_severity=2.
+# Both lines are also stated explicitly to the review/critic LLMs in their
+# prompts (see `severity_rubric` above and `PromptBuilder#show_threshold_text`).
 max_confidence = 1
-max_severity = 3
+max_severity = 4
 
 [verify]
 # Critic / challenge pass: after filtering, re-examine each surviving finding
@@ -135,9 +156,11 @@ enabled = false
 # Block approval when additions + deletions exceed this. Also blocks approval
 # when GitHub doesn't report the size (fails safe).
 max_changes = 500
-# Issues at or below this severity number (1=Critical) block approval — both new
-# findings from this run and unresolved/self-resolved findings from prior runs.
-max_severity = 3
+# This is the BLOCK line, independent from `[post_process] max_severity` above
+# (the SHOW line) — a finding can be shown but not block. Issues at or below
+# this severity number (1=Critical) block approval — both new findings from
+# this run and unresolved/self-resolved findings from prior runs.
+max_severity = 2
 # A Thingie finding only counts as "resolved" for approval if a user who is
 # neither the PR author nor a contributor resolved it; otherwise approval is
 # blocked. Add this label to a PR to skip auto-approval entirely.
