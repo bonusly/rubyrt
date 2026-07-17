@@ -9,6 +9,15 @@ module Thingie
   class Changeset
     attr_reader :base_ref, :head_ref
 
+    # Build a changeset between two git refs (or over the whole tree when `all` is true).
+    #
+    # @param repo_path [String] path inside the git repository to discover; defaults to the current directory
+    # @param base_ref [String, nil] ref to diff from; defaults to `main`/`master`/`HEAD~1` (see {#default_base_ref})
+    # @param head_ref [String] ref to diff to
+    # @param all [Boolean] when true, treat every tracked file at `head_ref` as "changed"
+    # @param filters [Array<String>, String, nil] glob patterns; only matching files are included
+    # @param exclude_files [Array<String>, String, nil] glob patterns; matching files are excluded
+    # @param merge_base [Boolean] diff against the merge-base of `base_ref` and `head_ref` instead of `base_ref` itself
     def initialize(repo_path: Dir.pwd, base_ref: nil, head_ref: 'HEAD', all: false, filters: nil, exclude_files: nil,
                    merge_base: true)
       @repo = Rugged::Repository.discover(repo_path)
@@ -20,10 +29,18 @@ module Thingie
       @merge_base = merge_base
     end
 
+    # The list of file paths under review — changed files between `base_ref` and `head_ref`,
+    # or every tracked file when in `all` mode, after filters and excludes are applied.
+    #
+    # @return [Array<String>] repo-relative file paths
     def files
       @files ||= build_files
     end
 
+    # The diff text for a single file, suitable for sending to the review LLM.
+    #
+    # @param file [String] repo-relative path
+    # @return [String, nil] the unified diff patch (or full file content in `all` mode); nil for a binary file
     def diff_text_for(file)
       return full_content_for(file) if @all
 
@@ -55,6 +72,10 @@ module Thingie
       lines
     end
 
+    # The full content of `file` as it exists at `head_ref`.
+    #
+    # @param file [String] repo-relative path
+    # @return [String, nil] file content, or nil if the file is absent or binary
     def full_content_for(file)
       blob = blob_at(file)
       return nil if blob.nil? || blob.binary?

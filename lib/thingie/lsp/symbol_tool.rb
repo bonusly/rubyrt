@@ -25,12 +25,19 @@ module Thingie
 
       param :query, desc: 'Name of the class, module, or method to look up', required: true
 
+      # @param client [Thingie::Lsp::Client] the LSP client to query
+      # @param root [String] the workspace root, used to relativize file paths
       def initialize(client:, root:)
         super()
         @client = client
         @root = File.expand_path(root)
       end
 
+      # Looks up the definition of a class, module, or method by name and returns
+      # the source of the best matches.
+      #
+      # @param query [String] name of the class, module, or method to look up
+      # @return [String] source snippets for matching definitions, or a not-found message
       def execute(query:)
         term = base_name(query)
         symbols = rank(Array(@client.lookup(term)), term).first(MAX_RESULTS)

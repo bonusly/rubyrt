@@ -38,38 +38,67 @@ module Thingie
       'max_concurrent_tasks' => 'MAX_CONCURRENT_TASKS'
     }.freeze
 
+    # Build the merged configuration for a project by loading and combining all layers
+    # (bundled defaults, `.thingie/config.toml`, `~/.thingie/.env`, OS env vars, explicit overrides).
+    #
+    # @param root [String] project root used to locate `.thingie/config.toml`; defaults to the current directory
+    # @param overrides [Hash] explicit key/value overrides, applied last and taking highest precedence
     def initialize(root: Dir.pwd, overrides: {})
       @root = root
       @overrides = overrides.transform_keys(&:to_s)
       @data = build_data
     end
 
+    # Fetch a top-level config value by key.
+    #
+    # @param key [String, Symbol] config key, e.g. `` `model` `` or `` `provider` ``
+    # @return [Object, nil] the value, or nil if absent
     def [](key)
       @data[key.to_s]
     end
 
+    # Fetch a nested config value by a sequence of keys, like `Hash#dig`.
+    #
+    # @param keys [Array<String, Symbol>] path of keys to traverse
+    # @return [Object, nil] the value, or nil if any key in the path is absent
     def dig(*keys)
       @data.dig(*keys.map(&:to_s))
     end
 
+    # The `` `prompt_vars` `` config section, deep-merged across all layers.
+    #
+    # @return [Hash] template variables available to the ERB prompt templates
     def prompt_vars
       @data.fetch('prompt_vars', {})
     end
 
+    # The `` `severity_scale` `` config section mapping severity levels to human-readable labels.
+    #
+    # @return [Hash] severity level => label
     def severity_scale
       @data.fetch('severity_scale', {})
     end
 
+    # The `` `confidence_scale` `` config section mapping confidence levels to human-readable labels.
+    #
+    # @return [Hash] confidence level => label
     def confidence_scale
       @data.fetch('confidence_scale', {})
     end
 
+    # Absolute paths of the directories to scan for skill markdown fragments, defaulting to
+    # `.agents`, `.claude`, and `.cursor` resolved against the project root.
+    #
+    # @return [Array<String>] absolute directory paths
     def skill_directories
       # expand_path leaves absolute paths intact and resolves relative ones
       # against the project root.
       Array(@data.fetch('skill_directories', DEFAULT_SKILL_DIRECTORIES)).map { |d| File.expand_path(d, @root) }
     end
 
+    # All skill fragments discovered under {#skill_directories}, lazily loaded and memoized.
+    #
+    # @return [Array<Thingie::SkillFragment>] discovered skill fragments
     def skills
       @skills ||= skill_directories.flat_map { |dir| load_skills_from(dir) }
     end
@@ -163,12 +192,18 @@ module Thingie
   class SkillFragment
     attr_reader :path, :content, :source
 
+    # @param path [String] absolute path to the skill's markdown file
+    # @param content [String] the raw markdown content of the skill file
+    # @param source [String] the skill directory this fragment was discovered under
     def initialize(path:, content:, source:)
       @path = path
       @content = content
       @source = source
     end
 
+    # The skill's name, derived from its filename without the `.md` extension.
+    #
+    # @return [String] skill name
     def name
       File.basename(@path, '.md')
     end

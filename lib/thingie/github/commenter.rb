@@ -14,6 +14,13 @@ module Thingie
       # for human-facing labels in comments.
       SEVERITY_LABELS = { 1 => 'Critical', 2 => 'High', 3 => 'Medium', 4 => 'Low' }.freeze
 
+      # @param token [String] the main GitHub token used for posting/updating comments
+      # @param owner [String] the repository owner
+      # @param repo [String] the repository name
+      # @param pr_number [Integer] the pull request number
+      # @param resolve_token [String, nil] optional PAT with write access, required to resolve
+      #   review threads via GraphQL; falls back to `token` when absent (but resolution will
+      #   fail for tokens that can't do it, e.g. `GITHUB_TOKEN`)
       def initialize(token:, owner:, repo:, pr_number:, resolve_token: nil)
         # auto_paginate so PRs with many files/comments aren't truncated to the
         # first page when validating diff lines or collapsing old summaries.
@@ -30,6 +37,13 @@ module Thingie
         @pr_number = pr_number
       end
 
+      # Posts the review to the pull request: resolves stale Thingie threads,
+      # collapses previous summary comments, then posts either a summary
+      # comment (no issues) or inline comments plus an off-diff summary.
+      #
+      # @param summary [String] the human-readable review summary text
+      # @param report [Thingie::Report] the completed review report
+      # @return [void]
       def post_review(summary:, report:)
         pr = @client.pull_request("#{@owner}/#{@repo}", @pr_number)
         commit_id = pr.head.sha

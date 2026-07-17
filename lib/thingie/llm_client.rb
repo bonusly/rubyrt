@@ -31,6 +31,10 @@ module Thingie
 
     # `model` overrides config['model'] (same provider/keys) — used to run the
     # critic pass on a stronger model than the review.
+    #
+    # @param config [Thingie::Configuration] the resolved run configuration
+    # @param model [String, nil] optional model override (falls back to `config['model']`)
+    # @raise [Thingie::ConfigurationError] if `llm_api_key` is missing from config
     def initialize(config, model: nil)
       @config = config
       @model = model || config['model']
@@ -43,6 +47,13 @@ module Thingie
     # multiple clients with different providers/keys can coexist safely.
     attr_reader :llm_context
 
+    # Sends a prompt to the LLM and parses the response against a structured
+    # output schema.
+    #
+    # @param prompt [String] the prompt text to send
+    # @param schema [Object] the structured output schema the response must conform to
+    # @param tools [Array<Object>] optional `ruby_llm` tools to make available for tool-use
+    # @return [Object] the `ruby_llm` response
     def complete_with_schema(prompt, schema, tools: [])
       c = chat
       c = c.with_tools(*tools) unless tools.empty?
@@ -53,6 +64,11 @@ module Thingie
     # object. Accepts either a per-context config (from `RubyLLM.context`) or
     # the global `RubyLLM.config`, so the `models` command can reuse it to make
     # provider credentials visible to `RubyLLM.models.refresh!`.
+    #
+    # @param llm_config [Object] a `RubyLLM` config object (per-context or global)
+    # @param config [Thingie::Configuration] the resolved run configuration
+    # @raise [ArgumentError] if `config['provider']` is not a supported provider
+    # @return [void]
     def self.apply_provider_config!(llm_config, config)
       provider = config['provider'].to_s.downcase
       mapping = PROVIDER_CONFIG[provider]

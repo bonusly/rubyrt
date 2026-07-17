@@ -3,6 +3,11 @@
 module Thingie
   # Parses a JSON array of LLM issues into Thingie domain objects.
   class IssueParser
+    # Parse a JSON array (or single object) of raw LLM issue hashes into `Thingie::Issue` objects.
+    #
+    # @param issues [Array<Hash>, Hash, nil] raw issue hashes from the LLM response
+    # @param file [String] the repo-relative path the issues belong to
+    # @return [Array<Thingie::Issue>] parsed issues
     def parse(issues, file)
       wrap(issues).map { |issue| raw_issue(issue).then { |raw| build_issue(raw, file) } }
     end

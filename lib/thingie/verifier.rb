@@ -18,6 +18,12 @@ module Thingie
   class Verifier
     attr_reader :warnings
 
+    # @param config [Thingie::Configuration] full merged configuration, including the `[verify]` section
+    # @param changeset [Thingie::Changeset] used to fetch diff/full content for each finding's file
+    # @param prompt_builder [Thingie::PromptBuilder] builds the critic prompt
+    # @param llm_client [Thingie::LlmClient] fallback client, reused when no dedicated `verify.model` is set
+    # @param tools [Array] `ruby_llm` tools (e.g. LSP symbol lookup) made available to the critic LLM
+    # @param debug_output [Thingie::DebugOutput, nil] optional debug output sink
     def initialize(config:, changeset:, prompt_builder:, llm_client:, tools: [], debug_output: nil)
       @config = config
       @changeset = changeset
@@ -28,6 +34,11 @@ module Thingie
       @warnings = []
     end
 
+    # Re-check each finding with the critic LLM and drop the ones it can't uphold.
+    # Returns all issues unchanged when verification is disabled or there's nothing to check.
+    #
+    # @param issues [Array<Thingie::Issue>] surviving findings from the first pass
+    # @return [Array<Thingie::Issue>] findings upheld by the critic (or all of them, if disabled)
     def call(issues)
       return issues if issues.empty? || !enabled?
 

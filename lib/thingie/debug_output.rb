@@ -8,12 +8,18 @@ module Thingie
   # Section tags: [DEBUG][REVIEW] for per-call initial-review lines,
   # [DEBUG][CRITIC] for per-call critic-pass lines, plain [DEBUG] for summaries.
   class DebugOutput
+    # @param config [Thingie::Configuration] the resolved run configuration
+    # @param changeset [Thingie::Changeset] the changeset being reviewed
+    # @param enabled [Boolean] whether debug output should actually be printed
     def initialize(config:, changeset:, enabled: false)
       @config = config
       @changeset = changeset
       @enabled = enabled
     end
 
+    # Prints the run summary banner (model, critic model, files under review).
+    #
+    # @return [void]
     def banner
       return unless @enabled
 
@@ -26,6 +32,9 @@ module Thingie
       warn "[DEBUG] Files (#{files.size}): #{files.join(', ')}"
     end
 
+    # Prints the header line marking the start of the initial review pass.
+    #
+    # @return [void]
     def review_section_start
       return unless @enabled
 
@@ -33,6 +42,11 @@ module Thingie
     end
 
     # Called after each individual file review LLM call completes.
+    #
+    # @param file [String] the file that was reviewed
+    # @param response [Object, nil] the `ruby_llm` response object for the call
+    # @param issues_found [Integer] the number of issues found in this file
+    # @return [void]
     def review_call(file:, response:, issues_found:)
       return unless @enabled
 
@@ -44,6 +58,11 @@ module Thingie
       warn "[DEBUG][REVIEW]   tool calls: #{tool_info}" if tool_info
     end
 
+    # Prints a summary of the surviving findings after the initial pass,
+    # grouped by file and by severity.
+    #
+    # @param issues [Array<Thingie::Issue>] findings after threshold + changed-line filters
+    # @return [void]
     def first_pass(issues)
       return unless @enabled
 
@@ -56,6 +75,9 @@ module Thingie
       end
     end
 
+    # Prints the header line marking the start of the critic pass.
+    #
+    # @return [void]
     def critic_section_start
       return unless @enabled
 
@@ -63,6 +85,11 @@ module Thingie
     end
 
     # Called after each individual critic/verifier LLM call completes.
+    #
+    # @param issue [Thingie::Issue] the finding being verified
+    # @param response [Object, nil] the `ruby_llm` response object for the call
+    # @param verdict [Symbol, String] the critic's verdict for this finding
+    # @return [void]
     def critic_call(issue:, response:, verdict:)
       return unless @enabled
 
@@ -74,6 +101,12 @@ module Thingie
       warn "[DEBUG][CRITIC]   tool calls: #{tool_info}" if tool_info
     end
 
+    # Prints a summary of what the critic pass dropped, comparing the findings
+    # that went in against the findings that survived.
+    #
+    # @param input [Array<Thingie::Issue>] findings before the critic pass
+    # @param kept [Array<Thingie::Issue>] findings the critic pass kept
+    # @return [void]
     def critic(input, kept)
       return unless @enabled
 

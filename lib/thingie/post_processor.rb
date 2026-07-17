@@ -8,6 +8,7 @@ module Thingie
   # Uses plain comparisons rather than evaluating a config-supplied Ruby
   # expression, which avoids arbitrary code execution at the config boundary.
   class PostProcessor
+    # @param settings [Hash, nil] the `[post_process]` config section, e.g. `max_confidence`/`max_severity`
     def initialize(settings)
       settings = (settings || {}).transform_keys(&:to_s)
       # Parse thresholds once; an absent/invalid value means "no limit".
@@ -15,6 +16,10 @@ module Thingie
       @max_severity = Integer(settings['max_severity'], exception: false)
     end
 
+    # Keep only the issues at or below the configured `max_confidence`/`max_severity` thresholds.
+    #
+    # @param issues [Array<Thingie::Issue>] issues to filter
+    # @return [Array<Thingie::Issue>] the surviving issues
     def call(issues)
       issues.select { |issue| keep?(issue) }
     end

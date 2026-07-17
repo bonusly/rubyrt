@@ -16,10 +16,12 @@ module Thingie
     :head_ref,
     :merge_base
   ) do
+    # @return [Boolean] whether the review target is a GitHub PR
     def github?
       platform == 'github'
     end
 
+    # @return [Boolean] whether the review target is a local working copy
     def local?
       platform == 'local'
     end
@@ -37,6 +39,12 @@ module Thingie
     :tags,
     :affected_lines
   ) do
+    # @param title [String] short summary of the issue
+    # @param severity [Integer] severity 1 (critical) through 4 (low)
+    # @param confidence [Integer] confidence 1 (highest) through 4 (lowest)
+    # @param details [String, nil] extended explanation of the issue
+    # @param tags [Array<String>] issue tags (e.g. `bug`, `security`)
+    # @param affected_lines [Array<Thingie::AffectedRange>] code ranges the issue refers to
     def initialize(title:, severity:, confidence:, details: nil, tags: [], affected_lines: [])
       super
     end
@@ -47,12 +55,20 @@ module Thingie
     attr_accessor :id
     attr_reader :file, :title, :details, :severity, :confidence, :tags, :affected_lines
 
+    # Builds an `Issue` from a raw hash (e.g. parsed from LLM JSON output).
+    #
+    # @param hash [Hash] issue attributes, keyed by string or symbol
+    # @return [Thingie::Issue] the normalized issue
     def self.from_hash(hash)
       hash = hash.transform_keys(&:to_s)
       ranges = parse_affected_lines(hash['affected_lines'])
       build_from_hash(hash, ranges)
     end
 
+    # Normalizes the `affected_lines` value from a raw hash into `AffectedRange`s.
+    #
+    # @param lines [Array<Hash>, Hash, nil] one or more affected-line hashes
+    # @return [Array<Thingie::AffectedRange>] the parsed affected ranges
     def self.parse_affected_lines(lines)
       lines = [lines] if lines.is_a?(Hash) # a lone Hash is one range, not pairs
       Array(lines).map do |line|
@@ -66,6 +82,9 @@ module Thingie
       end
     end
 
+    # @param hash [Hash] issue attributes, keyed by string
+    # @param affected_lines [Array<Thingie::AffectedRange>] the parsed affected ranges
+    # @return [Thingie::Issue] the built issue
     def self.build_from_hash(hash, affected_lines)
       raw = RawIssue.new(
         title: hash.fetch('title'),
@@ -78,6 +97,10 @@ module Thingie
       new(id: hash['id'], file: hash['file'], raw_issue: raw, affected_lines: affected_lines)
     end
 
+    # @param id [String, Integer, nil] assigned issue identifier
+    # @param file [String] path of the file the issue was found in
+    # @param raw_issue [Thingie::RawIssue] the raw issue data from the LLM
+    # @param affected_lines [Array<Thingie::AffectedRange>] code ranges the issue refers to
     def initialize(id:, file:, raw_issue:, affected_lines:)
       @id = id
       @file = file
@@ -89,6 +112,7 @@ module Thingie
       @affected_lines = affected_lines
     end
 
+    # @return [Hash] a plain-hash representation suitable for JSON serialization
     def to_h
       {
         'id' => @id,
@@ -108,16 +132,26 @@ module Thingie
     attr_reader :target, :issues, :processing_warnings, :created_at, :model,
                 :number_of_processed_files
 
+    # Loads a `Report` from a saved JSON file.
+    #
+    # @param path [String] path to the JSON report file
+    # @return [Thingie::Report] the loaded report
     def self.from_file(path)
       data = JSON.parse(File.read(path))
       from_hash(data)
     end
 
+    # @param data [Hash] report data containing a `"target"` hash
+    # @return [Thingie::ReviewTarget] the parsed review target
     def self.target_from_hash(data)
       target_data = (data['target'] || {}).transform_keys(&:to_s)
       ReviewTarget.new(**ReviewTarget.members.to_h { |m| [m, target_data[m.to_s]] })
     end
 
+    # Builds a `Report` from a raw hash (e.g. parsed from JSON).
+    #
+    # @param data [Hash] report attributes, keyed by string
+    # @return [Thingie::Report] the built report
     def self.from_hash(data)
       target = target_from_hash(data)
       issues = Array(data['issues']).map { |issue| Issue.from_hash(issue) }
@@ -130,6 +164,12 @@ module Thingie
       )
     end
 
+    # @param target [Thingie::ReviewTarget] metadata about the code under review
+    # @param model [String] the LLM model used for the review
+    # @param issues [Array<Thingie::Issue>] issues found during the review
+    # @param processing_warnings [Array<String>] non-fatal warnings from the review pipeline
+    # @param number_of_processed_files [Integer, nil] files processed; defaults to the
+    #   unique file count across `issues`
     def initialize(target:, model:, issues: [], processing_warnings: [],
                    number_of_processed_files: nil)
       @target = target
@@ -140,10 +180,12 @@ module Thingie
       @created_at = Time.now.iso8601
     end
 
+    # @return [Integer] the total number of issues in the report
     def total_issues
       @issues.size
     end
 
+    # @return [Hash] a plain-hash representation suitable for JSON serialization
     def to_h
       {
         'target' => @target.to_h.transform_keys(&:to_s),
@@ -156,6 +198,10 @@ module Thingie
       }
     end
 
+    # Writes the report as `code-review-report.json` inside `output_dir`.
+    #
+    # @param output_dir [String] directory to write the report into (created if missing)
+    # @return [void]
     def save(output_dir)
       FileUtils.mkdir_p(output_dir)
       File.write(File.join(output_dir, 'code-review-report.json'), JSON.pretty_generate(to_h))
